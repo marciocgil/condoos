@@ -175,6 +175,10 @@ class Supplier(IdTimestampMixin, Base):
     # [{"name": "...", "cpf_masked": "***.456.789-**", "qualification": "..."}]
     partners: Mapped[list[dict[str, Any]]] = mapped_column(Json, default=list)
     enriched_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # brasilapi | seed | documento (only what a fiscal document showed) | manual
+    enrichment_source: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    # Last enrichment problem (e.g. "nao_encontrado"); data from earlier runs is kept.
+    enrichment_error: Mapped[str | None] = mapped_column(String(200), nullable=True)
 
 
 class Contract(IdTimestampMixin, Base):
@@ -272,6 +276,50 @@ class Expense(IdTimestampMixin, Base):
     category: Mapped[str] = mapped_column(String(60))
     description: Mapped[str] = mapped_column(String(500))
     invoice_number: Mapped[str | None] = mapped_column(String(60), nullable=True)
+    # seed | documento | manual
+    origin: Mapped[str] = mapped_column(String(15), default="manual", server_default="manual")
+
+
+class ExpenseDocument(IdTimestampMixin, Base):
+    """Documents behind an expense: the fiscal document, the boleto, the receipt."""
+
+    __tablename__ = "expense_document"
+    __table_args__ = (
+        CheckConstraint("role IN ('fiscal', 'cobranca', 'recibo')", name="role_valid"),
+        UniqueConstraint("document_id"),
+    )
+
+    condominium_id: Mapped[uuid.UUID] = _uuid_fk("condominium.id")
+    expense_id: Mapped[uuid.UUID] = _uuid_fk("expense.id", ondelete="CASCADE")
+    document_id: Mapped[uuid.UUID] = _uuid_fk("document.id", ondelete="CASCADE")
+    role: Mapped[str] = mapped_column(String(10))
+
+
+class MatchIssue(IdTimestampMixin, Base):
+    """An ambiguous match that a person must resolve (spec §5.5: never pick at random)."""
+
+    __tablename__ = "match_issue"
+    __table_args__ = (
+        CheckConstraint(
+            "kind IN ('pagamento_ambiguo', 'contrato_ambiguo', 'boleto_ambiguo')", name="kind_valid"
+        ),
+        CheckConstraint("status IN ('aberto', 'resolvido')", name="status_valid"),
+        UniqueConstraint("condominium_id", "kind", "subject_id"),
+    )
+
+    condominium_id: Mapped[uuid.UUID] = _uuid_fk("condominium.id")
+    kind: Mapped[str] = mapped_column(String(20))
+    subject_type: Mapped[str] = mapped_column(String(20))  # expense | bank_transaction | document
+    subject_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True))
+    # [{"type": "expense", "id": "...", "label": "..."}]
+    candidates: Mapped[list[dict[str, Any]]] = mapped_column(Json, default=list)
+    description: Mapped[str] = mapped_column(String(300))
+    status: Mapped[str] = mapped_column(String(10), default="aberto")
+    resolved_by_user_id: Mapped[uuid.UUID | None] = _uuid_fk(
+        "app_user.id", nullable=True, ondelete="SET NULL"
+    )
+    resolved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    resolution: Mapped[dict[str, Any]] = mapped_column(Json, default=dict)
 
 
 class BankTransaction(IdTimestampMixin, Base):
@@ -475,6 +523,8 @@ RLS_TABLES: dict[str, str] = {
     "finding_comment": "condominium_id",
     "chat_message": "condominium_id",
     "extraction_correction": "condominium_id",
+    "expense_document": "condominium_id",
+    "match_issue": "condominium_id",
 }
 
 # Tables the application role may only read and insert into (never update or delete).

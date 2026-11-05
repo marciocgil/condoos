@@ -63,7 +63,7 @@ export interface Finding {
 }
 
 export interface QueueItem {
-  kind: "extracao" | "achado_grave";
+  kind: "extracao" | "achado_grave" | "casamento";
   id: string;
   condominium_id: string;
   condominium_name: string;
@@ -76,6 +76,17 @@ export interface QueueCount {
   total: number;
   extracao: number;
   achado_grave: number;
+  casamento: number;
+}
+
+export interface MatchIssue {
+  id: string;
+  kind: string;
+  description: string;
+  subject_type: string;
+  subject_id: string;
+  candidates: { type: string; id: string; label: string }[];
+  status: string;
 }
 
 export interface FieldSpec {

@@ -9,7 +9,7 @@ Planted cases for each audit rule (positive and negative) are added in milestone
 import random
 import uuid
 from dataclasses import dataclass, field
-from datetime import date, timedelta
+from datetime import UTC, date, datetime, timedelta
 from decimal import ROUND_HALF_UP, Decimal
 from typing import Any
 
@@ -24,6 +24,7 @@ from app.db.enums import (
     Role,
 )
 from app.db.models import (
+    Approval,
     AppUser,
     BankTransaction,
     BoardMember,
@@ -31,10 +32,13 @@ from app.db.models import (
     Condominium,
     Contract,
     Expense,
+    IndexValue,
     ManagementCompany,
     Membership,
     Supplier,
 )
+from app.enrichment.indices import fixture_values
+from app.rules.contracts import value_at
 
 SEED_RANDOM = 20261105
 # Last month with data. Fixed so tests never depend on today's date.
@@ -177,8 +181,6 @@ class ContractSpec:
     base_month: int | None
     start: date
     end: date | None
-    # Fictitious yearly adjustment applied at the base month (not real index data).
-    applied_pct: Decimal = Decimal("0")
 
 
 @dataclass
@@ -210,7 +212,6 @@ CONDOS: list[CondoSpec] = [
                 3,
                 date(2024, 3, 1),
                 date(2027, 2, 28),
-                Decimal("4.20"),
             ),
             ContractSpec(
                 "limpeza",
@@ -221,7 +222,6 @@ CONDOS: list[CondoSpec] = [
                 1,
                 date(2023, 1, 1),
                 date(2026, 12, 31),
-                Decimal("4.50"),
             ),
             ContractSpec(
                 "elevadores",
@@ -236,7 +236,6 @@ CONDOS: list[CondoSpec] = [
                 7,
                 date(2022, 7, 1),
                 None,
-                Decimal("3.80"),
             ),
             ContractSpec(
                 "jardim",
@@ -284,7 +283,6 @@ CONDOS: list[CondoSpec] = [
                 5,
                 date(2024, 5, 1),
                 date(2027, 4, 30),
-                Decimal("4.10"),
             ),
             ContractSpec(
                 "limpeza",
@@ -295,7 +293,6 @@ CONDOS: list[CondoSpec] = [
                 8,
                 date(2023, 8, 1),
                 date(2027, 7, 31),
-                Decimal("4.40"),
             ),
             ContractSpec(
                 "elevadores",
@@ -306,7 +303,6 @@ CONDOS: list[CondoSpec] = [
                 10,
                 date(2021, 10, 1),
                 None,
-                Decimal("3.50"),
             ),
             ContractSpec(
                 "manutencao",
@@ -317,7 +313,6 @@ CONDOS: list[CondoSpec] = [
                 2,
                 date(2024, 2, 1),
                 date(2027, 1, 31),
-                Decimal("4.60"),
             ),
             ContractSpec(
                 "dedetizacao",
@@ -362,10 +357,22 @@ USERS: list[tuple[str, str, list[tuple[str | None, Role]]]] = [
 ]
 
 
+@dataclass(frozen=True)
+class ExpectedFinding:
+    """A planted case that the rules engine must find (milestone 3 acceptance)."""
+
+    condo_slug: str
+    rule_code: str
+    subject: str  # an id (or category) that appears in the finding's subject_key
+    needs_model: bool = False  # R04/R07 cases judged by the model
+    note: str = ""
+
+
 @dataclass
 class SeedResult:
     objects: list[list[Base]] = field(default_factory=list)  # insert phases, in FK order
     company_cnpj: str = ""
+    expected: list[ExpectedFinding] = field(default_factory=list)
 
 
 def _uuid(rng: random.Random) -> uuid.UUID:
@@ -381,25 +388,156 @@ def months() -> list[date]:
     return [add_months(LAST_MONTH, -i) for i in range(MONTHS - 1, -1, -1)]
 
 
+def index_table() -> dict[str, dict[date, Decimal]]:
+    """Real BCB series (IPCA, IGP-M, INPC) from the versioned fixture."""
+    return {k.value: v for k, v in fixture_values().items()}
+
+
 def _contract_value_at(spec: ContractSpec, month: date) -> Decimal:
-    """Monthly value at a given month, applying the fictitious yearly adjustment."""
-    value = spec.monthly_value
-    if spec.base_month is None or spec.applied_pct == 0:
-        return value
-    # Count base-month anniversaries between contract start (exclusive) and month (inclusive).
-    first = date(spec.start.year + 1, spec.base_month, 1)
-    if first <= spec.start:
-        first = date(first.year + 1, spec.base_month, 1)
-    anniversary = first
-    while anniversary <= month:
-        value = money(value * (1 + spec.applied_pct / 100))
-        anniversary = date(anniversary.year + 1, spec.base_month, 1)
+    """Monthly value after every adjustment, with the real index (same function as R02/R03)."""
+    value = value_at(
+        spec.monthly_value, spec.index.value, spec.base_month, spec.start, month, index_table()
+    )
+    assert value is not None, f"índice ausente para {spec.object} em {month}"
     return value
+
+
+ENRICHED_AT = datetime(2026, 11, 1, 12, 0, tzinfo=UTC)
+
+
+class Builder:
+    """Collects seed rows; every expense gets a matching bank debit unless told otherwise."""
+
+    def __init__(self, rng: random.Random) -> None:
+        self.rng = rng
+        self.expenses: list[Base] = []
+        self.transactions: list[Base] = []
+        self.approvals: list[Base] = []
+        self.extra_suppliers: list[Base] = []
+        self.extra_contracts: list[Base] = []
+        self.invoice_counter: dict[str, int] = {}
+
+    def supplier(
+        self,
+        legal_name: str,
+        cnae: tuple[str, str],
+        *,
+        status: str = "ATIVA",
+        status_date: date | None = None,
+        partners: list[str] = (),  # type: ignore[assignment]
+    ) -> Supplier:
+        s = Supplier(
+            id=_uuid(self.rng),
+            cnpj=generate_cnpj(self.rng),
+            legal_name=legal_name,
+            trade_name=None,
+            cnae_main={"code": cnae[0], "description": cnae[1]},
+            cnae_secondary=[],
+            registration_status=status,
+            registration_status_date=status_date or date(2018, 3, 1),
+            partners=[
+                {"name": n, "cpf_masked": _fake_cpf_masked(self.rng), "qualification": "Sócio"}
+                for n in partners
+            ],
+            enriched_at=ENRICHED_AT,
+            enrichment_source="seed",
+        )
+        self.extra_suppliers.append(s)
+        return s
+
+    def expense(
+        self,
+        condo: Condominium,
+        supplier: Supplier,
+        *,
+        amount: Decimal,
+        month: date,
+        category: str,
+        description: str,
+        contract: Contract | None = None,
+        issue: date | None = None,
+        due: date | None = None,
+        invoice: str | None = None,
+        paid: bool = True,
+    ) -> Expense:
+        if invoice is None:
+            self.invoice_counter[supplier.cnpj] = (
+                self.invoice_counter.get(supplier.cnpj, self.rng.randint(1000, 5000)) + 1
+            )
+            invoice = str(self.invoice_counter[supplier.cnpj])
+        issue = issue or month + timedelta(days=self.rng.randint(0, 6))
+        due = due or issue + timedelta(days=10)
+        e = Expense(
+            id=_uuid(self.rng),
+            condominium_id=condo.id,
+            supplier_id=supplier.id,
+            contract_id=contract.id if contract else None,
+            competence=month,
+            issue_date=issue,
+            due_date=due,
+            amount=amount,
+            category=category,
+            description=description,
+            invoice_number=invoice,
+            origin="seed",
+        )
+        self.expenses.append(e)
+        if paid:
+            self.debit(
+                condo,
+                amount,
+                due + timedelta(days=self.rng.randint(-1, 2)),
+                f"PAG BOLETO {supplier.trade_name or supplier.legal_name}",
+                supplier,
+                e,
+            )
+        return e
+
+    def debit(
+        self,
+        condo: Condominium,
+        amount: Decimal,
+        when: date,
+        description: str,
+        supplier: Supplier | None = None,
+        expense: Expense | None = None,
+    ) -> BankTransaction:
+        t = BankTransaction(
+            id=_uuid(self.rng),
+            condominium_id=condo.id,
+            posted_at=when,
+            amount=-amount,
+            payee_name=supplier.legal_name if supplier else None,
+            payee_document=supplier.cnpj if supplier else None,
+            description=description[:300],
+            origin=BankTransactionOrigin.SEED.value,
+            external_id=f"seed-{expense.id if expense else uuid.UUID(int=self.rng.getrandbits(128))}",
+            expense_id=expense.id if expense else None,
+        )
+        self.transactions.append(t)
+        return t
+
+    def find(self, condo: Condominium, supplier: Supplier, month: date) -> Expense:
+        return next(
+            e
+            for e in self.expenses
+            if isinstance(e, Expense)
+            and e.condominium_id == condo.id
+            and e.supplier_id == supplier.id
+            and e.competence == month
+        )
+
+    def set_amount(self, e: Expense, amount: Decimal) -> None:
+        e.amount = amount
+        for t in self.transactions:
+            if isinstance(t, BankTransaction) and t.expense_id == e.id:
+                t.amount = -amount
 
 
 def build_seed() -> SeedResult:
     rng = random.Random(SEED_RANDOM)
     result = SeedResult()
+    b = Builder(rng)
 
     company = ManagementCompany(
         id=_uuid(rng),
@@ -409,6 +547,7 @@ def build_seed() -> SeedResult:
     result.company_cnpj = company.cnpj
 
     suppliers: dict[str, Supplier] = {}
+    categories: dict[str, str] = {}
     for spec in SUPPLIERS:
         suppliers[spec.key] = Supplier(
             id=_uuid(rng),
@@ -423,15 +562,16 @@ def build_seed() -> SeedResult:
                 {"name": name, "cpf_masked": _fake_cpf_masked(rng), "qualification": "Sócio"}
                 for name in spec.partners
             ],
+            enriched_at=ENRICHED_AT,
+            enrichment_source="seed",
         )
+        categories[spec.key] = spec.category
 
     condos: dict[str, Condominium] = {}
     board_members: list[Base] = []
     contracts: list[Base] = []
-    expenses: list[Base] = []
-    transactions: list[Base] = []
     competences: list[Base] = []
-    invoice_counter: dict[str, int] = {k: rng.randint(1000, 5000) for k in suppliers}
+    contract_by: dict[tuple[str, str], Contract] = {}
 
     for cspec in CONDOS:
         condo = Condominium(
@@ -476,48 +616,7 @@ def build_seed() -> SeedResult:
             )
             contracts.append(contract)
             contract_rows.append((kspec, contract))
-
-        def add_expense(
-            *,
-            condo: Condominium,
-            supplier_key: str,
-            month: date,
-            amount: Decimal,
-            description: str,
-            contract: Contract | None,
-        ) -> None:
-            supplier = suppliers[supplier_key]
-            invoice_counter[supplier_key] += 1
-            issue = month + timedelta(days=rng.randint(0, 6))
-            due = issue + timedelta(days=10)
-            expense = Expense(
-                id=_uuid(rng),
-                condominium_id=condo.id,
-                supplier_id=supplier.id,
-                contract_id=contract.id if contract else None,
-                competence=month,
-                issue_date=issue,
-                due_date=due,
-                amount=amount,
-                category=next(s.category for s in SUPPLIERS if s.key == supplier_key),
-                description=description,
-                invoice_number=str(invoice_counter[supplier_key]),
-            )
-            expenses.append(expense)
-            transactions.append(
-                BankTransaction(
-                    id=_uuid(rng),
-                    condominium_id=condo.id,
-                    posted_at=due + timedelta(days=rng.randint(-1, 2)),
-                    amount=-amount,
-                    payee_name=supplier.legal_name,
-                    payee_document=supplier.cnpj,
-                    description=f"PAG BOLETO {supplier.trade_name or supplier.legal_name}"[:300],
-                    origin=BankTransactionOrigin.SEED.value,
-                    external_id=f"seed-{expense.id}",
-                    expense_id=expense.id,
-                )
-            )
+            contract_by[(cspec.slug, kspec.supplier)] = contract
 
         for month in months():
             for kspec, contract in contract_rows:
@@ -525,11 +624,12 @@ def build_seed() -> SeedResult:
                     continue
                 if kspec.supplier == "dedetizacao" and month.month % 3 != 1:
                     continue  # quarterly service
-                add_expense(
-                    condo=condo,
-                    supplier_key=kspec.supplier,
-                    month=month,
+                b.expense(
+                    condo,
+                    suppliers[kspec.supplier],
                     amount=_contract_value_at(kspec, month),
+                    month=month,
+                    category=categories[kspec.supplier],
                     description=f"{kspec.object} — {month:%m/%Y}",
                     contract=contract,
                 )
@@ -542,16 +642,16 @@ def build_seed() -> SeedResult:
                     "agua": "Água e esgoto",
                     "gas": "Gás canalizado",
                 }[key]
-                add_expense(
-                    condo=condo,
-                    supplier_key=key,
-                    month=month,
+                b.expense(
+                    condo,
+                    suppliers[key],
                     amount=amount,
+                    month=month,
+                    category=categories[key],
                     description=f"{label} — {month:%m/%Y}",
-                    contract=None,
                 )
             # Monthly condo-fee income (credit), aggregated.
-            transactions.append(
+            b.transactions.append(
                 BankTransaction(
                     id=_uuid(rng),
                     condominium_id=condo.id,
@@ -576,15 +676,27 @@ def build_seed() -> SeedResult:
                     ),
                 )
             )
-        # Annual building insurance, paid in the first seeded month.
-        add_expense(
-            condo=condo,
-            supplier_key="seguro",
-            month=months()[0],
+        # Annual building insurance, paid in the first seeded month, approved in assembly.
+        insurance = b.expense(
+            condo,
+            suppliers["seguro"],
             amount=money(cspec.units * 95),
+            month=months()[0],
+            category="seguro",
             description="Seguro predial obrigatório — anual",
-            contract=None,
         )
+        b.approvals.append(
+            Approval(
+                id=_uuid(rng),
+                condominium_id=condo.id,
+                expense_id=insurance.id,
+                approved_by="Assembleia geral ordinária",
+                approved_at=date(2025, 10, 20),
+                notes="Renovação do seguro aprovada em assembleia.",
+            )
+        )
+
+    planted_contracts = plant_cases(b, condos, suppliers, contract_by, result.expected)
 
     users: list[Base] = []
     memberships: list[Base] = []
@@ -601,20 +713,328 @@ def build_seed() -> SeedResult:
                     role=role.value,
                 )
             )
-    # Link board members that are also users.
     by_name = {u.name: u for u in users if isinstance(u, AppUser)}
     for bm in board_members:
         assert isinstance(bm, BoardMember)
         if bm.full_name in by_name:
             bm.user_id = by_name[bm.full_name].id
 
+    index_rows: list[Base] = [
+        IndexValue(
+            id=_uuid(rng), index_name=name, month=month, pct_change=pct, source="bcb_sgs_fixture"
+        )
+        for name, series in index_table().items()
+        for month, pct in sorted(series.items())
+    ]
+
     result.objects = [
-        [company],
-        list(suppliers.values()),
+        [company, *index_rows],
+        list(suppliers.values()) + b.extra_suppliers,
         list(condos.values()),
         users,
-        memberships + board_members + contracts + competences,
-        expenses,
-        transactions,
+        memberships + board_members + contracts + planted_contracts + competences,
+        b.expenses,
+        b.transactions + b.approvals,
     ]
     return result
+
+
+def plant_cases(
+    b: Builder,
+    condos: dict[str, Condominium],
+    suppliers: dict[str, Supplier],
+    contract_by: dict[tuple[str, str], Contract],
+    expected: list[ExpectedFinding],
+) -> list[Base]:
+    """One positive and at least one negative case per rule, all in October 2026.
+
+    The engine, run for October with reference date 05/11/2026, must find exactly the
+    positives recorded in ``expected`` and nothing else.
+    """
+    oct_ = LAST_MONTH
+    sep = add_months(oct_, -1)
+    ac, mi = condos["jardim-das-acacias"], condos["mirante-do-vale"]
+    new_contracts: list[Base] = []
+
+    # R01 + : same supplier, same value, same month, two invoices.
+    hidraulica = b.supplier(
+        "Hidráulica Fictícia Serviços Ltda",
+        ("4322-3/01", "Instalações hidráulicas, sanitárias e de gás"),
+    )
+    b.expense(
+        ac,
+        hidraulica,
+        amount=money(3400),
+        month=oct_,
+        category="manutencao",
+        description="Reparo na prumada de água do bloco B",
+        issue=date(2026, 10, 3),
+        invoice="501",
+    )
+    dup = b.expense(
+        ac,
+        hidraulica,
+        amount=money(3400),
+        month=oct_,
+        category="manutencao",
+        description="Reparo na prumada de água do bloco B",
+        issue=date(2026, 10, 17),
+        invoice="502",
+    )
+    expected.append(
+        ExpectedFinding(
+            "jardim-das-acacias", "R01", str(dup.id), note="duas notas de R$ 3.400,00 no mesmo mês"
+        )
+    )
+    # R01 − : recurring monthly contract payments of the same value (every month in the seed).
+
+    # R02 + : portaria charged 10% above the adjusted contract value.
+
+    over = b.find(ac, suppliers["portaria"], oct_)
+    b.set_amount(over, over.amount + money(1850))
+    expected.append(
+        ExpectedFinding(
+            "jardim-das-acacias", "R02", str(over.id), note="portaria R$ 1.850,00 acima do contrato"
+        )
+    )
+    # R02 − : limpeza at exactly the contract value (seed).
+
+    # R03 + : elevators (IGP-M, base month October) adjusted by 9%.
+    elev = b.find(mi, suppliers["elevadores"], oct_)
+    prev = b.find(mi, suppliers["elevadores"], sep)
+    b.set_amount(elev, money(prev.amount * Decimal("1.09")))
+    expected.append(
+        ExpectedFinding(
+            "mirante-do-vale", "R03", str(elev.id), note="reajuste de 9% contra o IGP-M acumulado"
+        )
+    )
+    # R03 − : no other October anniversary; covered by unit tests.
+
+    # R04 + (model): cleaning company bills a façade painting under the cleaning contract.
+    limpeza = contract_by[("jardim-das-acacias", "limpeza")]
+    paint = b.expense(
+        ac,
+        suppliers["limpeza"],
+        amount=money(4500),
+        month=oct_,
+        category="limpeza",
+        description="Pintura da fachada do bloco A",
+        contract=limpeza,
+    )
+    expected.append(
+        ExpectedFinding(
+            "jardim-das-acacias",
+            "R04",
+            str(paint.id),
+            needs_model=True,
+            note="pintura cobrada no contrato de limpeza",
+        )
+    )
+    # R04 − : elevator call-out within "atendimento a chamados" (in scope by words).
+    b.expense(
+        ac,
+        suppliers["elevadores"],
+        amount=money(780),
+        month=oct_,
+        category="elevadores",
+        description="Atendimento a chamados: troca de botoeira do elevador 2",
+        contract=contract_by[("jardim-das-acacias", "elevadores")],
+    )
+
+    # R05 + : pump maintenance contract ended 31/08/2026, still paid in October.
+    bombas = b.supplier(
+        "Bombas Fictícias Manutenção Ltda",
+        ("3314-7/02", "Manutenção e reparação de equipamentos hidráulicos e pneumáticos"),
+    )
+    pump_contract = Contract(
+        id=_uuid(b.rng),
+        condominium_id=ac.id,
+        supplier_id=bombas.id,
+        object="Manutenção das bombas de recalque",
+        scope_items=["manutenção preventiva das bombas", "troca de selos e rolamentos"],
+        monthly_value=money(850),
+        adjustment_index=AdjustmentIndex.FIXO.value,
+        adjustment_base_month=None,
+        start_date=date(2025, 9, 1),
+        end_date=date(2026, 8, 31),
+    )
+    new_contracts.append(pump_contract)
+    for m in months():
+        if m <= date(2026, 8, 1) or m == oct_:
+            e = b.expense(
+                ac,
+                bombas,
+                amount=money(850),
+                month=m,
+                category="manutencao",
+                description=f"Manutenção das bombas de recalque — {m:%m/%Y}",
+                contract=pump_contract,
+            )
+            if m == oct_:
+                expected.append(
+                    ExpectedFinding(
+                        "jardim-das-acacias",
+                        "R05",
+                        str(e.id),
+                        note="contrato terminou em 31/08/2026",
+                    )
+                )
+    # R05 − : limpeza contract valid until 31/12/2026 (seed).
+
+    # R06 + : supplier closed (BAIXADA) since May 2026.
+    closed = b.supplier(
+        "Reforma Rápida Construções Ltda",
+        ("4120-4/00", "Construção de edifícios"),
+        status="BAIXADA",
+        status_date=date(2026, 5, 10),
+    )
+    e = b.expense(
+        ac,
+        closed,
+        amount=money(4200),
+        month=oct_,
+        category="obras",
+        description="Recuperação do piso da garagem",
+    )
+    expected.append(ExpectedFinding("jardim-das-acacias", "R06", str(e.id), note="CNPJ baixado"))
+    # R06 − : status INAPTA only from December 2026 (after the expense); partners near-miss for R08.
+    glass = b.supplier(
+        "Vidraçaria Fictícia Ltda",
+        ("4330-4/02", "Instalação de portas, janelas, tetos, divisórias e armários"),
+        status="INAPTA",
+        status_date=date(2026, 12, 1),
+        partners=["Ana Ribeiro Sampaio", "Ines Carvalho"],
+    )
+    b.expense(
+        mi,
+        glass,
+        amount=money(1900),
+        month=oct_,
+        category="obras",
+        description="Troca de vidros do hall",
+    )
+
+    # R07 + : clothing retailer billing electrical maintenance.
+    shop = b.supplier(
+        "Moda Bela Confecções Ltda",
+        ("4781-4/00", "Comércio varejista de artigos do vestuário e acessórios"),
+    )
+    b.expense(
+        ac,
+        shop,
+        amount=money(2400),
+        month=oct_,
+        category="manutencao",
+        description="Manutenção elétrica do salão de festas",
+    )
+    expected.append(
+        ExpectedFinding(
+            "jardim-das-acacias", "R07", str(shop.id), note="CNAE de comércio de roupas"
+        )
+    )
+    # R07 − : electrical/hydraulic firms in maintenance (Fixa Bem, Hidráulica).
+
+    # R08 + : a conselheira of Jardim das Acácias is a partner of a supplier.
+    garden = b.supplier(
+        "Jardins & Cia Paisagismo Ltda",
+        ("8130-3/00", "Atividades paisagísticas"),
+        partners=["INES CARVALHO ROCHA", "Otávio Brandão Lima"],
+    )
+    b.expense(
+        ac,
+        garden,
+        amount=money(1300),
+        month=oct_,
+        category="jardinagem",
+        description="Plantio de mudas no jardim interno",
+    )
+    expected.append(
+        ExpectedFinding("jardim-das-acacias", "R08", str(garden.id), note="sócia é conselheira")
+    )
+    # R08 − : Vidraçaria partners "Ana Ribeiro Sampaio" (board of the *other* condominium)
+    #         and "Ines Carvalho" (partial name).
+
+    # R09 + : PIX with no document. − : bank fee; PIX inside the grace period.
+    pix = b.debit(ac, money(2300), date(2026, 10, 14), "PIX ENVIADO JOAO S")
+    expected.append(
+        ExpectedFinding("jardim-das-acacias", "R09", str(pix.id), note="PIX sem nota após 10 dias")
+    )
+    b.debit(ac, Decimal("89.90"), date(2026, 10, 5), "TARIFA CESTA DE SERVICOS")
+    b.debit(ac, money(650), date(2026, 10, 30), "PIX ENVIADO MARIA L")
+
+    # R10 + : invoice due 20/10 never paid. − : invoice due 02/11 (grace period).
+    fix = suppliers["manutencao"]
+    unpaid = b.expense(
+        mi,
+        fix,
+        amount=money(640),
+        month=oct_,
+        category="manutencao",
+        description="Conserto do interfone",
+        issue=date(2026, 10, 10),
+        due=date(2026, 10, 20),
+        paid=False,
+    )
+    expected.append(
+        ExpectedFinding(
+            "mirante-do-vale", "R10", str(unpaid.id), note="vencida em 20/10 sem débito"
+        )
+    )
+    b.expense(
+        mi,
+        fix,
+        amount=money(210),
+        month=oct_,
+        category="manutencao",
+        description="Troca de lâmpadas do corredor",
+        issue=date(2026, 10, 31),
+        due=date(2026, 11, 2),
+        paid=False,
+    )
+
+    # R11 + : water bill three times the usual (leak). − : energy and gas as usual.
+    water = b.find(ac, suppliers["agua"], oct_)
+    b.set_amount(water, money(water.amount * 3))
+    expected.append(
+        ExpectedFinding(
+            "jardim-das-acacias", "R11", "agua", note="conta de água três vezes a média"
+        )
+    )
+
+    # R12 + : works above the R$ 5.000 limit without approval. − : same, with approval.
+    smith = b.supplier(
+        "Serralheria Fictícia Ltda",
+        ("4330-4/02", "Instalação de portas, janelas, tetos, divisórias e armários"),
+    )
+    big = b.expense(
+        ac,
+        smith,
+        amount=money(6000),
+        month=oct_,
+        category="obras",
+        description="Novo portão da garagem",
+    )
+    expected.append(
+        ExpectedFinding(
+            "jardim-das-acacias", "R12", str(big.id), note="obra acima da alçada sem aprovação"
+        )
+    )
+    approved = b.expense(
+        ac,
+        smith,
+        amount=money(7000),
+        month=oct_,
+        category="obras",
+        description="Grades das janelas do térreo",
+    )
+    b.approvals.append(
+        Approval(
+            id=_uuid(b.rng),
+            condominium_id=ac.id,
+            expense_id=approved.id,
+            approved_by="Assembleia geral extraordinária",
+            approved_at=date(2026, 9, 20),
+            notes="Grades aprovadas em assembleia.",
+        )
+    )
+    return new_contracts

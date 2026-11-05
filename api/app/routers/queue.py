@@ -6,7 +6,7 @@ person reviews a document it is never overwritten by automatic extraction again.
 
 import asyncio
 import uuid
-from datetime import datetime
+from datetime import date, datetime
 from typing import Annotated, Any, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -17,12 +17,23 @@ from app.auth.deps import CurrentPrincipal, require, roles_on_condominium
 from app.auth.rbac import CondoAccess, Permission
 from app.core.audit import record_audit
 from app.core.br import is_valid_cnpj, is_valid_cpf
+from app.core.money import brl
 from app.core.time import utcnow
 from app.db.enums import DocumentType, ExtractionStatus, FindingStatus
-from app.db.models import Condominium, Document, ExtractionCorrection, Finding
+from app.db.models import (
+    BankTransaction,
+    Condominium,
+    Document,
+    Expense,
+    ExpenseDocument,
+    ExtractionCorrection,
+    Finding,
+    MatchIssue,
+)
 from app.db.session import DbSession
 from app.extraction.confidence import COUNTERPARTY_CNPJ, OWN_CNPJ
 from app.extraction.fields import REVIEW_THRESHOLD, SPECS, InvalidValue, normalize, specs_for
+from app.extraction.pipeline import enqueue_match
 from app.storage.base import get_storage
 
 router = APIRouter(tags=["queue"])
@@ -32,7 +43,7 @@ REVIEWABLE_TYPES = [t.value for t in SPECS]
 
 
 class QueueItemOut(BaseModel):
-    kind: Literal["extracao", "achado_grave"]
+    kind: Literal["extracao", "achado_grave", "casamento"]
     id: uuid.UUID
     condominium_id: uuid.UUID
     condominium_name: str
@@ -112,6 +123,24 @@ async def _queue(db: DbSession, principal: CurrentPrincipal) -> list[QueueItemOu
                     created_at=d.created_at,
                 )
             )
+    if can_correct:
+        issues = await db.scalars(
+            select(MatchIssue)
+            .where(MatchIssue.condominium_id.in_(can_correct), MatchIssue.status == "aberto")
+            .order_by(MatchIssue.created_at)
+        )
+        for issue in issues:
+            items.append(
+                QueueItemOut(
+                    kind="casamento",
+                    id=issue.id,
+                    condominium_id=issue.condominium_id,
+                    condominium_name=can_correct[issue.condominium_id],
+                    title=f"Casamento ambíguo: {issue.description}",
+                    detail=f"{len(issue.candidates)} opções",
+                    created_at=issue.created_at,
+                )
+            )
     if can_validate:
         findings = await db.scalars(
             select(Finding)
@@ -129,7 +158,7 @@ async def _queue(db: DbSession, principal: CurrentPrincipal) -> list[QueueItemOu
                     condominium_id=f.condominium_id,
                     condominium_name=can_validate[f.condominium_id],
                     title=f"Grave: {f.title}",
-                    detail=f"R$ {f.amount_at_risk}",
+                    detail=f"{brl(f.amount_at_risk)} em risco",
                     created_at=f.created_at,
                 )
             )
@@ -148,6 +177,7 @@ async def queue_count(db: DbSession, principal: CurrentPrincipal) -> dict[str, i
         "total": len(items),
         "extracao": sum(i.kind == "extracao" for i in items),
         "achado_grave": sum(i.kind == "achado_grave" for i in items),
+        "casamento": sum(i.kind == "casamento" for i in items),
     }
 
 
@@ -296,8 +326,8 @@ async def save_review(
         condominium_id=condo.id,
         details={"doc_type": doc_type.value, "type_changed": type_changed},
     )
-    # Milestone 3: enqueue matching (document -> expense -> contract) from here.
     await db.flush()
+    await enqueue_match(db, doc)
     return await get_review(condominium_id, document_id, access, db)
 
 
@@ -327,3 +357,122 @@ async def discard(
         condominium_id=condo.id,
     )
     return {"message": "Documento descartado."}
+
+
+# --------------------------------------------------------------------------- ambiguous matches
+
+
+class MatchIssueOut(BaseModel):
+    id: uuid.UUID
+    kind: str
+    description: str
+    subject_type: str
+    subject_id: uuid.UUID
+    candidates: list[dict[str, Any]]
+    status: str
+
+
+class ResolveIn(BaseModel):
+    candidate_id: uuid.UUID | None  # None = none of the options
+
+
+async def _issue(db: DbSession, access: CondoAccess, issue_id: uuid.UUID) -> MatchIssue:
+    issue = await db.scalar(
+        select(MatchIssue).where(
+            MatchIssue.id == issue_id, MatchIssue.condominium_id == access.condominium_id
+        )
+    )
+    if issue is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Item não encontrado.")
+    return issue
+
+
+@router.get("/condominiums/{condominium_id}/match-issues/{issue_id}")
+async def get_match_issue(
+    condominium_id: uuid.UUID, issue_id: uuid.UUID, access: CanCorrect, db: DbSession
+) -> MatchIssueOut:
+    i = await _issue(db, access, issue_id)
+    return MatchIssueOut(
+        id=i.id,
+        kind=i.kind,
+        description=i.description,
+        subject_type=i.subject_type,
+        subject_id=i.subject_id,
+        candidates=i.candidates,
+        status=i.status,
+    )
+
+
+@router.post("/condominiums/{condominium_id}/match-issues/{issue_id}/resolve")
+async def resolve_match_issue(
+    condominium_id: uuid.UUID,
+    issue_id: uuid.UUID,
+    body: ResolveIn,
+    access: CanCorrect,
+    db: DbSession,
+) -> dict[str, str]:
+    issue = await _issue(db, access, issue_id)
+    if issue.status != "aberto":
+        raise HTTPException(status.HTTP_409_CONFLICT, "Este item já foi resolvido.")
+    chosen = body.candidate_id
+    if chosen is not None and str(chosen) not in {c["id"] for c in issue.candidates}:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "Opção inválida.")
+    if chosen is not None:
+        cid = access.condominium_id
+        if issue.kind == "pagamento_ambiguo" and issue.subject_type == "bank_transaction":
+            trn = await db.scalar(
+                select(BankTransaction).where(
+                    BankTransaction.id == issue.subject_id, BankTransaction.condominium_id == cid
+                )
+            )
+            if trn is not None:
+                trn.expense_id = chosen
+        elif issue.kind == "pagamento_ambiguo":
+            trn = await db.scalar(
+                select(BankTransaction).where(
+                    BankTransaction.id == chosen, BankTransaction.condominium_id == cid
+                )
+            )
+            if trn is not None:
+                trn.expense_id = issue.subject_id
+        elif issue.kind == "contrato_ambiguo":
+            expense = await db.scalar(
+                select(Expense).where(Expense.id == issue.subject_id, Expense.condominium_id == cid)
+            )
+            if expense is not None:
+                expense.contract_id = chosen
+        elif issue.kind == "boleto_ambiguo":
+            expense = await db.scalar(
+                select(Expense).where(Expense.id == chosen, Expense.condominium_id == cid)
+            )
+            doc = await db.scalar(
+                select(Document).where(
+                    Document.id == issue.subject_id, Document.condominium_id == cid
+                )
+            )
+            if expense is not None and doc is not None:
+                due = doc.extracted.get("vencimento")
+                if due:
+                    expense.due_date = date.fromisoformat(due)
+                db.add(
+                    ExpenseDocument(
+                        condominium_id=cid,
+                        expense_id=expense.id,
+                        document_id=doc.id,
+                        role="cobranca",
+                    )
+                )
+    issue.status = "resolvido"
+    issue.resolved_at = utcnow()
+    issue.resolved_by_user_id = access.user_id
+    issue.resolution = {"candidate_id": str(chosen) if chosen else None}
+    await record_audit(
+        db,
+        action="match_issue.resolved",
+        object_type="match_issue",
+        object_id=issue.id,
+        actor_user_id=access.user_id,
+        condominium_id=access.condominium_id,
+        details={"kind": issue.kind, "chosen": bool(chosen)},
+    )
+    return {"message": "Resolvido."}

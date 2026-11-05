@@ -27,10 +27,16 @@ api/            FastAPI + SQLAlchemy 2 (async) + Alembic; worker da fila de jobs
                   heuristics.py, boleto.py, xml_fiscal.py, llm_extract.py, fields.py
                   (campos por tipo), confidence.py (regra de confiança)
   app/llm/        client.py (cliente único: live/record/replay/off), pricing.py, schema.py
+  app/enrichment/ suppliers.py (BrasilAPI, cache 30 dias), indices.py (BCB SGS)
+  app/matching/   documents.py (documento → despesa → contrato), bank.py (despesa ↔ extrato),
+                  categories.py (categorias e CNAE), text.py
+  app/rules/      engine.py (motor), base.py, contracts.py (valor reajustado), judge.py (IA
+                  de R04/R07), r01..r12 (uma classe por regra)
   app/prompts/    prompts versionados (*.md)
   app/db/         models.py, enums.py, session.py, migrations/
   app/routers/    endpoints
-  app/seed/       seed fictício (data.py) e carga (run.py)
+  app/seed/       seed fictício (data.py, com casos plantados por regra), carga (run.py),
+                  fixtures/bcb_indices.json (séries reais do BCB)
   app/storage/    S3 (chave sempre começa com cond/<condominium_id>/)
   app/worker.py   consumidor da fila; registre handlers em HANDLERS
   tests/          pytest (precisa de PostgreSQL 16 + pgvector)
@@ -49,6 +55,7 @@ docs/           decisions.md, rules.md
 ```bash
 make up            # sobe tudo: postgres, s3 (SeaweedFS), mailpit, api, worker, web
 make test          # pytest do backend
+make coverage      # testes + cobertura mínima de 80% em rules, matching, extraction
 make lint          # ruff, black, mypy strict, eslint, tsc, prettier
 make e2e           # Playwright contra a stack (zera o limite de links por hora antes)
 make migrate seed  # migrações e seed no banco de DATABASE_ADMIN_URL
@@ -75,12 +82,15 @@ make accuracy      # relatório de acurácia por campo → docs/extraction_accur
 - **Migrações** nunca importam listas do código da aplicação (congele os valores na migração).
 - **Extração:** nada de valor "chutado". Campo obrigatório abaixo de 0,9 → fila. A IA recebe só o texto quando há texto; o arquivo só quando não há.
 - **Documento revisado por pessoa** (`reviewed_at`) nunca é reprocessado.
+- **Regras** são determinísticas; R04 e R07 usam IA só onde a parte determinística não decide, e sem IA ficam "não avaliadas". Toda mudança de regra exige teste positivo e negativo em `tests/test_rules.py` e manter `tests/test_planted_cases.py` exato (todos os positivos, nenhum extra).
+- **Achados** nunca usam "fraude", "desvio" ou "irregularidade comprovada" (o motor recusa).
+- **Casamento ambíguo** vai para `match_issue`, nunca é escolhido ao acaso.
 
 ## Status dos marcos
 
 - [x] **Marco 1 — Fundação** (05/11/2026): repositório, docker compose, migrações com RLS, link mágico, sessões, RBAC, fila de jobs, seed (1 administradora, 2 condomínios, 12 meses), telas iniciais do síndico e da administradora, testes de isolamento.
 - [x] **Marco 2 — Ingestão e extração** (05/11/2026): upload, e-mail (.eml), OFX, CSV, CNAB 240/400 (Itaú, Bradesco, BB), Docling + LLM com confiança por campo, fila de exceções com tela de correção, corpus de 30 documentos e relatório de acurácia.
-- [ ] Marco 3 — Enriquecimento, casamento e regras
+- [x] **Marco 3 — Enriquecimento, casamento e regras** (05/11/2026): BrasilAPI com cache, índices reais do BCB, casamento documento ↔ despesa ↔ extrato ↔ contrato com fila para ambiguidades, as 12 regras com testes positivo/negativo, casos plantados no seed e teste de aceite exato.
 - [ ] Marco 4 — Achados, roteamento e telas
 - [ ] Marco 5 — Chat e relatório
 - [ ] Marco 6 — Prontidão para piloto
@@ -89,7 +99,7 @@ make accuracy      # relatório de acurácia por campo → docs/extraction_accur
 
 - **Meta de 90% sem revisão ainda não medida com o LLM**: sem chave, 12/30 (40%) com 0 erro automático. Medir com `LLM_MODE=record make accuracy` quando houver chave.
 - Layouts CNAB não validados com arquivo real de banco (D28).
-- Documentos extraídos ainda não viram despesas: o casamento documento → despesa → contrato é do Marco 3 (gancho em `routers/queue.py` e no pipeline).
-- Casos plantados das regras no seed: Marco 3.
+- R04 e R07 (parte por IA) só são avaliadas de verdade com chave de API; hoje são testadas com respostas de modelo simuladas.
+- Explicações dos achados ainda são textos determinísticos por regra; a reescrita por LLM com validação numérica é do Marco 4.
 - Botão "Pergunte ao CondoOS" e "Baixar relatório em PDF" aparecem desabilitados até os Marcos 5.
 - Telas recebidas e descritas em `docs/mockups.md`; o restyle completo é do Marco 4.

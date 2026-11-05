@@ -25,6 +25,9 @@ install: ## Install backend and frontend dependencies locally
 test: ## Backend tests (needs a local PostgreSQL 16 + pgvector; see README)
 	$(API) uv run pytest
 
+coverage: ## Tests with coverage; fails if rules, matching or extraction < 80%
+	$(API) uv run pytest --cov=app --cov-report=json:coverage.json -q && uv run python scripts/coverage_gate.py
+
 test-slow: ## Backend tests including the slow ones (chat evaluation, real LLM)
 	$(API) uv run pytest -m slow
 
@@ -34,7 +37,7 @@ e2e: ## Playwright tests against the running stack
 	$(WEB) npx playwright test
 
 lint: ## Linters, formatters and type checks (backend + frontend)
-	$(API) uv run ruff check app tests corpus && uv run black --check app tests corpus && uv run mypy app tests corpus
+	$(API) uv run ruff check app tests corpus scripts && uv run black --check app tests corpus scripts && uv run mypy app tests corpus scripts
 	$(WEB) npm run lint && npm run typecheck && npm run format:check
 
 format: ## Auto-format
@@ -53,4 +56,4 @@ migrate: ## Apply migrations to the database in DATABASE_ADMIN_URL
 seed: ## Load the fictitious seed into the database in DATABASE_ADMIN_URL
 	$(API) uv run python -m app.seed
 
-.PHONY: help up down reset logs install test test-slow e2e lint format corpus accuracy migrate seed
+.PHONY: help up down reset logs install test coverage test-slow e2e lint format corpus accuracy migrate seed

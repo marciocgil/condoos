@@ -18,6 +18,7 @@ from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.jobs import enqueue
 from app.db.enums import DocumentType, ExtractionStatus
 from app.db.models import Condominium, Document
 from app.extraction.confidence import assess
@@ -200,6 +201,19 @@ async def process_document(session: AsyncSession, payload: dict[str, Any]) -> No
     doc.extraction_status = (
         ExtractionStatus.DONE if analysis.complete else ExtractionStatus.NEEDS_REVIEW
     ).value
+    if analysis.complete:
+        await enqueue_match(session, doc)
+
+
+async def enqueue_match(session: AsyncSession, doc: Document) -> None:
+    """Next step of the pipeline: document -> expense -> contract (milestone 3)."""
+    await enqueue(
+        session,
+        "document.match",
+        {"document_id": str(doc.id)},
+        condominium_id=doc.condominium_id,
+        dedupe_key=None,  # matching is idempotent; a corrected document is matched again
+    )
 
 
 async def _import_bank_file(
@@ -230,3 +244,11 @@ async def _import_bank_file(
     doc.needs_review = False
     doc.review_reasons = []
     doc.extraction_status = ExtractionStatus.DONE.value
+    if imported.created:
+        await enqueue(
+            session,
+            "bank.match",
+            {"condominium_id": str(condo.id)},
+            condominium_id=condo.id,
+            dedupe_key=f"bank-match:{condo.id}:doc:{doc.id}",
+        )

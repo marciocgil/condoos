@@ -20,7 +20,7 @@ export function QueueList({ items }: { items: QueueItem[] }) {
           <span
             aria-hidden
             className={`h-2.5 w-2.5 shrink-0 rounded-full ${
-              item.kind === "extracao" ? "bg-amber-400" : "bg-sev-alta"
+              item.kind === "achado_grave" ? "bg-sev-alta" : "bg-amber-400"
             }`}
           />
           <div className="min-w-0 flex-1">
@@ -29,7 +29,14 @@ export function QueueList({ items }: { items: QueueItem[] }) {
             </p>
             {item.detail && <p className="truncate text-xs text-gray-500">{item.detail}</p>}
           </div>
-          {item.kind === "extracao" ? (
+          {item.kind === "casamento" ? (
+            <Link
+              href={`/admin/fila/casamento/${item.condominium_id}/${item.id}`}
+              className="rounded-lg border border-brand-600 bg-brand-50 px-4 py-1.5 text-sm font-medium text-brand-700"
+            >
+              Resolver
+            </Link>
+          ) : item.kind === "extracao" ? (
             <Link
               href={`/admin/fila/documento/${item.condominium_id}/${item.id}`}
               className="rounded-lg border border-brand-600 bg-brand-50 px-4 py-1.5 text-sm font-medium text-brand-700"

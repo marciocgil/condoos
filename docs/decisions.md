@@ -127,3 +127,42 @@ Licenças na árvore do Docling: tudo MIT, BSD ou Apache, exceto `certifi` e `tq
 - **0 documentos automáticos com dado divergente**.
 
 Notas fiscais em PDF, recibos, contratos e fotos ruins dependem do LLM. A meta de 90% sem revisão só pode ser medida com a chave: `LLM_MODE=record uv run python -m corpus.accuracy`.
+
+## Marco 3 — Enriquecimento, casamento e regras
+
+**D38 — BrasilAPI.** O formato da resposta foi conferido no OpenAPI oficial (`cnpj.json` do repositório BrasilAPI).
+- Situação em `descricao_situacao_cadastral` e `data_situacao_cadastral`; CNAE em `cnae_fiscal` e `cnaes_secundarios`; sócios em `qsa`.
+- 404: CNPJ inexistente. Os dados que já existiam são mantidos e o problema fica registrado (`enrichment_error`).
+- 503, 429 e 5xx: até 4 tentativas com espera exponencial, respeitando `Retry-After`. Depois disso, o job falha e a fila tenta de novo mais tarde, sem gravar no cache.
+- Cache de 30 dias por fornecedor. O CPF do sócio fica só mascarado; sócio pessoa jurídica guarda o CNPJ, que é público.
+- `SUPPLIER_PROVIDER=offline` nunca chama a API (útil nos testes).
+- Os CNPJs fictícios do seed não existem na Receita: os fornecedores do seed vêm marcados como `enrichment_source="seed"`, já enriquecidos.
+
+**D39 — Índices reais.** As séries do SGS do Banco Central são 433 (IPCA), 189 (IGP-M) e 188 (INPC). Os códigos foram confirmados por valores históricos (IPCA jan/2023 = 0,53%; INPC = 0,46%), porque o endpoint de metadados não responde. As séries de jan/2020 a out/2026 estão em `app/seed/fixtures/bcb_indices.json`; são estatísticas públicas, não dados de cliente. O seed usa esses valores e a mesma função das regras (`rules/contracts.py`) para calcular os reajustes, então os casos negativos batem exatamente. O worker atualiza os índices uma vez por dia.
+
+**D40 — Despesa e documentos.** A tabela `expense_document` liga uma despesa à nota, ao boleto e ao recibo.
+- A nota cria a despesa, ou se junta a uma já existente com o mesmo fornecedor e número de nota.
+- O boleto se junta à única despesa compatível (mesmo fornecedor, valor ± R$ 0,01, data compatível). Sem nenhuma, cria a despesa; com mais de uma, vai para a fila.
+- O valor da despesa é o líquido da NFS-e: as retenções são pagas à parte, como tributo.
+
+**D41 — Casamento ambíguo.** A tabela `match_issue` (com RLS) guarda os casos de pagamento, contrato ou boleto ambíguos. Eles aparecem na fila de exceções com a ação "Resolver"; quem resolve escolhe a opção, inclusive "nenhuma". O sistema nunca escolhe ao acaso.
+
+**D42 — Ajustes na lógica das regras.** Detalhes em `docs/rules.md`.
+- R01 exige a mesma competência, para contratos mensais não virarem duplicidade.
+- R02 não julga o mês de reajuste (é do R03), evitando contar a mesma diferença duas vezes.
+- R04 tem uma etapa determinística antes de chamar a IA.
+- R07 usa a tabela CNAE para categorias mapeadas e a IA só nas demais.
+- R11 exclui despesas de contrato e mede o excesso.
+- R12 isenta contratos e contas de consumo (configurável).
+- R09 ignora tarifas e movimentações entre contas próprias.
+
+**D43 — Sem IA, as regras assistidas ficam "não avaliadas".** No seed, o caso positivo do R04 (pintura no contrato de limpeza) só aparece com IA. O teste de aceite cobre os dois cenários: com respostas de modelo simuladas, o R04 é encontrado; sem modelo, é relatado como não avaliado, e todo o resto bate do mesmo jeito.
+
+**D44 — O seed avalia outubro/2026 ao ser carregado** (`python -m app.seed` e `docker compose`), com data de referência 05/11/2026, para a demonstração já ter achados. O mês é a competência aberta. O Resumo do síndico abre no último mês fechado (setembro), como pede o prompt; para ver os achados plantados, escolha outubro.
+
+**D45 — Fluxo dos jobs.**
+1. `document.process` → `document.match` (quando o documento sai sem revisão, ou depois da correção humana).
+2. Em seguida, `bank.match` e `rules.evaluate` da competência, com 20 s de atraso.
+3. Extrato importado → `bank.match` → `rules.evaluate` dos meses que tiveram casamento.
+
+O motor é idempotente, então reavaliar não duplica achados.

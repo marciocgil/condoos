@@ -70,6 +70,12 @@ class Settings(BaseSettings):
     # Max characters of document text sent to the model (larger documents go as files).
     llm_max_text_chars: int = 60000
 
+    # Supplier registry (CNPJ). "brasilapi" in real use; "offline" never calls out (tests).
+    supplier_provider: Literal["brasilapi", "offline"] = "brasilapi"
+    brasilapi_base_url: str = "https://brasilapi.com.br/api"
+    supplier_cache_days: int = 30
+    bcb_sgs_base_url: str = "https://api.bcb.gov.br/dados/serie"
+
     # Data retention (years) for fiscal documents.
     retention_years_fiscal: int = 5
 

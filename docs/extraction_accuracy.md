@@ -91,4 +91,3 @@
 | 28_foto_boleto.jpg | boleto | boleto | sim | 5/7 | texto |  |
 | 29_foto_boleto.jpg | boleto | outro | não | 0/7 | nenhuma | Documento sem texto legível (foto ou digitalização): é preciso ler e preencher. |
 | 30_foto_recibo.jpg | recibo | recibo | não | 1/5 | texto | Data: não encontrado; Valor: baixa confiança; Quem recebeu: não encontrado; Referente a: não encontrado |
-

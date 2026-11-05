@@ -11,9 +11,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import get_settings
 from app.core.jobs import Handler, run_one
 from app.db.session import get_worker_engine, sessionmaker_for
+from app.enrichment.indices import refresh_indices_job
+from app.enrichment.suppliers import enrich_job
 from app.extraction.pipeline import process_document
 from app.ingestion.documents import PROCESS_JOB
 from app.ingestion.email import FolderEmailProvider, poll_provider
+from app.matching.bank import match_bank_job
+from app.matching.documents import match_document_job
+from app.rules.engine import evaluate_job
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
 logger = logging.getLogger("condoos.worker")
@@ -28,7 +33,27 @@ async def _ping(_: AsyncSession, payload: dict[str, Any]) -> None:
 HANDLERS: dict[str, Handler] = {
     "ping": _ping,
     PROCESS_JOB: process_document,
+    "document.match": match_document_job,
+    "bank.match": match_bank_job,
+    "supplier.enrich": enrich_job,
+    "indices.refresh": refresh_indices_job,
+    "rules.evaluate": evaluate_job,
 }
+
+
+async def _schedule_daily(maker: Any) -> None:
+    """Once a day: refresh price indices from the Banco Central (deduplicated by date)."""
+    from datetime import date
+
+    from app.core.jobs import enqueue
+
+    async with maker() as session, session.begin():
+        await enqueue(
+            session,
+            "indices.refresh",
+            {"months": 24},
+            dedupe_key=f"indices:{date.today().isoformat()}",
+        )
 
 
 async def main() -> None:
@@ -45,6 +70,7 @@ async def main() -> None:
     )
     next_email_poll = 0.0
     while not stop.is_set():
+        await _schedule_daily(maker)
         if provider is not None and loop.time() >= next_email_poll:
             next_email_poll = loop.time() + settings.inbound_email_poll_seconds
             try:

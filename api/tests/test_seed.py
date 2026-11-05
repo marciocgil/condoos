@@ -43,6 +43,7 @@ async def test_seed_contents(admin_engine: AsyncEngine) -> None:
                 await s.execute(
                     select(Condominium.slug, func.count(func.distinct(Expense.competence)))
                     .join(Expense, Expense.condominium_id == Condominium.id)
+                    .where(Expense.origin == "seed")  # other tests add their own expenses
                     .group_by(Condominium.slug)
                 )
             ).all()
@@ -50,14 +51,15 @@ async def test_seed_contents(admin_engine: AsyncEngine) -> None:
         assert per_condo["jardim-das-acacias"] == 12
         assert per_condo["mirante-do-vale"] == 12
         assert (await s.scalar(select(func.count()).select_from(Competence)) or 0) >= 24
-        # No expense was generated after a contract ended.
+        # Only the planted R05 case has an expense after its contract ended.
         late = await s.scalar(
             select(func.count())
             .select_from(Expense)
             .join(Contract, Contract.id == Expense.contract_id)
             .where(Contract.end_date.is_not(None), Expense.competence > Contract.end_date)
         )
-        assert late == 0
+        planted_r05 = [e for e in build_seed().expected if e.rule_code == "R05"]
+        assert late == len(planted_r05) == 1
         min_amount = await s.scalar(select(func.min(Expense.amount)))
         assert min_amount is not None and min_amount > Decimal("0")
 

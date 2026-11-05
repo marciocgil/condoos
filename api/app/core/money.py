@@ -56,3 +56,16 @@ def parse_ddmmyyyy(value: str) -> date | None:
     if year < 100:
         year += 2000
     return date(year, int(m), int(d))
+
+
+def brl(value: Decimal) -> str:
+    """Decimal('1234.5') -> 'R$ 1.234,50'."""
+    q = Decimal(value).quantize(CENT)
+    sign = "-" if q < 0 else ""
+    text = f"{abs(q):,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+    return f"{sign}R$ {text}"
+
+
+def pct(value: Decimal) -> str:
+    """Decimal('4.5612') -> '4,56%'."""
+    return f"{Decimal(value).quantize(CENT)}".replace(".", ",") + "%"
