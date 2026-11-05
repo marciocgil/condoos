@@ -200,7 +200,8 @@ O motor é idempotente, então reavaliar não duplica achados.
 
 **D52 — Embeddings locais com `paraphrase-multilingual-MiniLM-L12-v2` via fastembed.**
 - fastembed (Apache-2.0) roda o modelo em ONNX (onnxruntime, MIT), sem PyTorch na imagem da API. O modelo (Apache-2.0, 384 dimensões, multilíngue) vai embutido nas imagens (`python -m app.chat.warmup`).
-- Substitui o e5-small da D1: o MiniLM roda em ONNX pelo fastembed, sem PyTorch na imagem da API, e não exige os prefixos "query:"/"passage:" do e5. A imagem fica bem menor que o ~1 GB estimado na D1.
+- Substitui o e5-small da D1: o MiniLM roda em ONNX pelo fastembed, sem PyTorch na imagem da API, e não exige os prefixos "query:"/"passage:" do e5.
+- Tamanho: a imagem da API passou de 0,56 GB para 1,81 GB no Marco 5, somando o executável do Agent SDK (D54), o onnxruntime e o modelo.
 - Nenhum texto de documento sai da infraestrutura para gerar embeddings.
 - `EMBEDDINGS_ENABLED=false` (testes) deixa a coluna `embedding` nula e a busca fica só por texto.
 
