@@ -7,7 +7,17 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 
 from app.config import get_settings
-from app.routers import auth, condominiums, documents, findings, me, portfolio, queue, settings
+from app.routers import (
+    auth,
+    chat,
+    condominiums,
+    documents,
+    findings,
+    me,
+    portfolio,
+    queue,
+    settings,
+)
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
 logger = logging.getLogger("condoos")
@@ -36,6 +46,7 @@ def create_app() -> FastAPI:
     app.include_router(findings.router)
     app.include_router(portfolio.router)
     app.include_router(settings.router)
+    app.include_router(chat.router)
 
     @app.get("/health", tags=["health"])
     async def health() -> dict[str, str]:

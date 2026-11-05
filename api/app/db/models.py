@@ -498,6 +498,8 @@ class ChatMessage(IdTimestampMixin, Base):
     role: Mapped[str] = mapped_column(String(10))
     content: Mapped[str] = mapped_column(Text)
     citations: Mapped[list[dict[str, Any]]] = mapped_column(Json, default=list)
+    # {"tipo": "abrir_achado", "ref": "achado:<id>", "rotulo": "..."} (assistant only)
+    suggested_action: Mapped[dict[str, Any] | None] = mapped_column(Json, nullable=True)
 
 
 class DocumentChunk(IdTimestampMixin, Base):

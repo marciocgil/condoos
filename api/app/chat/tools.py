@@ -135,7 +135,7 @@ class ChatTools:
         rows = await self.session.execute(
             select(Supplier.id, Supplier.legal_name).where(Supplier.id.in_(ids))
         )
-        return dict(rows.tuples().all())
+        return {r[0]: r[1] for r in rows}
 
     async def _supplier_ids_matching(self, text: str) -> list[uuid.UUID]:
         """Suppliers of THIS condominium (with an expense or contract here) by name or CNPJ."""
@@ -145,7 +145,9 @@ class ChatTools:
         if len(digits) == 14:
             cond = Supplier.cnpj == digits
         linked = or_(
-            Supplier.id.in_(select(Expense.supplier_id).where(Expense.condominium_id == self.condo)),
+            Supplier.id.in_(
+                select(Expense.supplier_id).where(Expense.condominium_id == self.condo)
+            ),
             Supplier.id.in_(
                 select(Contract.supplier_id).where(Contract.condominium_id == self.condo)
             ),
@@ -183,7 +185,9 @@ class ChatTools:
         if month is None:
             return {"encontrado": False, "motivo": "nenhuma competência cadastrada"}
         comp = await self.session.scalar(
-            select(Competence).where(Competence.condominium_id == self.condo, Competence.month == month)
+            select(Competence).where(
+                Competence.condominium_id == self.condo, Competence.month == month
+            )
         )
         findings = list(
             await self.session.scalars(
@@ -318,18 +322,17 @@ class ChatTools:
             )
         )
         names = await self._supplier_names({e.supplier_id for e in rows if e.supplier_id})
-        paid = dict(
-            (
+        paid: dict[uuid.UUID | None, uuid.UUID] = {
+            r[0]: r[1]
+            for r in (
                 await self.session.execute(
                     select(BankTransaction.expense_id, BankTransaction.id).where(
                         BankTransaction.condominium_id == self.condo,
                         BankTransaction.expense_id.in_([e.id for e in rows]),
                     )
                 )
-            )
-            .tuples()
-            .all()
-        )
+            ).all()
+        }
         out = []
         for e in rows:
             label = f"{e.description} — {names.get(e.supplier_id, '') if e.supplier_id else ''}"

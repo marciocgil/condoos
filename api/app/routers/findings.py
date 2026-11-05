@@ -157,7 +157,7 @@ async def _categories(db: DbSession, findings: list[Finding]) -> dict[uuid.UUID,
         rows = await db.execute(
             select(Expense.id, Expense.category).where(Expense.id.in_(set(expense_for.values())))
         )
-        cats = dict(rows.tuples().all())
+        cats = {r[0]: r[1] for r in rows}
         for fid, eid in expense_for.items():
             if eid in cats:
                 out[fid] = cats[eid]
@@ -166,19 +166,12 @@ async def _categories(db: DbSession, findings: list[Finding]) -> dict[uuid.UUID,
 
 async def _to_out(db: DbSession, findings: list[Finding]) -> list[FindingOut]:
     supplier_ids = {f.supplier_id for f in findings if f.supplier_id}
-    names = (
-        dict(
-            (
-                await db.execute(
-                    select(Supplier.id, Supplier.legal_name).where(Supplier.id.in_(supplier_ids))
-                )
-            )
-            .tuples()
-            .all()
+    names: dict[uuid.UUID, str] = {}
+    if supplier_ids:
+        rows = await db.execute(
+            select(Supplier.id, Supplier.legal_name).where(Supplier.id.in_(supplier_ids))
         )
-        if supplier_ids
-        else {}
-    )
+        names = {r[0]: r[1] for r in rows}
     cats = await _categories(db, findings)
     return [
         FindingOut(

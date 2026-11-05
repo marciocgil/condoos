@@ -1,4 +1,5 @@
-"""Document chunks for the chat's hybrid search (vector + Portuguese full text).
+"""Document chunks for the chat's hybrid search (vector + Portuguese full text), and the
+suggested action of a chat answer.
 
 Revision ID: 0006
 Revises: 0005
@@ -76,7 +77,12 @@ def upgrade() -> None:
         'CREATE POLICY tenant_isolation ON "document_chunk" '
         f"USING (condominium_id = ANY ({scope})) WITH CHECK (condominium_id = ANY ({scope}))"
     )
+    op.add_column(
+        "chat_message",
+        sa.Column("suggested_action", postgresql.JSONB(astext_type=sa.Text()), nullable=True),
+    )
 
 
 def downgrade() -> None:
+    op.drop_column("chat_message", "suggested_action")
     op.drop_table("document_chunk")
