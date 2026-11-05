@@ -18,6 +18,7 @@ from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.chat.search import INDEX_JOB, INDEXED_TYPES
 from app.core.jobs import enqueue
 from app.db.enums import DocumentType, ExtractionStatus
 from app.db.models import Condominium, Document
@@ -203,6 +204,19 @@ async def process_document(session: AsyncSession, payload: dict[str, Any]) -> No
     ).value
     if analysis.complete:
         await enqueue_match(session, doc)
+    if doc.doc_type in INDEXED_TYPES and doc.text_content:
+        await enqueue_index(session, doc)
+
+
+async def enqueue_index(session: AsyncSession, doc: Document) -> None:
+    """Passages for the chat's document search (contracts, convention, minutes)."""
+    await enqueue(
+        session,
+        INDEX_JOB,
+        {"document_id": str(doc.id)},
+        condominium_id=doc.condominium_id,
+        dedupe_key=None,  # re-indexing is idempotent
+    )
 
 
 async def enqueue_match(session: AsyncSession, doc: Document) -> None:

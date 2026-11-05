@@ -8,6 +8,7 @@ from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.chat.search import INDEX_JOB, index_job
 from app.config import get_settings
 from app.core.jobs import Handler, run_one
 from app.db.session import get_worker_engine, sessionmaker_for
@@ -40,6 +41,7 @@ HANDLERS: dict[str, Handler] = {
     "indices.refresh": refresh_indices_job,
     "rules.evaluate": evaluate_job,
     "finding.explain": explain_job,
+    INDEX_JOB: index_job,
 }
 
 

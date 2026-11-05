@@ -10,10 +10,12 @@ from decimal import Decimal
 from enum import StrEnum
 from typing import Any
 
+from pgvector.sqlalchemy import Vector
 from sqlalchemy import (
     JSON,
     Boolean,
     CheckConstraint,
+    Computed,
     Date,
     DateTime,
     ForeignKey,
@@ -25,7 +27,7 @@ from sqlalchemy import (
     UniqueConstraint,
     func,
 )
-from sqlalchemy.dialects.postgresql import JSONB, UUID
+from sqlalchemy.dialects.postgresql import JSONB, TSVECTOR, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base, IdTimestampMixin
@@ -46,6 +48,7 @@ from app.db.enums import (
 )
 
 Json = JSON().with_variant(JSONB(), "postgresql")
+EMBEDDING_DIM = 384
 Money = Numeric(14, 2)
 
 
@@ -497,6 +500,37 @@ class ChatMessage(IdTimestampMixin, Base):
     citations: Mapped[list[dict[str, Any]]] = mapped_column(Json, default=list)
 
 
+class DocumentChunk(IdTimestampMixin, Base):
+    """A passage of a contract, convention, rules or minutes, for the chat's document search.
+
+    ``embedding`` (384 dims, local multilingual model) and ``search_vector`` (Portuguese full
+    text) are combined in a hybrid ranking (decision D52).
+    """
+
+    __tablename__ = "document_chunk"
+    __table_args__ = (
+        UniqueConstraint("document_id", "chunk_index"),
+        Index("ix_document_chunk_fts", "search_vector", postgresql_using="gin"),
+        Index(
+            "ix_document_chunk_embedding",
+            "embedding",
+            postgresql_using="hnsw",
+            postgresql_ops={"embedding": "vector_cosine_ops"},
+        ),
+    )
+
+    condominium_id: Mapped[uuid.UUID] = _uuid_fk("condominium.id")
+    document_id: Mapped[uuid.UUID] = _uuid_fk("document.id", ondelete="CASCADE")
+    chunk_index: Mapped[int] = mapped_column(Integer)
+    page: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    text: Mapped[str] = mapped_column(Text)
+    # NULL when the embedding model is disabled: the chunk is then found by full text only.
+    embedding: Mapped[list[float] | None] = mapped_column(Vector(EMBEDDING_DIM), nullable=True)
+    search_vector: Mapped[Any] = mapped_column(
+        TSVECTOR, Computed("to_tsvector('portuguese', text)", persisted=True)
+    )
+
+
 class AuditLog(IdTimestampMixin, Base):
     """Append-only trail of relevant writes. Metadata holds ids only, never personal data."""
 
@@ -529,6 +563,7 @@ RLS_TABLES: dict[str, str] = {
     "extraction_correction": "condominium_id",
     "expense_document": "condominium_id",
     "match_issue": "condominium_id",
+    "document_chunk": "condominium_id",
 }
 
 # Tables the application role may only read and insert into (never update or delete).

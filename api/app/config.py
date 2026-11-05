@@ -76,6 +76,16 @@ class Settings(BaseSettings):
     supplier_cache_days: int = 30
     bcb_sgs_base_url: str = "https://api.bcb.gov.br/dados/serie"
 
+    # Local embeddings for the chat's document search (no text leaves the infrastructure).
+    embedding_model: str = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
+    embedding_cache_dir: str | None = None
+    # off: lexical (full-text) search only, e.g. in tests where the model is not downloaded.
+    embeddings_enabled: bool = True
+
+    # Chat agent (Claude Agent SDK).
+    chat_max_turns: int = 8
+    chat_max_budget_usd: float = 0.50
+
     # Data retention (years) for fiscal documents.
     retention_years_fiscal: int = 5
 

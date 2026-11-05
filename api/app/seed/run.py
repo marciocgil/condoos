@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncEngine
 from app.db.models import ManagementCompany
 from app.db.session import get_admin_engine, sessionmaker_for
 from app.seed.data import build_seed
+from app.seed.documents import seed_documents
 
 logger = logging.getLogger("condoos.seed")
 
@@ -25,6 +26,7 @@ async def load_seed(engine: AsyncEngine) -> bool:
         for phase in seed.objects:
             session.add_all(phase)
             await session.flush()
+        await seed_documents(session)
     return True
 
 

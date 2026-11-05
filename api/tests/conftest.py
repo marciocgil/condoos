@@ -38,6 +38,7 @@ os.environ.update(
         "WEB_BASE_URL": "http://web.test",
         "STORAGE_BACKEND": "memory",
         "LLM_MODE": "replay",
+        "EMBEDDINGS_ENABLED": "false",
         "DOCUMENT_CONVERTER": "pdfium",
         "LLM_CASSETTE_DIR": str(Path(__file__).resolve().parent / "fixtures" / "llm"),
     }
