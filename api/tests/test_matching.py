@@ -389,3 +389,33 @@ def test_categories_and_payee_rules() -> None:
     assert payee_compatible(t, s)  # statement without payee: value and date decide
     t.payee_document = "11222333000181"
     assert not payee_compatible(t, s)
+
+
+async def test_same_boleto_sent_twice_joins_one_expense(worker_engine: AsyncEngine) -> None:
+    """A photo of a boleto already received (same digitable line) is a copy, not a new charge."""
+    amount = _amount()
+    async with sessionmaker_for(worker_engine)() as s, s.begin():
+        condo, supplier, _ = await _mirante(s)
+        line = "".join(str(random.randint(0, 9)) for _ in range(47))
+        fields = {
+            "cnpj_beneficiario": supplier.cnpj,
+            "nome_beneficiario": supplier.legal_name,
+            "cnpj_pagador": condo.cnpj,
+            "valor": str(amount),
+            "vencimento": "2026-11-20",
+            "linha_digitavel": line,
+        }
+        pdf = _doc(condo, "boleto", fields)
+        photo = _doc(condo, "boleto", {**fields, "linha_digitavel": f"{line[:5]}.{line[5:]}"})
+        s.add_all([pdf, photo])
+        await s.flush()
+        first = await match_document(s, pdf)
+        second = await match_document(s, photo)
+    assert first.created and second.expense_id == first.expense_id and not second.created
+    async with sessionmaker_for(worker_engine)() as s:
+        expenses = (
+            await s.scalars(
+                select(Expense).where(Expense.condominium_id == condo.id, Expense.amount == amount)
+            )
+        ).all()
+    assert len(expenses) == 1

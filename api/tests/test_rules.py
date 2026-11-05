@@ -390,6 +390,31 @@ async def test_r09_debit_without_document() -> None:
     assert [f.subject_key for f in found] == [f"R09:{orphan.id}"]
 
 
+async def test_r09_utility_bill_is_the_fiscal_document() -> None:
+    s = supplier()
+    billed = expense(s, "8143.27", category="energia")
+    unbilled = expense(s, "7000.00", category="energia")  # utility debit with no bill at all
+    service = expense(s, "650.00", category="dedetizacao")  # a boleto alone is not a note
+    bill = Document(id=uuid.uuid4(), doc_type="boleto")
+    charge = Document(id=uuid.uuid4(), doc_type="boleto")
+    found = await run(
+        "R09",
+        ctx(
+            [billed, unbilled, service],
+            suppliers=[s],
+            transactions=[
+                debit(billed, "8143.27", date(2026, 10, 15)),
+                t_unbilled := debit(unbilled, "7000.00", date(2026, 10, 15)),
+                t_service := debit(service, "650.00", date(2026, 10, 15)),
+            ],
+            documents={billed.id: [("cobranca", bill)], service.id: [("cobranca", charge)]},
+        ),
+    )
+    assert sorted(f.subject_key for f in found) == sorted(
+        [f"R09:{t_unbilled.id}", f"R09:{t_service.id}"]
+    )
+
+
 async def test_r10_unpaid_after_grace() -> None:
     s = supplier()
     unpaid = expense(s, "1200.00", due_date=date(2026, 10, 20))

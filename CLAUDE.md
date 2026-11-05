@@ -35,6 +35,10 @@ api/            FastAPI + SQLAlchemy 2 (async) + Alembic; worker da fila de jobs
   app/chat/       search.py (trechos + busca híbrida), tools.py (9 ferramentas de leitura),
                   agent.py (Claude Agent SDK), service.py (verificações e histórico), warmup.py
   app/reports/    data.py (dados do relatório e pendências do mês), pdf.py, xlsx.py
+  app/onboarding/ cadastro de condomínio novo (python -m app.onboarding <arquivo.json>)
+  app/metrics.py  métricas internas do piloto (precisão, extração automática, revisão, custo)
+  app/core/retention.py  política de retenção (job diário retention.purge)
+  scripts/pilot_run.py   aceite do Marco 6: condomínio fictício do upload ao relatório
   app/prompts/    prompts versionados (*.md)
   app/db/         models.py, enums.py, session.py, migrations/
   app/routers/    endpoints
@@ -58,7 +62,8 @@ web/            Next.js 15 (App Router) + TypeScript strict + Tailwind 4 + lucid
   app/(admin)/admin/...               telas desktop da administradora
   lib/api.ts      chamadas server-side à API, repassando o cookie de sessão
   tests/e2e/      Playwright (roda contra a stack do docker compose)
-docs/           decisions.md, rules.md
+docs/           decisions.md, rules.md, deploy.md (implantação), lgpd.md (checklist),
+                pilot/ (cadastro de exemplo e resultado do aceite)
 ```
 
 ## Comandos
@@ -73,6 +78,7 @@ make migrate seed  # migrações e seed no banco de DATABASE_ADMIN_URL
 make corpus        # regera o corpus fictício (determinístico)
 make accuracy      # relatório de acurácia por campo → docs/extraction_accuracy.md
 make chat-eval     # avaliação do chat ao vivo (exige ANTHROPIC_API_KEY) → docs/chat_eval.md
+make pilot         # aceite do Marco 6 (após reset + up) → docs/pilot/run.md
 ```
 
 - Web: http://localhost:3000 · API: http://localhost:8000/docs · E-mails: http://localhost:8025
@@ -102,6 +108,7 @@ make chat-eval     # avaliação do chat ao vivo (exige ANTHROPIC_API_KEY) → d
 - **Casamento ambíguo** vai para `match_issue`, nunca é escolhido ao acaso.
 - **Chat:** só ferramentas de leitura em `app/chat/tools.py`, nenhuma recebe o condomínio (vem da sessão; o RLS da pergunta fica restrito a ele). Ferramenta nova: devolva `ref` em cada registro, respeite a visibilidade do papel e acrescente um caso em `tests/chat_eval/cases.py`. Números, citações e ação sugerida são conferidos por código (`service.py`).
 - **Relatórios** são a visão do corpo diretivo (sem achados aguardando validação). Rodapé de IA em toda página; competência só fecha com a fila daquele mês vazia.
+- **Condomínio novo** entra por `app.onboarding` (nunca sobrescreve); contratos chegam como documentos (D59). Achado não mais detectado e sem ação de pessoa vira `superado` (D61).
 
 ## Status dos marcos
 
@@ -110,7 +117,7 @@ make chat-eval     # avaliação do chat ao vivo (exige ANTHROPIC_API_KEY) → d
 - [x] **Marco 3 — Enriquecimento, casamento e regras** (05/11/2026): BrasilAPI com cache, índices reais do BCB, casamento documento ↔ despesa ↔ extrato ↔ contrato com fila para ambiguidades, as 12 regras com testes positivo/negativo, casos plantados no seed e teste de aceite exato.
 - [x] **Marco 4 — Achados, roteamento e telas** (05/11/2026): explicações por IA com validação numérica, decisões e trilha, telas do síndico e da administradora no Design System v1.0 (tema escuro), Playwright dos 4 fluxos.
 - [x] **Marco 5 — Chat e relatório** (05/11/2026): busca híbrida (embeddings locais + texto completo) em contratos, convenção e atas; chat com Claude Agent SDK e 9 ferramentas de leitura, citações e ação sugerida conferidas por código; avaliação com 33 casos; relatório PDF/XLSX, trilha em PDF e fechamento de competência com fila vazia.
-- [ ] Marco 6 — Prontidão para piloto
+- [x] **Marco 6 — Prontidão para piloto** (05/11/2026): cadastro de condomínio novo, contrato a partir do documento, métricas internas, retenção e auditoria de exportação, checklist LGPD, guia de implantação; aceite: condomínio fictício do upload ao relatório em 112 s (limite 15 min).
 
 ### Pendências conhecidas
 

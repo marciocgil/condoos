@@ -241,3 +241,27 @@ O motor é idempotente, então reavaliar não duplica achados.
 - Entram documentos em revisão, casamentos ambíguos abertos e achados graves aguardando validação.
 - O mês de um documento vem da competência, da emissão ou do vencimento extraídos. Documento ou casamento sem mês identificável bloqueia: fechar um mês com pendência que pode ser dele é o erro pior.
 - Só o gerente fecha. O fechamento gera PDF e XLSX, guarda em `cond/<id>/reports/`, marca `published_at` (status "Enviado" na Carteira) e registra auditoria. Não reabre pelo sistema.
+
+## Marco 6 — Prontidão para piloto
+
+**D59 — Contrato nasce do documento de contrato.**
+- Um documento do tipo contrato, validado (automático ou corrigido pela analista), vira contrato do condomínio: fornecedor pelo CNPJ, valor mensal, índice, mês-base, vigência e escopo.
+- Mesmo fornecedor e mesma data de início: liga o documento ao contrato existente em vez de criar outro.
+- Contrato em nome de outro CNPJ volta para a fila de extração com o motivo; a analista corrige ou descarta.
+- O cadastro do condomínio (`python -m app.onboarding <arquivo.json>`) não recebe contratos: eles chegam como documentos, com evidência. O comando nunca sobrescreve um condomínio existente.
+- A competência de um mês é criada quando as regras avaliam esse mês (antes só existia no seed).
+
+**D60 — Métricas internas do piloto** (`app/metrics.py`, tela "Métricas do piloto").
+- Precisão = achados cuja última decisão do síndico é "confirmar" ÷ achados com alguma decisão do síndico (confirmar, contestar ou ignorar), pela competência do achado.
+- Extração automática = documentos fiscais recebidos (upload ou e-mail) que nunca passaram por revisão manual ÷ documentos fiscais processados, pelo mês de recebimento. Extratos, convenções, atas e o seed ficam fora.
+- Tempo de revisão = da publicação do achado (criação; nos graves, a validação do gerente) até a primeira decisão do síndico; mediana em horas.
+- Custo de IA = soma de `llm_calls.cost_usd`, em dólares, pela data da chamada.
+- Só a administradora vê. O corpo diretivo não vê métricas internas.
+
+**D61 — Achado superado.** Se uma nova avaliação do mês não detecta mais um achado (por exemplo, a nota chegou depois do débito) e nenhuma pessoa decidiu nem comentou nele, ele passa a `superado` (migração 0007): fica registrado e auditado, mas sai da visão do corpo diretivo e do valor em risco. Se a regra voltar a detectá-lo, volta ao status inicial. Regras com algo "não avaliado" (sem IA) não superam achados, porque falta de avaliação não é avaliação negativa. Motivo: na execução do piloto, documentos chegando fora de ordem deixavam achados de R09/R10 já resolvidos pelos dados.
+
+**D62 — Conta de concessionária é documento fiscal (R09).** Energia, água e gás são cobrados por conta (fatura), que é o documento fiscal do serviço. Um débito casado com despesa dessas categorias que tenha a conta anexada não é "pago sem nota". Achado na execução do piloto (falso positivo em água e energia); teste positivo e negativo em `tests/test_rules.py`.
+
+**D63 — Boleto repetido.** A linha digitável identifica a cobrança. Um segundo arquivo do mesmo boleto (por exemplo, a foto do PDF) entra na mesma despesa, em vez de criar uma despesa nova e um falso "pagamento duplicado". Notas repetidas já eram unidas pelo número.
+
+**D64 — Aceite do Marco 6 por script** (`make pilot`, `api/scripts/pilot_run.py`). Cadastra o condomínio fictício "Bosque dos Ipês", gera os 30 documentos do corpus endereçados ao CNPJ dele e um extrato OFX de outubro, e percorre pela API o que as pessoas fariam: envio, correção da fila (com o gabarito do corpus, como uma pessoa lendo o documento), validação dos graves, fechamento e download do relatório. O tempo medido é o do sistema; a leitura humana é instantânea no script. Resultado em `docs/pilot/run.md`.

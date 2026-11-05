@@ -34,6 +34,8 @@ import httpx
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import create_async_engine
 
+from app.core.money import brl
+
 ROOT = Path(__file__).resolve().parents[2]
 PILOT = ROOT / "docs" / "pilot"
 ONBOARDING = PILOT / "onboarding-bosque-dos-ipes.json"
@@ -318,7 +320,7 @@ async def main(api: str, mailpit: str, admin_url: str, corpus: Path) -> int:
         "do corpus, pela mesma tela/API de correção.",
         f"- Achados no relatório: {len(findings)} "
         f"({', '.join(f'{k}: {v}' for k, v in sorted(by_rule.items())) or 'nenhum'}); "
-        f"valor em risco: R$ {Decimal(summary['amount_at_risk']):.2f}.".replace(".", ","),
+        f"valor em risco: {brl(Decimal(summary['amount_at_risk']))}.",
         f"- Arquivos: `{files['pdf'].name}` e `{files['xlsx'].name}` nesta pasta.",
         "",
         "O tempo mede a execução do sistema (processamento, chamadas da interface e jobs); "

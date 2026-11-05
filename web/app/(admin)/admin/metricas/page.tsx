@@ -156,10 +156,10 @@ export default async function MetricasPage({
           columns={[{ key: "month", header: "Mês", cell: (r) => formatMonth(r.month) }, ...COLUMNS]}
         />
         <p className="mt-3 text-xs text-fg-2">
-          Precisão: confirmados ÷ achados com decisão do síndico (confirmar, contestar ou ignorar),
-          pela competência do achado. Extração automática: documentos fiscais recebidos que não
-          passaram por revisão manual. Custo de IA em dólares, pela data da chamada. Meta de
-          extração automática: 90%.
+          Precisão: achados confirmados dividido pelos achados com decisão do síndico (confirmar,
+          contestar ou ignorar), pela competência do achado. Extração automática: documentos fiscais
+          recebidos que não passaram por revisão manual. Custo de IA em dólares, pela data da
+          chamada. Meta de extração automática: 90%.
         </p>
       </section>
     </>

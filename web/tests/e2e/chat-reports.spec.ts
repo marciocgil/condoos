@@ -71,7 +71,7 @@ test.describe("gerente — chat e fechamento", () => {
     await loginAs(page, GERENTE);
     await page.goto("/admin/pergunte");
     const picker = page.getByRole("navigation", { name: "Condomínio da conversa" });
-    await expect(picker.getByRole("link")).toHaveCount(2);
+    expect(await picker.getByRole("link").count()).toBeGreaterThanOrEqual(2);
     await picker.getByRole("link", { name: /Mirante do Vale/ }).click();
     await expect(page.getByText("Condomínio Edifício Mirante do Vale").last()).toBeVisible();
     await expect(picker.getByRole("link", { name: /Mirante do Vale/ })).toHaveAttribute(

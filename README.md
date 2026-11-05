@@ -2,7 +2,7 @@
 
 Agente auditor de despesas para condomínios. Ele lê as despesas do mês, confere cada uma contra contrato, cadastro do fornecedor, extrato bancário e histórico, e entrega ao síndico uma lista de achados priorizados por valor em risco, cada um com a evidência anexada. Uma pessoa sempre decide; o sistema nunca move dinheiro.
 
-> MVP em construção. Status por marco em [`CLAUDE.md`](CLAUDE.md). Decisões em [`docs/decisions.md`](docs/decisions.md).
+> MVP pronto para piloto. Status por marco em [`CLAUDE.md`](CLAUDE.md). Decisões em [`docs/decisions.md`](docs/decisions.md). Implantação em [`docs/deploy.md`](docs/deploy.md); privacidade em [`docs/lgpd.md`](docs/lgpd.md).
 
 ## Subir localmente
 

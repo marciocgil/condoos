@@ -5,7 +5,8 @@ A validated document (no review pending) becomes, or is attached to, an expense:
   expense of the same supplier with the same invoice number (idempotent);
 - boleto: attaches to the single open expense of the same supplier with the same value and a
   compatible date; with no candidate it creates the expense; with several, it goes to the
-  exception queue (never chosen at random).
+  exception queue (never chosen at random). A copy of a boleto already received (same
+  digitable line) joins that boleto's expense.
 The contract is chosen by supplier CNPJ, then validity at the issue date, then object/scope
 similarity. An expired contract is still linked when it is the only one (rule R05 flags it).
 - contract document: registers the contract (D59) when the contracting party is this
@@ -19,7 +20,7 @@ from datetime import date, timedelta
 from decimal import Decimal
 from typing import Any
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.jobs import enqueue
@@ -214,12 +215,39 @@ async def match_document(session: AsyncSession, doc: Document) -> MatchOutcome:
     return MatchOutcome(expense.id, created=True)
 
 
+async def _expense(session: AsyncSession, expense_id: uuid.UUID) -> Expense:
+    expense = await session.get(Expense, expense_id)
+    assert expense is not None
+    return expense
+
+
 async def _match_boleto(session: AsyncSession, doc: Document) -> MatchOutcome:
     v = doc.extracted
     amount, due = _money(v.get("valor")), _d(v.get("vencimento"))
     cnpj = v.get("cnpj_beneficiario")
     if amount is None or due is None or not cnpj:
         return MatchOutcome(None)
+    # The same boleto sent again (e.g. a photo of the PDF): the digitable line identifies the
+    # charge, so the copy joins the expense of the first one instead of creating another.
+    line = "".join(ch for ch in str(v.get("linha_digitavel") or "") if ch.isdigit())
+    if line:
+        same = await session.scalar(
+            select(ExpenseDocument.expense_id)
+            .join(Document, Document.id == ExpenseDocument.document_id)
+            .where(
+                ExpenseDocument.condominium_id == doc.condominium_id,
+                Document.id != doc.id,
+                Document.doc_type == DocumentType.BOLETO.value,
+                func.regexp_replace(
+                    Document.extracted["linha_digitavel"].as_string(), "[^0-9]", "", "g"
+                )
+                == line,
+            )
+            .limit(1)
+        )
+        if same is not None:
+            await _attach(session, await _expense(session, same), doc, "cobranca")
+            return MatchOutcome(same)
     supplier = await get_or_create_supplier(session, cnpj, v.get("nome_beneficiario"))
     candidates = list(
         await session.scalars(

@@ -3,7 +3,8 @@
 A debit in the audited month with no fiscal backing — no matched expense, or a matched
 expense with neither invoice number nor fiscal/receipt document — once grace_days have
 passed since the debit. Bank fees and transfers between the condominium's own accounts are
-ignored. Amount at risk = debit value.
+ignored. For public utilities (energy, water, gas) the bill itself is the fiscal document: a
+debit matched to an expense with its bill is backed (D62). Amount at risk = debit value.
 """
 
 import re
@@ -17,6 +18,10 @@ BANK_OWN = re.compile(
     r"tarifa|cesta de servi|\biof\b|juros|encargos|aplica[cç][aã]o|resgate|mesma titularidade",
     re.I,
 )
+
+
+# Utility bills (concessionárias) are fiscal documents in their own right.
+UTILITY_CATEGORIES = {"energia", "agua", "gas"}
 
 
 class PaidWithoutDocument(Rule):
@@ -38,6 +43,7 @@ class PaidWithoutDocument(Rule):
             if e is not None and (
                 e.invoice_number
                 or any(role in ("fiscal", "recibo") for role, _ in ctx.documents.get(e.id, []))
+                or (e.category in UTILITY_CATEGORIES and ctx.documents.get(e.id))
             ):
                 continue
             value = -t.amount
