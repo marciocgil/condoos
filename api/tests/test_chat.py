@@ -298,3 +298,19 @@ async def test_manager_turn_is_scoped_to_one_condominium(
             await s.scalars(select(ChatMessage).where(ChatMessage.content == "E o Mirante?"))
         ).all()
     assert len(msgs) == 1 and msgs[0].condominium_id == acacias
+
+
+@pytest.mark.parametrize("key", [None, "", "   "])
+async def test_runner_without_key_is_unavailable(
+    key: str | None, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from pydantic import SecretStr
+
+    from app.chat.agent import ClaudeAgentRunner
+    from app.config import get_settings
+
+    monkeypatch.setattr(
+        get_settings(), "anthropic_api_key", SecretStr(key) if key is not None else None
+    )
+    with pytest.raises(ChatUnavailable, match="chave de API"):
+        await ClaudeAgentRunner()(system="", prompt="oi", tools=None)  # type: ignore[arg-type]

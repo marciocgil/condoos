@@ -77,7 +77,12 @@ class ClaudeAgentRunner:
         )
 
         settings = get_settings()
-        if settings.anthropic_api_key is None:
+        key = (
+            settings.anthropic_api_key.get_secret_value().strip()
+            if settings.anthropic_api_key
+            else ""
+        )
+        if not key:  # unset or empty (compose passes ANTHROPIC_API_KEY="" by default)
             raise ChatUnavailable("O assistente precisa de uma chave de API configurada.")
 
         def wrap(name: str) -> Any:
@@ -115,7 +120,7 @@ class ClaudeAgentRunner:
                 output_format={"type": "json_schema", "schema": OUTPUT_SCHEMA},
                 permission_mode="dontAsk",
                 cwd=workdir,
-                env={"ANTHROPIC_API_KEY": settings.anthropic_api_key.get_secret_value()},
+                env={"ANTHROPIC_API_KEY": key},
             )
             try:
                 async for message in query(prompt=prompt, options=options):

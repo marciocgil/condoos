@@ -28,7 +28,8 @@ test.describe("síndico — chat e relatórios", () => {
     // With an API key the answer card appears; without one, a clear message and the
     // question stays in the field. Either way nothing breaks.
     const answer = page.getByRole("log").locator("article");
-    const unavailable = page.getByRole("alert");
+    // (Next.js also renders an empty role="alert" route announcer; take the chat's own.)
+    const unavailable = page.getByRole("alert").filter({ hasText: /\S/ });
     await expect(answer.or(unavailable).first()).toBeVisible({ timeout: 120_000 });
     if (await unavailable.isVisible()) {
       await expect(unavailable).toContainText(/chave de API|não respondeu|limite/);
