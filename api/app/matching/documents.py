@@ -8,6 +8,9 @@ A validated document (no review pending) becomes, or is attached to, an expense:
   exception queue (never chosen at random).
 The contract is chosen by supplier CNPJ, then validity at the issue date, then object/scope
 similarity. An expired contract is still linked when it is the only one (rule R05 flags it).
+- contract document: registers the contract (D59) when the contracting party is this
+  condominium (otherwise back to the extraction queue); the same supplier and start date
+  links to the existing contract instead.
 """
 
 import uuid
@@ -21,8 +24,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.jobs import enqueue
 from app.core.time import utcnow
-from app.db.enums import DocumentType, ExtractionStatus
-from app.db.models import Contract, Document, Expense, ExpenseDocument, MatchIssue
+from app.db.enums import AdjustmentIndex, DocumentType, ExtractionStatus
+from app.db.models import Condominium, Contract, Document, Expense, ExpenseDocument, MatchIssue
 from app.enrichment.suppliers import get_or_create_supplier
 from app.matching.categories import category_for
 from app.matching.text import overlap
@@ -127,6 +130,9 @@ async def match_document(session: AsyncSession, doc: Document) -> MatchOutcome:
         text, number, role = v.get("descricao") or "", None, "recibo"
     elif doc_type == DocumentType.BOLETO:
         return await _match_boleto(session, doc)
+    elif doc_type == DocumentType.CONTRATO:
+        await register_contract(session, doc)
+        return MatchOutcome(None)
     else:
         return MatchOutcome(None)
     if amount is None or issue is None or competence is None:
@@ -284,6 +290,65 @@ async def _match_boleto(session: AsyncSession, doc: Document) -> MatchOutcome:
     await session.flush()
     await _attach(session, expense, doc, "cobranca")
     return MatchOutcome(expense.id, created=True)
+
+
+async def register_contract(session: AsyncSession, doc: Document) -> Contract | None:
+    """A validated contract document becomes a contract of the condominium (idempotent)."""
+    v = doc.extracted
+    condo = await session.get(Condominium, doc.condominium_id)
+    cnpj, start, value = (
+        v.get("cnpj_contratada"),
+        _d(v.get("data_inicio")),
+        _money(v.get("valor_mensal")),
+    )
+    if condo is None or not cnpj or start is None or value is None:
+        return None
+    if v.get("cnpj_contratante") and v["cnpj_contratante"] != condo.cnpj:
+        # Back to the extraction queue: the analyst corrects the CNPJ or discards the file.
+        doc.needs_review = True
+        doc.extraction_status = ExtractionStatus.NEEDS_REVIEW.value
+        doc.review_reasons = [
+            "Contrato em nome de outro CNPJ: confira se o documento é deste condomínio."
+        ]
+        return None
+    supplier = await get_or_create_supplier(session, cnpj, v.get("razao_social_contratada"))
+    existing = await session.scalar(
+        select(Contract).where(
+            Contract.condominium_id == doc.condominium_id,
+            Contract.supplier_id == supplier.id,
+            Contract.start_date == start,
+        )
+    )
+    if existing is not None:
+        existing.source_document_id = existing.source_document_id or doc.id
+        return existing
+    index = str(v.get("indice_reajuste") or AdjustmentIndex.NENHUM.value)
+    if index not in {i.value for i in AdjustmentIndex}:
+        index = AdjustmentIndex.NENHUM.value
+    base = v.get("mes_base_reajuste")
+    contract = Contract(
+        id=uuid.uuid4(),
+        condominium_id=doc.condominium_id,
+        supplier_id=supplier.id,
+        object=str(v.get("objeto") or "Contrato")[:300],
+        scope_items=[str(x) for x in (v.get("itens_escopo") or [])],
+        monthly_value=value,
+        adjustment_index=index,
+        adjustment_base_month=int(base) if base and 1 <= int(base) <= 12 else None,
+        start_date=start,
+        end_date=_d(v.get("data_fim")),
+        source_document_id=doc.id,
+    )
+    session.add(contract)
+    await session.flush()
+    if supplier.enriched_at is None:
+        await enqueue(
+            session,
+            "supplier.enrich",
+            {"cnpj": supplier.cnpj},
+            dedupe_key=f"supplier:{supplier.cnpj}:enrich",
+        )
+    return contract
 
 
 async def open_issue(

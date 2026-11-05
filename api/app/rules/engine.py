@@ -13,6 +13,7 @@ from datetime import date
 from typing import Any
 
 from sqlalchemy import select
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.jobs import enqueue
@@ -21,6 +22,7 @@ from app.db.models import (
     Approval,
     BankTransaction,
     BoardMember,
+    Competence,
     Condominium,
     Contract,
     Document,
@@ -211,6 +213,15 @@ async def persist(
     return created, updated
 
 
+async def ensure_competence(session: AsyncSession, condominium_id: uuid.UUID, month: date) -> None:
+    """A month with expenses has a competence (open) so it can be reported and closed."""
+    await session.execute(
+        pg_insert(Competence)
+        .values(id=uuid.uuid4(), condominium_id=condominium_id, month=month, status="aberta")
+        .on_conflict_do_nothing(index_elements=["condominium_id", "month"])
+    )
+
+
 async def evaluate(
     session: AsyncSession,
     condominium_id: uuid.UUID,
@@ -219,6 +230,8 @@ async def evaluate(
     *,
     save: bool = True,
 ) -> RunSummary:
+    if save:
+        await ensure_competence(session, condominium_id, competence)
     ctx = await build_context(session, condominium_id, competence, reference_date)
     drafts = await run_rules(ctx)
     summary = RunSummary(drafts=drafts, not_evaluated=dict(ctx.not_evaluated))

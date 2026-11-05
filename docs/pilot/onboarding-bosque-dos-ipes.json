@@ -1,0 +1,40 @@
+{
+  "management_company_name": "Atlântida Gestão Condominial Ltda (fictícia)",
+  "condominium": {
+    "name": "Condomínio Residencial Bosque dos Ipês (fictício)",
+    "slug": "bosque-dos-ipes",
+    "cnpj": "49788750000169",
+    "units": 96,
+    "address": "Rua dos Ipês Imaginários, 450 — Bairro Exemplo, Cidade Modelo/SP",
+    "approval_limits": {
+      "default": "8000.00",
+      "by_category": {
+        "obras": "5000.00"
+      }
+    },
+    "retention_years": 5
+  },
+  "board": [
+    {
+      "name": "Helena Prado Furtado",
+      "position": "sindico",
+      "term_start": "2025-04-01",
+      "term_end": "2027-03-31",
+      "email": "helena.sindica@ipes.example.com"
+    },
+    {
+      "name": "Rodrigo Teles Amaral",
+      "position": "conselheiro",
+      "term_start": "2025-04-01",
+      "term_end": "2027-03-31",
+      "email": "rodrigo.conselho@ipes.example.com"
+    },
+    {
+      "name": "Sílvia Nogueira Bento",
+      "position": "conselheiro",
+      "term_start": "2025-04-01",
+      "term_end": "2027-03-31"
+    }
+  ],
+  "members": []
+}
