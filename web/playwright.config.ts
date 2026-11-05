@@ -5,6 +5,10 @@ export default defineConfig({
   testDir: "./tests/e2e",
   timeout: 30_000,
   retries: 0,
+  // One test at a time: several tests log in as the same user through the shared mailbox,
+  // and parallel logins would pick up each other's single-use links.
+  workers: 1,
+  fullyParallel: false,
   use: {
     baseURL: process.env.E2E_BASE_URL ?? "http://localhost:3000",
     trace: "retain-on-failure",

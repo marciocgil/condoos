@@ -1,5 +1,6 @@
 "use client";
 
+import { CheckCircle2, Copy, UploadCloud, XCircle } from "lucide-react";
 import { useState, type ChangeEvent } from "react";
 
 import type { UploadResult } from "@/lib/types";
@@ -22,11 +23,8 @@ export function UploadForm({ condominiumId }: { condominiumId: string }) {
         method: "POST",
         body: form,
       });
-      if (!res.ok) {
-        setError("Não foi possível enviar. Tente de novo.");
-      } else {
-        setResults((await res.json()) as UploadResult[]);
-      }
+      if (!res.ok) setError("Não foi possível enviar. Tente de novo.");
+      else setResults((await res.json()) as UploadResult[]);
     } catch {
       setError("Sem conexão. Tente de novo.");
     } finally {
@@ -37,17 +35,18 @@ export function UploadForm({ condominiumId }: { condominiumId: string }) {
   return (
     <div className="space-y-4">
       <label
-        className="flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-gray-300 bg-white px-4 py-10 text-center hover:border-brand-600"
+        className="transition-ui flex cursor-pointer flex-col items-center justify-center rounded-[var(--radius-card)] border-2 border-dashed border-control bg-surface px-4 py-10 text-center hover:border-accent"
         onDragOver={(e) => e.preventDefault()}
         onDrop={(e) => {
           e.preventDefault();
           void send(e.dataTransfer.files);
         }}
       >
+        <UploadCloud size={28} aria-hidden className="mb-2 text-fg-2" />
         <span className="font-medium">
           {busy ? "Enviando…" : "Toque para escolher ou tire uma foto"}
         </span>
-        <span className="mt-1 text-sm text-gray-500">
+        <span className="mt-1 text-[13px] text-fg-2">
           Notas, boletos, recibos, contratos (PDF, foto ou XML) e extratos (OFX, CSV, CNAB)
         </span>
         <input
@@ -61,13 +60,13 @@ export function UploadForm({ condominiumId }: { condominiumId: string }) {
         />
       </label>
       {error && (
-        <p role="alert" className="text-sm text-red-700">
+        <p role="alert" className="text-sm text-danger">
           {error}
         </p>
       )}
       {results.length > 0 && (
         <ul
-          className="divide-y divide-gray-100 rounded-xl bg-white text-sm shadow-sm"
+          className="divide-y divide-line rounded-[var(--radius-card)] border border-line bg-surface text-sm"
           aria-label="Resultado do envio"
         >
           {results.map((r, i) => (
@@ -76,7 +75,16 @@ export function UploadForm({ condominiumId }: { condominiumId: string }) {
               className="flex items-start justify-between gap-3 px-4 py-3"
             >
               <span className="break-all">{r.filename}</span>
-              <span className={r.error ? "text-red-700" : "text-gray-600"}>
+              <span
+                className={`inline-flex shrink-0 items-center gap-1 ${r.error ? "text-danger" : "text-fg-2"}`}
+              >
+                {r.error ? (
+                  <XCircle size={14} aria-hidden />
+                ) : r.duplicate ? (
+                  <Copy size={14} aria-hidden />
+                ) : (
+                  <CheckCircle2 size={14} aria-hidden className="text-success" />
+                )}
                 {r.error ?? (r.duplicate ? "Já recebido antes" : "Recebido")}
               </span>
             </li>

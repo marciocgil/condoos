@@ -1,7 +1,7 @@
 import "server-only";
 
 import { cookies } from "next/headers";
-import { redirect } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 
 const API_URL = process.env.API_INTERNAL_URL ?? "http://localhost:8000";
 const SESSION_COOKIE = "condoos_session";
@@ -24,6 +24,8 @@ export async function apiGet<T>(path: string): Promise<T> {
     cache: "no-store",
   });
   if (res.status === 401) redirect("/login");
+  // Other tenants' data and missing records look the same: "not found", nothing revealed.
+  if (res.status === 404 || res.status === 403) notFound();
   if (!res.ok) throw new ApiError(res.status, `API ${res.status} em ${path}`);
   return (await res.json()) as T;
 }

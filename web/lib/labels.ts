@@ -10,3 +10,32 @@ export const DOC_TYPE_LABEL: Record<string, string> = {
   ata: "Ata",
   outro: "Outro",
 };
+
+export const SEVERITY_LABEL = { alta: "Grave", media: "Médio", baixa: "Baixo" } as const;
+export const SEVERITY_PLURAL = { alta: "graves", media: "médios", baixa: "baixos" } as const;
+
+export const STATUS_LABEL: Record<string, string> = {
+  aguardando_validacao: "Aguardando validação",
+  publicado: "Novo",
+  confirmado: "Confirmado",
+  contestado: "Contestado",
+  ignorado: "Ignorado",
+  descartado: "Descartado",
+};
+
+export const ACTION_LABEL: Record<string, { verb: string; button: string }> = {
+  confirmar: { verb: "confirmou", button: "Confirmar" },
+  contestar: { verb: "contestou", button: "Contestar" },
+  ignorar: { verb: "ignorou", button: "Ignorar" },
+  validar: { verb: "validou", button: "Validar" },
+  descartar: { verb: "descartou", button: "Descartar" },
+  reabrir: { verb: "reabriu", button: "Reabrir" },
+};
+
+export const ROLE_LABEL: Record<string, string> = {
+  sindico: "Síndico(a)",
+  subsindico: "Subsíndico(a)",
+  conselheiro: "Conselheiro(a)",
+  gerente: "Gerente",
+  analista: "Analista",
+};

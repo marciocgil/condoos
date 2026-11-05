@@ -48,6 +48,7 @@ class IrregularSupplier(Rule):
                         ),
                     ],
                     rule_inputs={
+                        "cnpj": format_cnpj(s.cnpj),
                         "valor": str(e.amount),
                         "situacao_cadastral": s.registration_status,
                         "data_situacao": since.isoformat() if since else None,

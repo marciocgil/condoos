@@ -166,3 +166,32 @@ Notas fiscais em PDF, recibos, contratos e fotos ruins dependem do LLM. A meta d
 3. Extrato importado → `bank.match` → `rules.evaluate` dos meses que tiveram casamento.
 
 O motor é idempotente, então reavaliar não duplica achados.
+
+## Marco 4 — Achados, decisões e telas (Design System v1.0)
+
+**D46 — O Design System v1.0 é a referência visual.** O Marcio forneceu o `CondoOS_Design_System_v1.0.md` com o pedido de refatoração. Diagnóstico, matriz e plano estão em `docs/ui-audit.md`. Os conflitos foram resolvidos assim:
+- tema escuro em vez do claro dos mockups, mantendo a estrutura dos mockups;
+- abas inferiores mantidas no síndico, em vez do drawer do DS, porque são fluxo exigido pelo prompt original;
+- vocabulário do domínio atual ("achados"), sem kanban nem KPIs de economia.
+
+**D47 — Ajustes de contraste (WCAG AA), conferidos por script.**
+- `text.muted` passou de #8E98A5 (4,17 sobre os cartões) para #A6AEB8 (≥ 4,5 em todas as superfícies).
+- Novo token `border.control` (#797F85, 3:1) para contorno de campos e controles; `border.subtle` (1,38) fica só nas divisórias.
+- `status.danger` não é usado em texto sobre `surface.elevated` (3,85).
+
+**D48 — Transições de status do achado** (`app/findings/decisions.py`).
+- Síndico: confirmar, contestar (comentário obrigatório) e ignorar, só em achados visíveis ao corpo diretivo.
+- Gerente: validar e descartar (comentário obrigatório) os graves; reabrir decididos ou descartados. Um descartado reaberto volta para validação; os demais voltam a "publicado".
+- Toda ação gera uma linha em `decision` (só inclusão) e outra em `audit_log`.
+- O endpoint devolve as ações permitidas para o papel, e a interface mostra só essas.
+
+**D49 — Explicações pela IA com validação numérica** (`app/findings/explain.py`).
+- A IA reescreve título e explicação; o código extrai todo número do texto e exige que ele exista nos dados da regra, nas evidências, no CNPJ ou na competência. Um valor exibido com k casas tem de bater com um valor permitido arredondado a k casas.
+- Se falhar, a IA tem uma segunda tentativa com o motivo da recusa; se falhar de novo, fica o texto da regra. Palavras proibidas também derrubam o texto.
+- Graves usam o modelo de raciocínio; os demais, o de extração.
+- O texto da IA é mantido enquanto os números da regra não mudam (`finding.explanation_source`, migração 0005).
+- Os textos determinísticos das 12 regras passam pela mesma validação. Ela encontrou três números sem origem nos dados (CNPJ formatado; "12 meses" em R03 e R08), que entraram nos dados das regras.
+
+**D50 — Valor em risco no Resumo.** Soma os achados do mês que não foram ignorados nem descartados. A Carteira soma os abertos (aguardando validação, publicados e contestados).
+
+**D51 — Testes E2E em série** (`workers: 1`). Vários testes entram como o mesmo usuário pela caixa compartilhada do Mailpit; em paralelo, um pegava o link de uso único do outro. O teste "gerente valida achado grave" usa um dos 3 graves do seed e, quando não sobra nenhum, é pulado com a instrução `make reset && make up`.

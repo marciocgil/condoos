@@ -14,6 +14,7 @@ from app.db.session import get_worker_engine, sessionmaker_for
 from app.enrichment.indices import refresh_indices_job
 from app.enrichment.suppliers import enrich_job
 from app.extraction.pipeline import process_document
+from app.findings.explain import explain_job
 from app.ingestion.documents import PROCESS_JOB
 from app.ingestion.email import FolderEmailProvider, poll_provider
 from app.matching.bank import match_bank_job
@@ -38,6 +39,7 @@ HANDLERS: dict[str, Handler] = {
     "supplier.enrich": enrich_job,
     "indices.refresh": refresh_indices_job,
     "rules.evaluate": evaluate_job,
+    "finding.explain": explain_job,
 }
 
 

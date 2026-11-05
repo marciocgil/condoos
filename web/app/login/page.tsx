@@ -2,6 +2,10 @@
 
 import { useState, type FormEvent } from "react";
 
+import { Logo } from "@/components/layout/Logo";
+import { buttonClass } from "@/components/ui/Button";
+import { controlClass } from "@/components/ui/Field";
+
 type State = "idle" | "sending" | "sent" | "error";
 
 export default function LoginPage() {
@@ -25,14 +29,17 @@ export default function LoginPage() {
 
   return (
     <main className="mx-auto flex min-h-dvh max-w-sm flex-col justify-center px-6">
-      <p className="text-sm font-semibold tracking-wide text-brand-600">CondoOS</p>
-      <h1 className="mt-1 text-2xl font-semibold">Entrar</h1>
-      <p className="mt-2 text-sm text-gray-600">
+      <Logo />
+      <h1 className="mt-6 text-2xl font-semibold">Entrar</h1>
+      <p className="mt-2 text-sm text-fg-2">
         Digite seu e-mail. Enviaremos um link de acesso que vale por 15 minutos.
       </p>
 
       {state === "sent" ? (
-        <div role="status" className="mt-6 rounded-lg bg-brand-50 p-4 text-sm text-brand-900">
+        <div
+          role="status"
+          className="mt-6 rounded-[var(--radius-control)] bg-accent/10 p-4 text-sm text-fg"
+        >
           Se o e-mail estiver cadastrado, você receberá o link em instantes. Confira também a caixa
           de spam.
         </div>
@@ -49,17 +56,17 @@ export default function LoginPage() {
             inputMode="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="w-full rounded-lg border border-gray-300 bg-white px-3 py-3 text-base outline-none focus:border-brand-600 focus:ring-2 focus:ring-brand-100"
+            className={`${controlClass} h-11 text-base`}
           />
           <button
             type="submit"
             disabled={state === "sending"}
-            className="w-full rounded-lg bg-brand-600 px-4 py-3 font-medium text-white hover:bg-brand-700 disabled:opacity-60"
+            className={`${buttonClass("primary")} h-11 w-full`}
           >
             {state === "sending" ? "Enviando…" : "Receber link de acesso"}
           </button>
           {state === "error" && (
-            <p role="alert" className="text-sm text-red-700">
+            <p role="alert" className="text-sm text-danger">
               Não foi possível enviar agora. Tente de novo em alguns minutos.
             </p>
           )}

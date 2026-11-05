@@ -2,6 +2,7 @@
 
 import { usePathname, useRouter } from "next/navigation";
 
+import { controlClass } from "@/components/ui/Field";
 import { formatMonthTitle } from "@/lib/format";
 import type { Competence } from "@/lib/types";
 
@@ -14,7 +15,7 @@ export function MonthSelect({ competences, value }: { competences: Competence[];
       <select
         value={value}
         onChange={(e) => router.push(`${pathname}?mes=${e.target.value.slice(0, 7)}`)}
-        className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-base"
+        className={controlClass}
       >
         {competences.map((c) => (
           <option key={c.id} value={c.month}>

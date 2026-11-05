@@ -1,58 +1,73 @@
-import Link from "next/link";
+import { AlertOctagon, FileWarning, GitMerge } from "lucide-react";
 
+import { ButtonLink } from "@/components/ui/Button";
+import { EmptyState } from "@/components/ui/EmptyState";
 import type { QueueItem } from "@/lib/types";
+
+const KIND = {
+  extracao: {
+    icon: <FileWarning size={16} />,
+    tone: "text-warning",
+    label: "Extração",
+    action: "Corrigir",
+  },
+  casamento: {
+    icon: <GitMerge size={16} />,
+    tone: "text-info",
+    label: "Casamento",
+    action: "Resolver",
+  },
+  achado_grave: {
+    icon: <AlertOctagon size={16} />,
+    tone: "text-danger",
+    label: "Achado grave",
+    action: "Validar",
+  },
+} as const;
+
+function hrefFor(item: QueueItem): string {
+  if (item.kind === "extracao") return `/admin/fila/documento/${item.condominium_id}/${item.id}`;
+  if (item.kind === "casamento") return `/admin/fila/casamento/${item.condominium_id}/${item.id}`;
+  return `/admin/achados/${item.condominium_id}/${item.id}`;
+}
 
 export function QueueList({ items }: { items: QueueItem[] }) {
   if (items.length === 0) {
     return (
-      <p className="rounded-xl bg-white p-5 text-sm text-gray-500 shadow-sm">
-        Nenhum item na fila. Tudo em dia.
-      </p>
+      <EmptyState title="Nenhum item na fila">
+        Tudo em dia: nada aguarda correção ou validação.
+      </EmptyState>
     );
   }
   return (
     <ul className="space-y-2" aria-label="Itens da fila de exceções">
-      {items.map((item) => (
-        <li
-          key={`${item.kind}-${item.id}`}
-          className="flex items-center gap-3 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3"
-        >
-          <span
-            aria-hidden
-            className={`h-2.5 w-2.5 shrink-0 rounded-full ${
-              item.kind === "achado_grave" ? "bg-sev-alta" : "bg-amber-400"
-            }`}
-          />
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-sm">
-              {item.title} · {item.condominium_name}
-            </p>
-            {item.detail && <p className="truncate text-xs text-gray-500">{item.detail}</p>}
-          </div>
-          {item.kind === "casamento" ? (
-            <Link
-              href={`/admin/fila/casamento/${item.condominium_id}/${item.id}`}
-              className="rounded-lg border border-brand-600 bg-brand-50 px-4 py-1.5 text-sm font-medium text-brand-700"
-            >
-              Resolver
-            </Link>
-          ) : item.kind === "extracao" ? (
-            <Link
-              href={`/admin/fila/documento/${item.condominium_id}/${item.id}`}
-              className="rounded-lg border border-brand-600 bg-brand-50 px-4 py-1.5 text-sm font-medium text-brand-700"
-            >
-              Corrigir
-            </Link>
-          ) : (
-            <span
-              title="A validação de achados chega no Marco 4"
-              className="rounded-lg border border-gray-300 px-4 py-1.5 text-sm text-gray-400"
-            >
-              Validar
+      {items.map((item) => {
+        const k = KIND[item.kind];
+        return (
+          <li
+            key={`${item.kind}-${item.id}`}
+            className="flex items-center gap-3 rounded-[var(--radius-card)] border border-line bg-surface px-4 py-3"
+          >
+            <span className={k.tone} aria-hidden>
+              {k.icon}
             </span>
-          )}
-        </li>
-      ))}
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm">
+                <span className="sr-only">{k.label}: </span>
+                {item.title} · {item.condominium_name}
+              </p>
+              {item.detail && <p className="truncate text-xs text-fg-2">{item.detail}</p>}
+            </div>
+            <ButtonLink
+              href={hrefFor(item)}
+              size="sm"
+              variant={item.kind === "achado_grave" ? "primary" : "secondary"}
+            >
+              {k.action}
+            </ButtonLink>
+          </li>
+        );
+      })}
     </ul>
   );
 }

@@ -1,18 +1,93 @@
 @import "tailwindcss";
 
+/*
+ * CondoOS Design System v1.0 — tokens (§2). Dark theme is the default identity.
+ * Adjusted for WCAG AA (see docs/decisions.md D47): text-muted lightened to #A6AEB8;
+ * border-control added for form controls (3:1); danger text is not used on "elevated".
+ */
 @theme {
-  --color-brand-50: #eef6f5;
-  --color-brand-100: #d5ebe8;
-  --color-brand-600: #1f6f66;
-  --color-brand-700: #185951;
-  --color-brand-900: #0f3833;
-  --color-sev-alta: #c2410c;
-  --color-sev-media: #b45309;
-  --color-sev-baixa: #4b5563;
+  --color-bg: #22262c;
+  --color-bg-2: #292e35;
+  --color-surface: #30363e;
+  --color-elevated: #3a424b;
+  --color-line: #434b54;
+  --color-control: #797f85;
+  --color-fg: #f5f6f3;
+  --color-fg-2: #b7bec7;
+  --color-muted: #a6aeb8;
+  --color-accent: #d9fc00;
+  --color-accent-hover: #c8eb00;
+  --color-accent-fg: #202500;
+  --color-success: #69c8a3;
+  --color-warning: #f0bd70;
+  --color-danger: #e7837d;
+  --color-info: #84aadf;
+
+  --radius-card: 14px;
+  --radius-panel: 16px;
+  --radius-control: 8px;
+  --radius-button: 10px;
+
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+}
+
+:root {
+  color-scheme: dark;
 }
 
 html,
 body {
-  background: #f7f8f8;
-  color: #111827;
+  background: var(--color-bg);
+  color: var(--color-fg);
+  font-family: var(--font-sans);
+  font-size: 14px;
+}
+
+/* Financial values and tables use tabular numbers (§2.2). */
+.tabular,
+table {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Visible focus for keyboard users (§9). */
+:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+/* Discrete transitions; none when the user prefers reduced motion (§2.5). */
+@media (prefers-reduced-motion: no-preference) {
+  .transition-ui {
+    transition:
+      background-color 140ms ease,
+      border-color 140ms ease,
+      color 140ms ease;
+  }
+}
+
+dialog::backdrop {
+  background: rgb(0 0 0 / 0.55);
+}
+
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--color-surface),
+    var(--color-elevated),
+    var(--color-surface)
+  );
+  background-size: 200% 100%;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .skeleton {
+    animation: skeleton 1.2s ease-in-out infinite;
+  }
+}
+@keyframes skeleton {
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: -200% 0;
+  }
 }

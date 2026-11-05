@@ -72,6 +72,7 @@ class AdjustmentAboveIndex(Rule):
                     rule_inputs={
                         "indice": c.adjustment_index,
                         "indice_acumulado_12m_pct": str(allowed),
+                        "meses_indice": 12,
                         "reajuste_aplicado_pct": str(applied),
                         "valor_anterior": str(prev.amount),
                         "valor_atual": str(e.amount),

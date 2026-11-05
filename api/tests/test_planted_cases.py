@@ -127,3 +127,22 @@ async def test_routing_and_persistence_are_idempotent(seed_engine: AsyncEngine) 
     assert first.created == len(rows) and second.created == 0 and second.updated == len(rows)
     assert len(again) == len(rows)
     assert {f.rule_code: f.status for f in again}["R12"] == "confirmado"  # never reset
+
+
+async def test_rule_texts_pass_numeric_validation(seed_engine: AsyncEngine) -> None:
+    """The deterministic text of every rule only cites numbers from its own inputs."""
+    from app.db.models import Finding, Supplier
+    from app.findings.explain import allowed_numbers, invalid_numbers
+
+    runs = await _run(seed_engine)
+    async with sessionmaker_for(seed_engine)() as s:
+        names = {x.id: x.legal_name for x in await s.scalars(select(Supplier))}
+    for run in runs.values():
+        for d in run.drafts:
+            f = Finding(
+                rule_inputs=d.rule_inputs,
+                evidence=[e.as_dict() for e in d.evidence],
+                competence=OCT,
+            )
+            allowed = allowed_numbers(f, names.get(d.supplier_id) if d.supplier_id else None)
+            assert invalid_numbers(f"{d.title} {d.explanation}", allowed) == [], d.rule_code

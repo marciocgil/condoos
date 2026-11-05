@@ -33,20 +33,20 @@ function Verify() {
     return (
       <div role="alert">
         <h1 className="text-xl font-semibold">Link inválido ou expirado</h1>
-        <p className="mt-2 text-sm text-gray-600">Cada link vale por 15 minutos e um único uso.</p>
-        <Link href="/login" className="mt-4 inline-block font-medium text-brand-600 underline">
+        <p className="mt-2 text-sm text-fg-2">Cada link vale por 15 minutos e um único uso.</p>
+        <Link href="/login" className="mt-4 inline-block font-medium text-accent underline">
           Pedir um novo link
         </Link>
       </div>
     );
   }
-  return <p className="text-gray-600">Validando seu acesso…</p>;
+  return <p className="text-fg-2">Validando seu acesso…</p>;
 }
 
 export default function VerifyPage() {
   return (
     <main className="mx-auto flex min-h-dvh max-w-sm flex-col justify-center px-6">
-      <Suspense fallback={<p className="text-gray-600">Validando seu acesso…</p>}>
+      <Suspense fallback={<p className="text-fg-2">Validando seu acesso…</p>}>
         <Verify />
       </Suspense>
     </main>

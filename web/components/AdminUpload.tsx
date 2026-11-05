@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 
+import { Field, controlClass } from "@/components/ui/Field";
 import { UploadForm } from "@/components/UploadForm";
 
 interface Condo {
@@ -12,16 +13,21 @@ interface Condo {
 
 export function AdminUpload({ condos }: { condos: Condo[] }) {
   const [selected, setSelected] = useState(condos[0]?.id ?? "");
-  if (condos.length === 0) return <p>Seu papel não permite enviar documentos.</p>;
+  if (condos.length === 0)
+    return <p className="text-fg-2">Seu papel não permite enviar documentos.</p>;
   const current = condos.find((c) => c.id === selected);
   return (
     <div className="space-y-4">
-      <label className="block">
-        <span className="text-sm font-medium">Condomínio</span>
+      <Field
+        id="condo-select"
+        label="Condomínio"
+        hint={current ? `E-mail de entrada: ${current.slug}@ingest.condoos.local` : undefined}
+      >
         <select
+          id="condo-select"
           value={selected}
           onChange={(e) => setSelected(e.target.value)}
-          className="mt-1 w-full rounded-lg border border-gray-300 bg-white px-3 py-2"
+          className={controlClass}
         >
           {condos.map((c) => (
             <option key={c.id} value={c.id}>
@@ -29,12 +35,7 @@ export function AdminUpload({ condos }: { condos: Condo[] }) {
             </option>
           ))}
         </select>
-      </label>
-      {current && (
-        <p className="text-xs text-gray-500">
-          E-mail de entrada: <code>{current.slug}@ingest.condoos.local</code>
-        </p>
-      )}
+      </Field>
       <UploadForm key={selected} condominiumId={selected} />
     </div>
   );

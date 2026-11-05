@@ -2,7 +2,7 @@
 
 Agente auditor de despesas de condomínios. Ele lê as despesas do mês, confere cada uma contra contrato, CNPJ, extrato e histórico, e entrega ao síndico **achados** priorizados por valor em risco, com evidência. Uma pessoa sempre decide; o sistema nunca move dinheiro.
 
-Especificação completa: o prompt do MVP (seções 0–15) e o PDF "CondoOS — Arquitetura do Agente Auditor (MVP)". Decisões tomadas: `docs/decisions.md`. Regras de auditoria: `docs/rules.md`. Telas de referência: `docs/mockups.md`. Acurácia da extração: `docs/extraction_accuracy.md`.
+Especificação completa: o prompt do MVP (seções 0–15) e o PDF "CondoOS — Arquitetura do Agente Auditor (MVP)". Decisões tomadas: `docs/decisions.md`. Regras de auditoria: `docs/rules.md`. Telas de referência: `docs/mockups.md`. **Visual: `CondoOS_Design_System_v1.0` (tema escuro), auditoria e componentes em `docs/ui-audit.md`.** Acurácia da extração: `docs/extraction_accuracy.md`.
 
 ## Regras de trabalho
 
@@ -42,7 +42,13 @@ api/            FastAPI + SQLAlchemy 2 (async) + Alembic; worker da fila de jobs
   tests/          pytest (precisa de PostgreSQL 16 + pgvector)
   tests/fixtures/corpus/  30 documentos fictícios + ground_truth.json
   corpus/         generate.py (gera o corpus) e accuracy.py (relatório de acurácia)
-web/            Next.js 15 (App Router) + TypeScript strict + Tailwind 4
+web/            Next.js 15 (App Router) + TypeScript strict + Tailwind 4 + lucide-react
+  app/globals.css tokens do Design System (cores, raios, Inter); nunca use cores fixas
+  components/ui/       componentes genéricos (Button, Card, KpiCard, Badge, Field, DataTable,
+                       FilterChips, SidePanel, Timeline, EmptyState) — sem regra de negócio
+  components/condoos/  componentes do domínio (SeverityBadge, InsightCard, EvidenceList,
+                       DecisionBar, FindingDetailView, ...)
+  components/layout/   Logo, AdminHeader, PageHeader
   app/(sindico)/condominio/[id]/...   telas mobile-first (390 px)
   app/(admin)/admin/...               telas desktop da administradora
   lib/api.ts      chamadas server-side à API, repassando o cookie de sessão
@@ -84,6 +90,9 @@ make accuracy      # relatório de acurácia por campo → docs/extraction_accur
 - **Documento revisado por pessoa** (`reviewed_at`) nunca é reprocessado.
 - **Regras** são determinísticas; R04 e R07 usam IA só onde a parte determinística não decide, e sem IA ficam "não avaliadas". Toda mudança de regra exige teste positivo e negativo em `tests/test_rules.py` e manter `tests/test_planted_cases.py` exato (todos os positivos, nenhum extra).
 - **Achados** nunca usam "fraude", "desvio" ou "irregularidade comprovada" (o motor recusa).
+- **Explicações por IA** só citam números dos dados da regra e das evidências; `findings/explain.py` confere por código.
+- **Decisões** seguem `findings/decisions.py` (quem pode o quê); a interface mostra só `allowed_actions`.
+- **Interface:** use os tokens e os componentes de `components/ui` e `components/condoos`; status sempre com texto e ícone, nunca só cor; verde-lima só em ação primária e item ativo.
 - **Casamento ambíguo** vai para `match_issue`, nunca é escolhido ao acaso.
 
 ## Status dos marcos
@@ -91,7 +100,7 @@ make accuracy      # relatório de acurácia por campo → docs/extraction_accur
 - [x] **Marco 1 — Fundação** (05/11/2026): repositório, docker compose, migrações com RLS, link mágico, sessões, RBAC, fila de jobs, seed (1 administradora, 2 condomínios, 12 meses), telas iniciais do síndico e da administradora, testes de isolamento.
 - [x] **Marco 2 — Ingestão e extração** (05/11/2026): upload, e-mail (.eml), OFX, CSV, CNAB 240/400 (Itaú, Bradesco, BB), Docling + LLM com confiança por campo, fila de exceções com tela de correção, corpus de 30 documentos e relatório de acurácia.
 - [x] **Marco 3 — Enriquecimento, casamento e regras** (05/11/2026): BrasilAPI com cache, índices reais do BCB, casamento documento ↔ despesa ↔ extrato ↔ contrato com fila para ambiguidades, as 12 regras com testes positivo/negativo, casos plantados no seed e teste de aceite exato.
-- [ ] Marco 4 — Achados, roteamento e telas
+- [x] **Marco 4 — Achados, roteamento e telas** (05/11/2026): explicações por IA com validação numérica, decisões e trilha, telas do síndico e da administradora no Design System v1.0 (tema escuro), Playwright dos 4 fluxos.
 - [ ] Marco 5 — Chat e relatório
 - [ ] Marco 6 — Prontidão para piloto
 
@@ -100,6 +109,6 @@ make accuracy      # relatório de acurácia por campo → docs/extraction_accur
 - **Meta de 90% sem revisão ainda não medida com o LLM**: sem chave, 12/30 (40%) com 0 erro automático. Medir com `LLM_MODE=record make accuracy` quando houver chave.
 - Layouts CNAB não validados com arquivo real de banco (D28).
 - R04 e R07 (parte por IA) só são avaliadas de verdade com chave de API; hoje são testadas com respostas de modelo simuladas.
-- Explicações dos achados ainda são textos determinísticos por regra; a reescrita por LLM com validação numérica é do Marco 4.
+- Sem chave de API, as explicações ficam no texto determinístico da regra (a reescrita por IA roda quando há chave).
+- Relatório PDF/XLSX e exportação da trilha: Marco 5.
 - Botão "Pergunte ao CondoOS" e "Baixar relatório em PDF" aparecem desabilitados até os Marcos 5.
-- Telas recebidas e descritas em `docs/mockups.md`; o restyle completo é do Marco 4.

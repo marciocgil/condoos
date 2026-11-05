@@ -1,3 +1,7 @@
+import { CalendarClock, FileSignature } from "lucide-react";
+
+import { Badge } from "@/components/ui/Badge";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { apiGet } from "@/lib/api";
 import { formatBRL, formatDate } from "@/lib/format";
 import type { Contract } from "@/lib/types";
@@ -10,25 +14,30 @@ const INDEX_LABEL: Record<string, string> = {
   NENHUM: "Sem reajuste",
 };
 
-function nextAdjustment(baseMonth: number | null, today: Date): string | null {
-  if (!baseMonth) return null;
+function nextAdjustment(baseMonth: number | null, index: string, today: Date): string | null {
+  if (!baseMonth || !["IPCA", "IGPM", "INPC"].includes(index)) return null;
   const year = baseMonth > today.getMonth() + 1 ? today.getFullYear() : today.getFullYear() + 1;
   return `${String(baseMonth).padStart(2, "0")}/${year}`;
 }
 
 function daysUntil(iso: string, today: Date): number {
-  const end = new Date(`${iso}T00:00:00`);
-  return Math.ceil((end.getTime() - today.getTime()) / 86_400_000);
+  return Math.ceil((new Date(`${iso}T00:00:00`).getTime() - today.getTime()) / 86_400_000);
 }
 
 export default async function ContratosPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const contracts = await apiGet<Contract[]>(`/condominiums/${id}/contracts`);
   const today = new Date();
-
   return (
-    <section aria-label="Contratos">
-      <h2 className="mb-3 font-semibold">Contratos</h2>
+    <section aria-labelledby="contracts-title" className="space-y-3">
+      <h1 id="contracts-title" className="text-xl font-semibold">
+        Contratos
+      </h1>
+      {contracts.length === 0 && (
+        <EmptyState icon={<FileSignature size={28} />} title="Nenhum contrato cadastrado">
+          Envie os contratos em PDF para que os reajustes e a vigência sejam conferidos.
+        </EmptyState>
+      )}
       <ul className="space-y-3">
         {contracts.map((c) => {
           const days = c.end_date ? daysUntil(c.end_date, today) : null;
@@ -37,38 +46,40 @@ export default async function ContratosPage({ params }: { params: Promise<{ id: 
           return (
             <li
               key={c.id}
-              className={`rounded-xl bg-white p-4 shadow-sm ${
-                expiring || expired ? "ring-2 ring-sev-media" : ""
-              }`}
+              className="rounded-[var(--radius-card)] border border-line bg-surface p-4"
             >
-              <p className="font-medium">{c.supplier_name}</p>
-              <p className="text-sm text-gray-600">{c.object}</p>
-              <dl className="mt-3 grid grid-cols-2 gap-2 text-sm">
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <p className="font-medium">{c.supplier_name}</p>
+                  <p className="text-[13px] text-fg-2">{c.object}</p>
+                </div>
+                {expiring && (
+                  <Badge tone="warning" icon={<CalendarClock size={12} />}>
+                    Vence em {days} {days === 1 ? "dia" : "dias"}
+                  </Badge>
+                )}
+                {expired && <Badge tone="danger">Contrato vencido</Badge>}
+              </div>
+              <dl className="tabular mt-3 grid grid-cols-2 gap-x-3 gap-y-2 text-[13px]">
                 <div>
-                  <dt className="text-gray-500">Valor mensal</dt>
+                  <dt className="text-muted">Valor mensal</dt>
                   <dd>{formatBRL(c.monthly_value)}</dd>
                 </div>
                 <div>
-                  <dt className="text-gray-500">Índice</dt>
+                  <dt className="text-muted">Índice</dt>
                   <dd>{INDEX_LABEL[c.adjustment_index] ?? c.adjustment_index}</dd>
                 </div>
                 <div>
-                  <dt className="text-gray-500">Próximo reajuste</dt>
-                  <dd>{nextAdjustment(c.adjustment_base_month, today) ?? "—"}</dd>
+                  <dt className="text-muted">Próximo reajuste</dt>
+                  <dd>
+                    {nextAdjustment(c.adjustment_base_month, c.adjustment_index, today) ?? "—"}
+                  </dd>
                 </div>
                 <div>
-                  <dt className="text-gray-500">Fim da vigência</dt>
+                  <dt className="text-muted">Fim da vigência</dt>
                   <dd>{c.end_date ? formatDate(c.end_date) : "Indeterminado"}</dd>
                 </div>
               </dl>
-              {expiring && (
-                <p className="mt-2 text-sm font-medium text-sev-media">
-                  Vence em {days} {days === 1 ? "dia" : "dias"}
-                </p>
-              )}
-              {expired && (
-                <p className="mt-2 text-sm font-medium text-sev-alta">Contrato vencido</p>
-              )}
             </li>
           );
         })}

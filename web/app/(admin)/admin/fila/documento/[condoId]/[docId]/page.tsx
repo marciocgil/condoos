@@ -16,13 +16,13 @@ export default async function ReviewPage({
 
   return (
     <>
-      <Link href="/admin/fila" className="text-sm text-gray-600">
+      <Link href="/admin/fila" className="text-sm text-fg-2">
         ‹ Fila de exceções
       </Link>
       <h1 className="mt-1 text-xl font-semibold break-all">{review.original_filename}</h1>
       {review.reasons.length > 0 && (
         <ul
-          className="mt-3 space-y-1 rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm"
+          className="mt-3 space-y-1 rounded-[var(--radius-card)] border border-warning/60 bg-warning/10 p-4 text-sm"
           aria-label="Motivos da revisão"
         >
           {review.reasons.map((r) => (
@@ -33,7 +33,7 @@ export default async function ReviewPage({
       <div className="mt-4 grid grid-cols-2 gap-6">
         <section
           aria-label="Documento"
-          className="h-[78vh] overflow-hidden rounded-xl border border-gray-200 bg-white"
+          className="h-[78vh] overflow-hidden rounded-[var(--radius-card)] border border-control bg-surface"
         >
           {isPdf && <iframe title="Documento" src={review.file_url} className="h-full w-full" />}
           {isImage && (
@@ -47,7 +47,7 @@ export default async function ReviewPage({
           {!isPdf && !isImage && (
             <pre className="h-full overflow-auto p-4 text-xs whitespace-pre-wrap">
               {review.text_content ?? "Pré-visualização indisponível. "}
-              <a href={review.file_url} className="text-brand-700 underline">
+              <a href={review.file_url} className="text-accent underline">
                 Abrir arquivo
               </a>
             </pre>

@@ -15,6 +15,7 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.jobs import enqueue
 from app.db.enums import FindingStatus, Severity
 from app.db.models import (
     Approval,
@@ -157,6 +158,7 @@ async def persist(
     session: AsyncSession, ctx: RuleContext, drafts: list[FindingDraft]
 ) -> tuple[int, int]:
     created = updated = 0
+    to_explain: list[uuid.UUID] = []
     for d in drafts:
         existing = await session.scalar(
             select(Finding).where(
@@ -176,20 +178,36 @@ async def persist(
             "supplier_id": d.supplier_id,
         }
         if existing is None:
-            session.add(
-                Finding(
-                    condominium_id=ctx.condominium.id,
-                    dedupe_key=d.subject_key,
-                    status=initial_status(d.severity).value,
-                    **values,
-                )
+            finding = Finding(
+                id=uuid.uuid4(),
+                condominium_id=ctx.condominium.id,
+                dedupe_key=d.subject_key,
+                status=initial_status(d.severity).value,
+                explanation_source="regra",
+                **values,
             )
+            session.add(finding)
             created += 1
+            to_explain.append(finding.id)
         else:
+            if existing.rule_inputs == d.rule_inputs and existing.explanation_source == "ia":
+                # Same numbers: keep the validated plain-language text already written.
+                values.pop("title")
+                values.pop("explanation")
+            elif existing.rule_inputs != d.rule_inputs:
+                existing.explanation_source = "regra"
+                to_explain.append(existing.id)
             for key, value in values.items():
                 setattr(existing, key, value)
             updated += 1
     await session.flush()
+    for finding_id in to_explain:
+        await enqueue(
+            session,
+            "finding.explain",
+            {"finding_id": str(finding_id)},
+            condominium_id=ctx.condominium.id,
+        )
     return created, updated
 
 

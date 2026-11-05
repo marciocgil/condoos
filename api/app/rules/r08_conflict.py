@@ -85,6 +85,7 @@ class ConflictOfInterest(Rule):
                             "cargo": member.position,
                             "total_pago_12m": str(total),
                             "despesas_12m": len(paid),
+                            "meses_periodo": 12,
                         },
                         supplier_id=s.id,
                     )

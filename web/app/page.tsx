@@ -12,7 +12,7 @@ export default async function Home() {
   return (
     <main className="mx-auto max-w-md p-6">
       <h1 className="text-xl font-semibold">Olá, {me.name}</h1>
-      <p className="mt-2 text-gray-600">
+      <p className="mt-2 text-fg-2">
         Seu acesso ainda não está ligado a nenhum condomínio. Fale com a administradora.
       </p>
     </main>

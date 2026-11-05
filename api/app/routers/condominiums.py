@@ -12,15 +12,13 @@ from sqlalchemy import select
 
 from app.auth.deps import CurrentPrincipal, require
 from app.auth.rbac import CondoAccess, Permission
-from app.db.enums import VISIBLE_TO_BOARD
-from app.db.models import Competence, Condominium, Contract, Expense, Finding, Supplier
+from app.db.models import Competence, Condominium, Contract, Expense, Supplier
 from app.db.session import DbSession
 from app.routers.schemas import (
     CompetenceOut,
     CondominiumOut,
     ContractOut,
     ExpenseOut,
-    FindingOut,
 )
 
 router = APIRouter(prefix="/condominiums", tags=["condominiums"])
@@ -100,21 +98,3 @@ async def list_contracts(condominium_id: uuid.UUID, access: CanView, db: Db) -> 
         item.supplier_name = supplier_name
         out.append(item)
     return out
-
-
-@router.get("/{condominium_id}/findings")
-async def list_findings(
-    condominium_id: uuid.UUID,
-    access: CanView,
-    db: Db,
-    competence: Annotated[str | None, Query(pattern=r"^\d{4}-\d{2}$")] = None,
-) -> list[FindingOut]:
-    stmt = select(Finding).where(Finding.condominium_id == access.condominium_id)
-    # Board members never see findings still awaiting validation by the manager.
-    if not access.can(Permission.VIEW_PENDING_FINDINGS):
-        stmt = stmt.where(Finding.status.in_([s.value for s in VISIBLE_TO_BOARD]))
-    month = _parse_month(competence)
-    if month is not None:
-        stmt = stmt.where(Finding.competence == month)
-    rows = await db.scalars(stmt.order_by(Finding.amount_at_risk.desc()))
-    return [FindingOut.model_validate(r) for r in rows]

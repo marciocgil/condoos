@@ -3,6 +3,8 @@
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 
+import { buttonClass } from "@/components/ui/Button";
+import { controlClass, textareaClass } from "@/components/ui/Field";
 import { DOC_TYPE_LABEL } from "@/lib/labels";
 import type { FieldSpec, Review } from "@/lib/types";
 
@@ -104,13 +106,17 @@ export function ReviewForm({ review }: { review: Review }) {
   }
 
   return (
-    <form onSubmit={save} className="space-y-4 rounded-xl bg-white p-5 shadow-sm" noValidate>
+    <form
+      onSubmit={save}
+      className="space-y-4 rounded-[var(--radius-card)] border border-line bg-surface p-5"
+      noValidate
+    >
       <label className="block">
         <span className="text-sm font-medium">Tipo do documento</span>
         <select
           value={docType}
           onChange={(e) => setDocType(e.target.value)}
-          className="mt-1 w-full rounded-lg border border-gray-300 bg-white px-3 py-2"
+          className={`mt-1 ${controlClass}`}
         >
           {review.reviewable_types.map((t) => (
             <option key={t} value={t}>
@@ -129,12 +135,12 @@ export function ReviewForm({ review }: { review: Review }) {
           name: spec.name,
           value: values[spec.name] ?? "",
           "aria-invalid": Boolean(errors[spec.name]),
-          className: `mt-1 w-full rounded-lg border px-3 py-2 ${
+          className: `mt-1 w-full rounded-[var(--radius-control)] border bg-bg-2 px-3 py-2 text-fg ${
             errors[spec.name]
-              ? "border-red-500"
+              ? "border-danger"
               : low
-                ? "border-amber-400 bg-amber-50"
-                : "border-gray-300"
+                ? "border-warning/60 bg-warning/10"
+                : "border-control"
           }`,
         };
         const onChange = (v: string) => setValues((prev) => ({ ...prev, [spec.name]: v }));
@@ -143,13 +149,10 @@ export function ReviewForm({ review }: { review: Review }) {
             <label htmlFor={id} className="flex items-baseline justify-between text-sm font-medium">
               <span>
                 {spec.label}
-                {spec.required && <span className="text-red-600"> *</span>}
+                {spec.required && <span className="text-danger"> *</span>}
               </span>
               {low && (
-                <span
-                  className="text-xs font-normal text-amber-700"
-                  data-testid={`low-${spec.name}`}
-                >
+                <span className="text-xs font-normal text-warning" data-testid={`low-${spec.name}`}>
                   {conf === undefined || conf === 0
                     ? "não encontrado"
                     : `confiança ${Math.round(conf * 100)}%`}
@@ -180,7 +183,7 @@ export function ReviewForm({ review }: { review: Review }) {
               />
             )}
             {errors[spec.name] && (
-              <p className="mt-1 text-xs text-red-700" role="alert">
+              <p className="mt-1 text-xs text-danger" role="alert">
                 {errors[spec.name]}
               </p>
             )}
@@ -189,29 +192,25 @@ export function ReviewForm({ review }: { review: Review }) {
       })}
 
       {message && (
-        <p role="status" className="text-sm text-red-700">
+        <p role="status" className="text-sm text-danger">
           {message}
         </p>
       )}
 
       <div className="flex gap-3 pt-2">
-        <button
-          type="submit"
-          disabled={saving}
-          className="rounded-lg bg-brand-600 px-5 py-2 font-medium text-white hover:bg-brand-700 disabled:opacity-60"
-        >
+        <button type="submit" disabled={saving} className={buttonClass("primary")}>
           {saving ? "Salvando…" : "Salvar correção"}
         </button>
         <button
           type="button"
           onClick={() => setDiscarding((d) => !d)}
-          className="rounded-lg border border-gray-300 px-5 py-2 text-gray-700"
+          className={buttonClass("secondary")}
         >
           Descartar documento
         </button>
       </div>
       {discarding && (
-        <div className="space-y-2 rounded-lg border border-gray-200 p-3">
+        <div className="space-y-2 rounded-[var(--radius-control)] border border-control p-3">
           <label htmlFor="motivo" className="text-sm font-medium">
             Motivo do descarte
           </label>
@@ -220,14 +219,10 @@ export function ReviewForm({ review }: { review: Review }) {
             rows={2}
             value={reason}
             onChange={(e) => setReason(e.target.value)}
-            className="w-full rounded-lg border border-gray-300 px-3 py-2"
+            className={textareaClass}
             placeholder="Ex.: documento de outro condomínio, arquivo duplicado"
           />
-          <button
-            type="button"
-            onClick={discard}
-            className="rounded-lg bg-gray-800 px-4 py-2 text-sm text-white"
-          >
+          <button type="button" onClick={discard} className={buttonClass("danger", "sm")}>
             Confirmar descarte
           </button>
         </div>

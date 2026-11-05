@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
+import { buttonClass } from "@/components/ui/Button";
 import type { MatchIssue } from "@/lib/types";
 
 export function ResolveForm({
@@ -31,12 +32,12 @@ export function ResolveForm({
   }
 
   return (
-    <fieldset className="space-y-2 rounded-xl bg-white p-5 shadow-sm">
+    <fieldset className="space-y-2 rounded-[var(--radius-card)] bg-surface p-5 border border-line">
       <legend className="mb-2 text-sm font-medium">Opções compatíveis</legend>
       {[...issue.candidates, { type: "none", id: "none", label: "Nenhuma das opções" }].map((c) => (
         <label
           key={c.id}
-          className="flex items-center gap-3 rounded-lg border border-gray-200 px-3 py-2"
+          className="flex items-center gap-3 rounded-[var(--radius-control)] border border-control px-3 py-2"
         >
           <input
             type="radio"
@@ -49,7 +50,7 @@ export function ResolveForm({
         </label>
       ))}
       {error && (
-        <p role="alert" className="text-sm text-red-700">
+        <p role="alert" className="text-sm text-danger">
           {error}
         </p>
       )}
@@ -57,7 +58,7 @@ export function ResolveForm({
         type="button"
         disabled={!choice}
         onClick={submit}
-        className="mt-2 rounded-lg bg-brand-600 px-5 py-2 font-medium text-white disabled:opacity-50"
+        className={`mt-2 ${buttonClass("primary")}`}
       >
         Confirmar
       </button>

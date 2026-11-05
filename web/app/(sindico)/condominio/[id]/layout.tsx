@@ -2,10 +2,12 @@ import type { ReactNode } from "react";
 
 import { AskButton } from "@/components/AskButton";
 import { BottomTabs } from "@/components/BottomTabs";
+import { Logo } from "@/components/layout/Logo";
 import { LogoutButton } from "@/components/LogoutButton";
 import { apiGet } from "@/lib/api";
 import type { Condominium } from "@/lib/types";
 
+/** Mobile shell of the síndico (reference width 390 px), bottom tabs kept from the spec §8. */
 export default async function SindicoLayout({
   children,
   params,
@@ -16,15 +18,12 @@ export default async function SindicoLayout({
   const { id } = await params;
   const condo = await apiGet<Condominium>(`/condominiums/${id}`);
   return (
-    <div className="mx-auto min-h-dvh max-w-md pb-32">
-      <header className="bg-brand-700 px-4 pt-6 pb-4 text-white">
-        <div className="flex items-center justify-between">
-          <p className="text-xs tracking-wide text-brand-100 uppercase">CondoOS</p>
-          <LogoutButton className="text-xs text-brand-100 underline" />
-        </div>
-        <h1 className="mt-1 text-lg leading-tight font-semibold">{condo.name}</h1>
+    <div className="mx-auto min-h-dvh max-w-md pb-36">
+      <header className="flex items-center justify-between px-4 pt-5 pb-2" data-condo={condo.slug}>
+        <Logo />
+        <LogoutButton className="text-[13px] text-fg-2 hover:text-fg" />
       </header>
-      <main className="space-y-4 p-4">{children}</main>
+      <main className="space-y-5 px-4 pt-3">{children}</main>
       <AskButton />
       <BottomTabs condominiumId={id} />
     </div>

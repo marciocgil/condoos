@@ -407,6 +407,10 @@ class Finding(IdTimestampMixin, Base):
     rule_inputs: Mapped[dict[str, Any]] = mapped_column(Json, default=dict)
     competence: Mapped[date] = mapped_column(Date)
     ai_assisted: Mapped[bool] = mapped_column(Boolean, default=False)
+    # "regra": deterministic text of the rule; "ia": rewritten by the model and validated.
+    explanation_source: Mapped[str] = mapped_column(
+        String(10), default="regra", server_default="regra"
+    )
     supplier_id: Mapped[uuid.UUID | None] = _uuid_fk("supplier.id", nullable=True)
     # Same rule + same subject => same finding when the pipeline is re-run (idempotency).
     dedupe_key: Mapped[str] = mapped_column(String(200))
