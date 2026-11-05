@@ -3,6 +3,7 @@
 import {
   Building2,
   ChevronsLeft,
+  BarChart3,
   ChevronsRight,
   FileSignature,
   Inbox,
@@ -23,6 +24,7 @@ const ITEMS = [
   { href: "/admin/fila", label: "Fila de exceções", icon: Inbox, counter: true },
   { href: "/admin/fornecedores", label: "Fornecedores", icon: Store },
   { href: "/admin/contratos", label: "Contratos", icon: FileSignature },
+  { href: "/admin/metricas", label: "Métricas do piloto", icon: BarChart3 },
   { href: "/admin/configuracoes", label: "Configurações", icon: Settings },
 ] as const;
 

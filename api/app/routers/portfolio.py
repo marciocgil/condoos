@@ -5,8 +5,9 @@ import uuid
 from collections import defaultdict
 from datetime import date
 from decimal import Decimal
+from typing import Annotated
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Query
 from pydantic import BaseModel
 from sqlalchemy import select
 
@@ -26,6 +27,8 @@ from app.db.models import (
     Supplier,
 )
 from app.db.session import DbSession
+from app.metrics import Bucket as MetricBucket
+from app.metrics import compute as compute_metrics
 from app.rules.contracts import anniversaries
 
 router = APIRouter(prefix="/portfolio", tags=["portfolio"])
@@ -243,3 +246,40 @@ async def contracts(db: DbSession, principal: CurrentPrincipal) -> list[Contract
         )
     out.sort(key=lambda r: (r.end_date or date.max, r.condominium_name))
     return out
+
+
+class MetricsOut(BaseModel):
+    months: list[date]
+    totals: dict[str, object]
+    by_month: list[dict[str, object]]  # portfolio, one row per month
+    condominiums: list[dict[str, object]]  # one row per condominium, period totals
+
+
+@router.get("/metrics")
+async def metrics(
+    db: DbSession,
+    principal: CurrentPrincipal,
+    months: Annotated[int, Query(ge=1, le=24)] = 6,
+) -> MetricsOut:
+    """Internal pilot metrics (D60): precision, automatic extraction, review time, LLM cost."""
+    condos = await _manager_condos(db, principal)
+    last = date.today().replace(day=1)
+    first = add_months(last, -(months - 1))
+    month_list = [add_months(first, i) for i in range(months)]
+    buckets = await compute_metrics(db, [c.id for c in condos], first, last)
+    totals = MetricBucket()
+    per_month = {m: MetricBucket() for m in month_list}
+    rows = []
+    for c in condos:
+        condo_total = MetricBucket()
+        for m, b in buckets[c.id].items():
+            condo_total.add(b)
+            per_month.setdefault(m, MetricBucket()).add(b)
+        totals.add(condo_total)
+        rows.append({"id": str(c.id), "name": c.name, **condo_total.summary()})
+    return MetricsOut(
+        months=month_list,
+        totals=totals.summary(),
+        by_month=[{"month": m.isoformat(), **per_month[m].summary()} for m in month_list],
+        condominiums=rows,
+    )

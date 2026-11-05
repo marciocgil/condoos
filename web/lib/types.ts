@@ -280,3 +280,23 @@ export interface ClosingStatus {
   pending: { documentos: number; casamentos: number; achados_graves: number };
   can_close: boolean;
 }
+
+export interface MetricSummary {
+  findings_reviewed: number;
+  findings_confirmed: number;
+  precision: number | null;
+  docs_processed: number;
+  docs_automatic: number;
+  automatic_rate: number | null;
+  review_count: number;
+  review_hours_median: number | null;
+  llm_cost_usd: string;
+  llm_calls: number;
+}
+
+export interface Metrics {
+  months: string[];
+  totals: MetricSummary;
+  by_month: (MetricSummary & { month: string })[];
+  condominiums: (MetricSummary & { id: string; name: string })[];
+}
