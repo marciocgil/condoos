@@ -12,7 +12,23 @@ from alembic import op
 from sqlalchemy.engine import make_url
 
 from app.config import get_settings
-from app.db.models import APPEND_ONLY_TABLES, RLS_TABLES
+
+# Frozen at the time of this migration (later tables get their policy in their own migration).
+RLS_TABLES = {
+    "condominium": "id",
+    "board_member": "condominium_id",
+    "contract": "condominium_id",
+    "document": "condominium_id",
+    "expense": "condominium_id",
+    "bank_transaction": "condominium_id",
+    "approval": "condominium_id",
+    "competence": "condominium_id",
+    "finding": "condominium_id",
+    "decision": "condominium_id",
+    "finding_comment": "condominium_id",
+    "chat_message": "condominium_id",
+}
+APPEND_ONLY_TABLES = ("decision", "audit_log")
 
 revision: str = "0002"
 down_revision: str | None = "0001"

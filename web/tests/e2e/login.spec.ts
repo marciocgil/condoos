@@ -1,19 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-import { latestMagicLink } from "./mailpit";
-
-const BASE = process.env.E2E_BASE_URL ?? "http://localhost:3000";
-
-async function loginAs(page: import("@playwright/test").Page, email: string) {
-  const startedAt = new Date(Date.now() - 1000);
-  await page.goto("/login");
-  await page.getByLabel("E-mail").fill(email);
-  await page.getByRole("button", { name: "Receber link de acesso" }).click();
-  await expect(page.getByRole("status")).toContainText("Se o e-mail estiver cadastrado");
-  const link = await latestMagicLink(email, startedAt);
-  // The link points to WEB_BASE_URL; keep the path so the test works on any host.
-  await page.goto(new URL(new URL(link).pathname + new URL(link).search, BASE).toString());
-}
+import { loginAs } from "./auth";
 
 test("síndica entra pelo link mágico e vê só o próprio condomínio", async ({ page }, info) => {
   test.skip(info.project.name !== "sindico-mobile");

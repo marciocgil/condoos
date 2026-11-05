@@ -1,0 +1,419 @@
+{
+  "condominium_cnpj": "50389584000107",
+  "documents": {
+    "01_nfse.pdf": {
+      "doc_type": "nfse",
+      "fields": {
+        "cnpj_prestador": "79522044000131",
+        "cnpj_tomador": "50389584000107",
+        "competencia": "2026-10",
+        "data_emissao": "2026-10-02",
+        "discriminacao": "Serviços de portaria 24 horas - outubro/2026",
+        "numero": "2037",
+        "razao_social_prestador": "Vigilare Serviços de Portaria Ltda",
+        "retencao_inss": "2120.47",
+        "valor_liquido": "17156.53",
+        "valor_servicos": "19277.00"
+      }
+    },
+    "02_nfse.pdf": {
+      "doc_type": "nfse",
+      "fields": {
+        "cnpj_prestador": "92728617000146",
+        "cnpj_tomador": "50389584000107",
+        "competencia": "2026-10",
+        "data_emissao": "2026-10-03",
+        "discriminacao": "Limpeza e conservação das áreas comuns - outubro/2026",
+        "numero": "2074",
+        "razao_social_prestador": "Brilho Total Conservação e Limpeza Ltda",
+        "retencao_inss": "1057.54",
+        "retencao_iss": "192.28",
+        "valor_liquido": "8364.18",
+        "valor_servicos": "9614.00"
+      }
+    },
+    "03_nfse.pdf": {
+      "doc_type": "nfse",
+      "fields": {
+        "cnpj_prestador": "89707769000158",
+        "cnpj_tomador": "50389584000107",
+        "competencia": "2026-10",
+        "data_emissao": "2026-10-04",
+        "discriminacao": "Manutenção preventiva mensal de 4 elevadores",
+        "numero": "2111",
+        "razao_social_prestador": "Ascende Elevadores e Manutenção Ltda",
+        "valor_liquido": "2491.20",
+        "valor_servicos": "2491.20"
+      }
+    },
+    "04_nfse.pdf": {
+      "doc_type": "nfse",
+      "fields": {
+        "cnpj_prestador": "30980381000183",
+        "cnpj_tomador": "50389584000107",
+        "competencia": "2026-10",
+        "data_emissao": "2026-10-05",
+        "discriminacao": "Manutenção de jardins - poda e corte de grama",
+        "numero": "2148",
+        "razao_social_prestador": "Verde Vivo Paisagismo Ltda",
+        "retencao_iss": "30.00",
+        "valor_liquido": "1470.00",
+        "valor_servicos": "1500.00"
+      }
+    },
+    "05_nfse.pdf": {
+      "doc_type": "nfse",
+      "fields": {
+        "cnpj_prestador": "78484594000140",
+        "cnpj_tomador": "50389584000107",
+        "competencia": "2026-10",
+        "data_emissao": "2026-10-06",
+        "discriminacao": "Dedetização e desratização trimestral",
+        "numero": "2185",
+        "razao_social_prestador": "Praga Zero Controle Sanitário Ltda",
+        "valor_liquido": "650.00",
+        "valor_servicos": "650.00"
+      }
+    },
+    "06_nfse.pdf": {
+      "doc_type": "nfse",
+      "fields": {
+        "cnpj_prestador": "99311603000171",
+        "cnpj_tomador": "50389584000107",
+        "competencia": "2026-10",
+        "data_emissao": "2026-10-07",
+        "discriminacao": "Troca de quadro de distribuição elétrica da garagem",
+        "numero": "2222",
+        "razao_social_prestador": "Fixa Bem Manutenção Predial Ltda",
+        "retencao_cofins": "115.50",
+        "retencao_csll": "38.50",
+        "retencao_ir": "57.75",
+        "retencao_pis": "25.03",
+        "valor_liquido": "3613.22",
+        "valor_servicos": "3850.00"
+      }
+    },
+    "07_nfse.pdf": {
+      "doc_type": "nfse",
+      "fields": {
+        "cnpj_prestador": "89707769000158",
+        "cnpj_tomador": "50389584000107",
+        "competencia": "2026-10",
+        "data_emissao": "2026-10-08",
+        "discriminacao": "Atendimento a chamado - troca de botoeira do elevador 2",
+        "numero": "2259",
+        "razao_social_prestador": "Ascende Elevadores e Manutenção Ltda",
+        "valor_liquido": "780.00",
+        "valor_servicos": "780.00"
+      }
+    },
+    "08_nfse.pdf": {
+      "doc_type": "nfse",
+      "fields": {
+        "cnpj_prestador": "99311603000171",
+        "cnpj_tomador": "50389584000107",
+        "competencia": "2026-10",
+        "data_emissao": "2026-10-09",
+        "discriminacao": "Reparo em bomba de recalque",
+        "numero": "2296",
+        "razao_social_prestador": "Fixa Bem Manutenção Predial Ltda",
+        "retencao_iss": "24.80",
+        "valor_liquido": "1215.20",
+        "valor_servicos": "1240.00"
+      }
+    },
+    "09_boleto.pdf": {
+      "doc_type": "boleto",
+      "fields": {
+        "cnpj_beneficiario": "79522044000131",
+        "cnpj_pagador": "50389584000107",
+        "linha_digitavel": "23792096675428707229971028225127416000001715653",
+        "nome_beneficiario": "Vigilare Serviços de Portaria Ltda",
+        "numero_documento": "202610009",
+        "valor": "17156.53",
+        "vencimento": "2026-10-15"
+      }
+    },
+    "10_boleto.pdf": {
+      "doc_type": "boleto",
+      "fields": {
+        "cnpj_beneficiario": "92728617000146",
+        "cnpj_pagador": "50389584000107",
+        "linha_digitavel": "00193937014505285596765425987479516010000836418",
+        "nome_beneficiario": "Brilho Total Conservação e Limpeza Ltda",
+        "numero_documento": "202610010",
+        "valor": "8364.18",
+        "vencimento": "2026-10-16"
+      }
+    },
+    "11_boleto.pdf": {
+      "doc_type": "boleto",
+      "fields": {
+        "cnpj_beneficiario": "89707769000158",
+        "cnpj_pagador": "50389584000107",
+        "linha_digitavel": "34197429234741166773773197686337516020000249120",
+        "nome_beneficiario": "Ascende Elevadores e Manutenção Ltda",
+        "numero_documento": "202610011",
+        "valor": "2491.20",
+        "vencimento": "2026-10-17"
+      }
+    },
+    "12_boleto.pdf": {
+      "doc_type": "boleto",
+      "fields": {
+        "cnpj_beneficiario": "30980381000183",
+        "cnpj_pagador": "50389584000107",
+        "linha_digitavel": "23793861430831600869093467365321116030000147000",
+        "nome_beneficiario": "Verde Vivo Paisagismo Ltda",
+        "numero_documento": "202610012",
+        "valor": "1470.00",
+        "vencimento": "2026-10-18"
+      }
+    },
+    "13_boleto.pdf": {
+      "doc_type": "boleto",
+      "fields": {
+        "cnpj_beneficiario": "78484594000140",
+        "cnpj_pagador": "50389584000107",
+        "linha_digitavel": "23798086177937541882300208723353116040000065000",
+        "nome_beneficiario": "Praga Zero Controle Sanitário Ltda",
+        "numero_documento": "202610013",
+        "valor": "650.00",
+        "vencimento": "2026-10-19"
+      }
+    },
+    "14_boleto.pdf": {
+      "doc_type": "boleto",
+      "fields": {
+        "cnpj_beneficiario": "99311603000171",
+        "cnpj_pagador": "50389584000107",
+        "linha_digitavel": "23792513707904435129822121951077816050000361322",
+        "nome_beneficiario": "Fixa Bem Manutenção Predial Ltda",
+        "numero_documento": "202610014",
+        "valor": "3613.22",
+        "vencimento": "2026-10-20"
+      }
+    },
+    "15_conta_energia.pdf": {
+      "doc_type": "boleto",
+      "fields": {
+        "cnpj_beneficiario": "64012500000126",
+        "cnpj_pagador": "50389584000107",
+        "linha_digitavel": "836300000814432724638239897627113482604696242071",
+        "nome_beneficiario": "Companhia Energética Fictícia S.A.",
+        "valor": "8143.27",
+        "vencimento": "2026-10-20"
+      }
+    },
+    "16_conta_agua.pdf": {
+      "doc_type": "boleto",
+      "fields": {
+        "cnpj_beneficiario": "95137691000186",
+        "cnpj_pagador": "50389584000107",
+        "linha_digitavel": "826300001169879005786220256335714836344027176256",
+        "nome_beneficiario": "Saneamento Exemplar S.A.",
+        "valor": "11687.90",
+        "vencimento": "2026-10-22"
+      }
+    },
+    "17_recibo.pdf": {
+      "doc_type": "recibo",
+      "fields": {
+        "data": "2026-10-12",
+        "descricao": "conserto do portão da garagem",
+        "documento_recebedor": "11213329000",
+        "nome_recebedor": "Marcos Antônio Pereira",
+        "valor": "350.00"
+      }
+    },
+    "18_recibo.pdf": {
+      "doc_type": "recibo",
+      "fields": {
+        "data": "2026-10-18",
+        "descricao": "limpeza da caixa de gordura",
+        "documento_recebedor": "59970662821",
+        "nome_recebedor": "Joana Lúcia Ferreira",
+        "valor": "180.00"
+      }
+    },
+    "19_recibo.pdf": {
+      "doc_type": "recibo",
+      "fields": {
+        "data": "2026-10-25",
+        "descricao": "pintura do hall do bloco B",
+        "documento_recebedor": "48097871092",
+        "nome_recebedor": "Roberto Alves Nunes",
+        "valor": "420.00"
+      }
+    },
+    "20_contrato.pdf": {
+      "doc_type": "contrato",
+      "fields": {
+        "cnpj_contratada": "92728617000146",
+        "cnpj_contratante": "50389584000107",
+        "data_fim": "2026-12-31",
+        "data_inicio": "2023-01-01",
+        "indice_reajuste": "IPCA",
+        "itens_escopo": [
+          "limpeza de áreas comuns",
+          "limpeza de garagem",
+          "recolhimento de lixo"
+        ],
+        "mes_base_reajuste": 1,
+        "objeto": "limpeza e conservação das áreas comuns do condomínio",
+        "razao_social_contratada": "Brilho Total Conservação e Limpeza Ltda",
+        "valor_mensal": "9200.00"
+      }
+    },
+    "21_nfe.xml": {
+      "doc_type": "nfe",
+      "fields": {
+        "chave_acesso": "35261027344436000154550010000150211123456780",
+        "cnpj_destinatario": "50389584000107",
+        "cnpj_emitente": "27344436000154",
+        "data_emissao": "2026-10-07",
+        "itens": [
+          "Lâmpada LED 9W",
+          "Reator eletrônico"
+        ],
+        "numero": "15021",
+        "razao_social_emitente": "Casa das Ferragens Fictícia Ltda",
+        "valor_total": "460.50"
+      }
+    },
+    "22_nfe.xml": {
+      "doc_type": "nfe",
+      "fields": {
+        "chave_acesso": "35261064803461000185550010000150221123456780",
+        "cnpj_destinatario": "50389584000107",
+        "cnpj_emitente": "64803461000185",
+        "data_emissao": "2026-10-08",
+        "itens": [
+          "Detergente neutro 5L",
+          "Saco de lixo 100L",
+          "Desinfetante 5L"
+        ],
+        "numero": "15022",
+        "razao_social_emitente": "Limpa Mais Distribuidora Fictícia Ltda",
+        "valor_total": "428.20"
+      }
+    },
+    "23_nfe.xml": {
+      "doc_type": "nfe",
+      "fields": {
+        "chave_acesso": "35261097705044000159550010000150231123456780",
+        "cnpj_destinatario": "50389584000107",
+        "cnpj_emitente": "97705044000159",
+        "data_emissao": "2026-10-09",
+        "itens": [
+          "Boia elétrica para caixa d'água"
+        ],
+        "numero": "15023",
+        "razao_social_emitente": "Hidro Peças Fictícia Ltda",
+        "valor_total": "219.00"
+      }
+    },
+    "24_nfse_nacional.xml": {
+      "doc_type": "nfse",
+      "fields": {
+        "cnpj_prestador": "89707769000158",
+        "cnpj_tomador": "50389584000107",
+        "competencia": "2026-10",
+        "data_emissao": "2026-10-05",
+        "discriminacao": "Manutenção preventiva mensal de elevadores - outubro/2026",
+        "numero": "881",
+        "razao_social_prestador": "Ascende Elevadores e Manutenção Ltda",
+        "retencao_inss": "274.03",
+        "valor_liquido": "2217.17",
+        "valor_servicos": "2491.20"
+      }
+    },
+    "25_nfse_abrasf.xml": {
+      "doc_type": "nfse",
+      "fields": {
+        "cnpj_prestador": "30980381000183",
+        "cnpj_tomador": "50389584000107",
+        "competencia": "2026-10",
+        "data_emissao": "2026-10-06",
+        "discriminacao": "Serviço de jardinagem: poda, corte de grama e adubação",
+        "numero": "4471",
+        "razao_social_prestador": "Verde Vivo Paisagismo Ltda",
+        "retencao_iss": "30.00",
+        "valor_liquido": "1470.00",
+        "valor_servicos": "1500.00"
+      }
+    },
+    "26_foto_nfse.jpg": {
+      "doc_type": "nfse",
+      "fields": {
+        "cnpj_prestador": "79522044000131",
+        "cnpj_tomador": "50389584000107",
+        "competencia": "2026-10",
+        "data_emissao": "2026-10-02",
+        "discriminacao": "Serviços de portaria 24 horas - outubro/2026",
+        "numero": "2037",
+        "razao_social_prestador": "Vigilare Serviços de Portaria Ltda",
+        "retencao_inss": "2120.47",
+        "valor_liquido": "17156.53",
+        "valor_servicos": "19277.00"
+      },
+      "photo_of": "01_nfse.pdf"
+    },
+    "27_foto_nfse.jpg": {
+      "doc_type": "nfse",
+      "fields": {
+        "cnpj_prestador": "99311603000171",
+        "cnpj_tomador": "50389584000107",
+        "competencia": "2026-10",
+        "data_emissao": "2026-10-07",
+        "discriminacao": "Troca de quadro de distribuição elétrica da garagem",
+        "numero": "2222",
+        "razao_social_prestador": "Fixa Bem Manutenção Predial Ltda",
+        "retencao_cofins": "115.50",
+        "retencao_csll": "38.50",
+        "retencao_ir": "57.75",
+        "retencao_pis": "25.03",
+        "valor_liquido": "3613.22",
+        "valor_servicos": "3850.00"
+      },
+      "photo_of": "06_nfse.pdf"
+    },
+    "28_foto_boleto.jpg": {
+      "doc_type": "boleto",
+      "fields": {
+        "cnpj_beneficiario": "92728617000146",
+        "cnpj_pagador": "50389584000107",
+        "linha_digitavel": "00193937014505285596765425987479516010000836418",
+        "nome_beneficiario": "Brilho Total Conservação e Limpeza Ltda",
+        "numero_documento": "202610010",
+        "valor": "8364.18",
+        "vencimento": "2026-10-16"
+      },
+      "photo_of": "10_boleto.pdf"
+    },
+    "29_foto_boleto.jpg": {
+      "doc_type": "boleto",
+      "fields": {
+        "cnpj_beneficiario": "78484594000140",
+        "cnpj_pagador": "50389584000107",
+        "linha_digitavel": "23798086177937541882300208723353116040000065000",
+        "nome_beneficiario": "Praga Zero Controle Sanitário Ltda",
+        "numero_documento": "202610013",
+        "valor": "650.00",
+        "vencimento": "2026-10-19"
+      },
+      "photo_of": "13_boleto.pdf"
+    },
+    "30_foto_recibo.jpg": {
+      "doc_type": "recibo",
+      "fields": {
+        "data": "2026-10-18",
+        "descricao": "limpeza da caixa de gordura",
+        "documento_recebedor": "59970662821",
+        "nome_recebedor": "Joana Lúcia Ferreira",
+        "valor": "180.00"
+      },
+      "photo_of": "18_recibo.pdf"
+    }
+  }
+}

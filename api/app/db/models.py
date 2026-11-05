@@ -226,6 +226,32 @@ class Document(IdTimestampMixin, Base):
     extracted: Mapped[dict[str, Any]] = mapped_column(Json, default=dict)
     field_confidence: Mapped[dict[str, float]] = mapped_column(Json, default=dict)
     needs_review: Mapped[bool] = mapped_column(Boolean, default=False)
+    # Why the document is in the exception queue (pt-BR, shown to the analyst).
+    review_reasons: Mapped[list[str]] = mapped_column(Json, default=list)
+    text_content: Mapped[str | None] = mapped_column(Text, nullable=True)
+    page_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    classification_source: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    extraction_source: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    reviewed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    reviewed_by_user_id: Mapped[uuid.UUID | None] = _uuid_fk(
+        "app_user.id", nullable=True, ondelete="SET NULL"
+    )
+
+
+class ExtractionCorrection(IdTimestampMixin, Base):
+    """A human correction of an extracted field: training data for extraction (spec §7)."""
+
+    __tablename__ = "extraction_correction"
+
+    condominium_id: Mapped[uuid.UUID] = _uuid_fk("condominium.id")
+    document_id: Mapped[uuid.UUID] = _uuid_fk("document.id", ondelete="CASCADE")
+    user_id: Mapped[uuid.UUID] = _uuid_fk("app_user.id")
+    doc_type: Mapped[str] = mapped_column(String(20))
+    field_name: Mapped[str] = mapped_column(String(60))
+    extracted_value: Mapped[Any] = mapped_column(Json, nullable=True)
+    corrected_value: Mapped[Any] = mapped_column(Json, nullable=True)
+    extracted_confidence: Mapped[float | None] = mapped_column(Numeric(4, 3), nullable=True)
+    extraction_source: Mapped[str | None] = mapped_column(String(20), nullable=True)
 
 
 class Expense(IdTimestampMixin, Base):
@@ -448,6 +474,7 @@ RLS_TABLES: dict[str, str] = {
     "decision": "condominium_id",
     "finding_comment": "condominium_id",
     "chat_message": "condominium_id",
+    "extraction_correction": "condominium_id",
 }
 
 # Tables the application role may only read and insert into (never update or delete).

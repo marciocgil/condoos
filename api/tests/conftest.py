@@ -36,6 +36,10 @@ os.environ.update(
         "DATABASE_URL": _url("condoos_app_test", "condoos_app_test"),
         "DATABASE_WORKER_URL": _url("condoos_worker_test", "condoos_worker_test"),
         "WEB_BASE_URL": "http://web.test",
+        "STORAGE_BACKEND": "memory",
+        "LLM_MODE": "replay",
+        "DOCUMENT_CONVERTER": "pdfium",
+        "LLM_CASSETTE_DIR": str(Path(__file__).resolve().parent / "fixtures" / "llm"),
     }
 )
 

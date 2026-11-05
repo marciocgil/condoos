@@ -1,0 +1,69 @@
+"""Turn a bank file (OFX, CSV, CNAB) into bank_transaction rows. Idempotent."""
+
+import uuid
+from dataclasses import dataclass
+
+from sqlalchemy.dialects.postgresql import insert
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.db.models import BankTransaction
+from app.ingestion.bank.base import BankFileError, ParsedStatement
+from app.ingestion.bank.cnab.common import looks_like_cnab, parse_cnab
+from app.ingestion.bank.csv_parser import parse_csv
+from app.ingestion.bank.ofx import looks_like_ofx, parse_ofx
+
+
+@dataclass(frozen=True)
+class BankImportResult:
+    created: int
+    duplicates: int
+    ignored_records: int
+
+
+def parse_bank_file(filename: str, data: bytes) -> ParsedStatement:
+    if looks_like_cnab(data):
+        return parse_cnab(data)
+    if looks_like_ofx(data):
+        return parse_ofx(data)
+    if filename.lower().endswith((".csv", ".txt")):
+        return parse_csv(data)
+    raise BankFileError("Formato de extrato não reconhecido. Envie OFX, CSV ou retorno CNAB.")
+
+
+async def store_statement(
+    session: AsyncSession,
+    *,
+    condominium_id: uuid.UUID,
+    condominium_cnpj: str,
+    statement: ParsedStatement,
+) -> BankImportResult:
+    holder = statement.account_holder_document
+    if holder and holder != condominium_cnpj:
+        raise BankFileError(
+            "O arquivo bancário é de outro CNPJ, não do condomínio selecionado. Nada foi importado."
+        )
+    created = 0
+    for trn in statement.transactions:
+        new_id = await session.scalar(
+            insert(BankTransaction)
+            .values(
+                id=uuid.uuid4(),
+                condominium_id=condominium_id,
+                posted_at=trn.posted_at,
+                amount=trn.amount,
+                payee_name=trn.payee_name,
+                payee_document=trn.payee_document,
+                description=trn.description,
+                origin=trn.origin.value,
+                external_id=trn.external_id,
+            )
+            .on_conflict_do_nothing(index_elements=["condominium_id", "external_id"])
+            .returning(BankTransaction.id)
+        )
+        if new_id is not None:
+            created += 1
+    return BankImportResult(
+        created=created,
+        duplicates=len(statement.transactions) - created,
+        ignored_records=statement.ignored_records,
+    )

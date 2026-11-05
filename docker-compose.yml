@@ -66,9 +66,19 @@ services:
       retries: 40
 
   worker:
-    build: ./api
+    build:
+      context: ./api
+      args:
+        INSTALL_DOCLING: "true"
     command: worker
-    environment: *api-env
+    environment:
+      <<: *api-env
+      DOCUMENT_CONVERTER: auto
+      HF_HUB_OFFLINE: "1"
+      INBOUND_EMAIL_DIR: /inbound-email
+    volumes:
+      # Drop .eml files here to simulate the condominium inboxes (<slug>@ingest.condoos.local).
+      - ./data/inbound-email:/inbound-email
     depends_on:
       api: { condition: service_healthy }  # api runs the migrations
 

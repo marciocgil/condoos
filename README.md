@@ -37,6 +37,16 @@ Na primeira subida, a API aplica as migrações e carrega um seed **fictício**:
 
 Cada link vale 15 minutos, serve uma única vez, e cada e-mail pode pedir até 5 links por hora.
 
+### Enviar documentos
+
+- **Pela tela:** síndico em *Resumo → Enviar documentos*; administradora em *Fila de exceções → Enviar documentos*. Aceita PDF, foto (JPEG/PNG), XML de NF-e/NFS-e, extrato OFX/CSV e retorno CNAB.
+- **Por e-mail:** cada condomínio tem o endereço `<slug>@ingest.condoos.local`. No ambiente local, coloque o arquivo `.eml` na pasta `data/inbound-email/`; o worker processa em até 30 segundos.
+- Documentos com campo incerto vão para a **Fila de exceções**, onde o gerente ou o analista corrige os campos lado a lado com o documento.
+
+### IA
+
+Sem `ANTHROPIC_API_KEY`, o sistema funciona sem IA: XML fiscal, boletos com linha digitável e extratos são lidos de forma determinística; o restante vai para a fila de exceções. Com a chave, a extração usa o Claude (modelos configuráveis no `.env`), com teto de custo por condomínio por mês.
+
 ## Desenvolvimento
 
 ```bash
@@ -44,7 +54,10 @@ make install   # dependências do backend (uv) e do frontend (npm)
 make test      # testes do backend
 make lint      # ruff, black, mypy, eslint, tsc, prettier
 make e2e       # testes Playwright contra a stack em execução
+make accuracy  # acurácia da extração sobre o corpus fictício de 30 documentos
 ```
+
+A imagem do worker inclui o Docling (OCR e tabelas) e tem cerca de 4 GB; a primeira construção demora alguns minutos.
 
 Os testes do backend precisam de um PostgreSQL 16 com a extensão `pgvector`. Por padrão usam `postgresql+asyncpg://postgres:postgres@localhost:5432/postgres` (mude com `TEST_DATABASE_ADMIN_URL`). A suíte cria o banco `condoos_test` do zero a cada execução.
 

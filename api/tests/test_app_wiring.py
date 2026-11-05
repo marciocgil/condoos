@@ -4,9 +4,9 @@ from fastapi.dependencies.models import Dependant
 from fastapi.routing import APIRoute
 
 from app.db.session import get_db
-from app.routers import auth, condominiums, me
+from app.routers import auth, condominiums, documents, me, queue
 
-ROUTERS = [auth.router, me.router, condominiums.router]
+ROUTERS = [auth.router, me.router, condominiums.router, documents.router, queue.router]
 
 
 def _walk(dep: Dependant) -> list[Dependant]:

@@ -1,8 +1,10 @@
 import Link from "next/link";
 
+import { QueueList } from "@/components/QueueList";
+
 import { apiGet } from "@/lib/api";
 import { formatBRL } from "@/lib/format";
-import type { CondoMembership, Finding, Me } from "@/lib/types";
+import type { CondoMembership, Finding, Me, QueueItem } from "@/lib/types";
 
 interface Row {
   condo: CondoMembership;
@@ -15,7 +17,7 @@ interface Row {
 const OPEN = new Set(["aguardando_validacao", "publicado"]);
 
 export default async function CarteiraPage() {
-  const me = await apiGet<Me>("/me");
+  const [me, queue] = await Promise.all([apiGet<Me>("/me"), apiGet<QueueItem[]>("/queue")]);
   const rows: Row[] = await Promise.all(
     me.condominiums.map(async (condo) => {
       const findings = await apiGet<Finding[]>(`/condominiums/${condo.id}/findings`);
@@ -49,8 +51,8 @@ export default async function CarteiraPage() {
           </p>
         </div>
         <div className="rounded-xl bg-white p-5 shadow-sm">
-          <p className="text-sm text-gray-500">Itens na fila</p>
-          <p className="mt-1 text-2xl font-semibold">0</p>
+          <p className="text-sm text-gray-500">Itens na fila de exceções</p>
+          <p className="mt-1 text-2xl font-semibold">{queue.length}</p>
         </div>
       </section>
 
@@ -91,6 +93,18 @@ export default async function CarteiraPage() {
           ))}
         </tbody>
       </table>
+
+      <section className="mt-8" aria-labelledby="fila-titulo">
+        <h2 id="fila-titulo" className="mb-3 text-lg font-semibold">
+          Fila de exceções
+        </h2>
+        <QueueList items={queue.slice(0, 5)} />
+        {queue.length > 5 && (
+          <Link href="/admin/fila" className="mt-2 inline-block text-sm text-brand-700 underline">
+            Ver todos os {queue.length} itens
+          </Link>
+        )}
+      </section>
     </>
   );
 }

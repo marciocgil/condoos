@@ -7,7 +7,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 
 from app.config import get_settings
-from app.routers import auth, condominiums, me
+from app.routers import auth, condominiums, documents, me, queue
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
 logger = logging.getLogger("condoos")
@@ -16,7 +16,7 @@ logger = logging.getLogger("condoos")
 @asynccontextmanager
 async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     settings = get_settings()
-    if settings.environment != "test":
+    if settings.environment != "test" and settings.storage_backend == "s3":
         from app.storage.s3 import ensure_bucket
 
         try:
@@ -31,6 +31,8 @@ def create_app() -> FastAPI:
     app.include_router(auth.router)
     app.include_router(me.router)
     app.include_router(condominiums.router)
+    app.include_router(documents.router)
+    app.include_router(queue.router)
 
     @app.get("/health", tags=["health"])
     async def health() -> dict[str, str]:

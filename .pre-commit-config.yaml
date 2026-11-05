@@ -4,19 +4,19 @@ repos:
     hooks:
       - id: ruff
         name: ruff
-        entry: bash -c 'cd api && uv run ruff check app tests'
+        entry: bash -c 'cd api && uv run ruff check app tests corpus'
         language: system
         files: ^api/.*\.py$
         pass_filenames: false
       - id: black
         name: black
-        entry: bash -c 'cd api && uv run black --check app tests'
+        entry: bash -c 'cd api && uv run black --check app tests corpus'
         language: system
         files: ^api/.*\.py$
         pass_filenames: false
       - id: mypy
         name: mypy
-        entry: bash -c 'cd api && uv run mypy app tests'
+        entry: bash -c 'cd api && uv run mypy app tests corpus'
         language: system
         files: ^api/.*\.py$
         pass_filenames: false

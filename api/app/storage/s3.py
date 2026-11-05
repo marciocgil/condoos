@@ -58,6 +58,12 @@ def put_object(key: str, body: bytes, content_type: str) -> None:
     )
 
 
+def get_object(key: str) -> bytes:
+    response = s3_client().get_object(Bucket=get_settings().s3_bucket, Key=key)
+    body: bytes = response["Body"].read()
+    return body
+
+
 def presigned_get_url(key: str) -> str:
     s = get_settings()
     return s3_public_client().generate_presigned_url(

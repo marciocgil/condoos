@@ -73,3 +73,57 @@ Cada requisição autenticada faz `set_config('app.condominium_ids', ..., true)`
 **D22 — Seed fictício e determinístico.** Semente fixa e último mês fixo (outubro/2026), para os testes não dependerem da data de hoje. São 12 meses (nov/2025 a out/2026); outubro está `aberta` e os demais estão `fechada`. CNPJs têm dígito verificador válido mas são gerados ao acaso. Os reajustes do seed são percentuais fictícios, não valores reais de índice: `index_value` é preenchida a partir do BCB no Marco 3. Os e-mails usam subdomínios de `example.com` (reservado pela RFC 2606); o domínio `.test` é recusado pelo validador de e-mail. Os casos plantados de cada regra entram no Marco 3.
 
 **D23 — Valor em risco da R11.** O prompt diz "demais = valor da despesa", mas a R11 compara o total de uma categoria, não uma despesa. O valor em risco é o excesso sobre o limite (média + σ × desvio), não o gasto inteiro do mês.
+
+## Marco 2 — Ingestão e extração
+
+**D24 — Cliente único de LLM** (`app/llm/client.py`). Toda chamada passa por ele:
+- saída estruturada com `output_config.format` (JSON Schema estrito gerado do Pydantic e validado de novo do nosso lado);
+- cache do system prompt;
+- timeout de 120 s e 3 tentativas;
+- uma linha em `llm_calls` por chamada real, com tokens, cache, custo estimado e latência;
+- teto de custo por condomínio por mês (`LLM_MONTHLY_BUDGET_USD_PER_CONDOMINIUM`, padrão US$ 40).
+
+Para Sonnet 5.5 e Opus 5.5, o fallback server-side de recusa (`fallbacks: "default"`) fica ligado. Modos: `live`, `record`, `replay` e `off`; sem chave, o padrão é `replay`. Respostas gravadas ficam em `api/tests/fixtures/llm/`. Os preços em `app/llm/pricing.py` servem só para a métrica interna; a fatura é a fonte de verdade.
+
+**D25 — Ordem de confiança e regra de confiança por campo.**
+- Fontes: XML fiscal e códigos com dígito verificador válido têm confiança 1,0. A IA usa a autoavaliação dela. As heurísticas de texto ficam em 0,75. Um CNPJ único e válido no texto fica em 0,95.
+- A nota final é o menor valor entre a fonte e as validações: dígito verificador, CNPJ do tomador igual ao do condomínio, fornecedor diferente do condomínio, data plausível e soma serviços − retenções = líquido.
+- Campo obrigatório abaixo de 0,9 manda o documento para a fila de exceções.
+- Num documento automático, campo opcional abaixo de 0,9 é descartado. Num documento que vai para a fila, ele fica como sugestão para o analista.
+- Documento revisado por pessoa nunca é reprocessado.
+
+**D26 — Mínimo de dados à Anthropic.** Quando o documento tem camada de texto boa, só o texto é enviado. O arquivo (PDF ou imagem) vai apenas quando não há texto utilizável.
+
+**D27 — Docling só no worker.** O extra `docling` instala o torch de CPU (índice do PyTorch). Os modelos são baixados no build da imagem (`app.extraction.warmup`) e o worker roda com `HF_HUB_OFFLINE=1`. A imagem do worker tem cerca de 4,0 GB; a da API, 558 MB. Sem Docling, o pypdfium2 lê só PDFs digitais.
+
+Licenças na árvore do Docling: tudo MIT, BSD ou Apache, exceto `certifi` e `tqdm` (MPL-2.0). A MPL é copyleft por arquivo e só obriga a abrir mudanças nesses próprios arquivos; usamos os dois sem modificação. O `certifi` já vinha antes pelo httpx.
+
+**D28 — CNAB.** Leitura própria e extensível por banco (`@register(layout, banco)`).
+- 240 FEBRABAN para Itaú, Bradesco e BB: pagamentos com segmentos A/B e J/J-52 (débitos confirmados com ocorrência "00") e cobrança com segmentos T/U (liquidações 06/17, como créditos).
+- 400 cobrança para os três bancos, com tabela de posições por banco.
+- Arquivo com CNPJ de outro titular é recusado inteiro.
+
+**Limite:** as posições seguem os manuais e o `brcobranca`, mas não foram conferidas com arquivos reais de banco (a regra é nunca usar dado real). Antes do piloto, é preciso validar com um retorno real anonimizado de cada banco.
+
+**D29 — Fotos HEIC recusadas** com instrução para enviar em JPEG. O iPhone converte para JPEG no upload pelo navegador na maioria dos casos.
+
+**D30 — Caixa de e-mail.** `FolderEmailProvider` lê `.eml` de uma pasta (`INBOUND_EMAIL_DIR`) e só confirma o recebimento depois do commit. O endereço é `<slug>@ingest.condoos.local`. Não há lista de remetentes permitidos no MVP: qualquer remetente coloca documentos na fila, mas eles passam pelas mesmas validações. Com o provedor real, acrescentar verificação SPF/DKIM.
+
+**D31 — Extrato em PDF não é importado**: vai para a fila pedindo OFX ou CSV.
+
+**D32 — Migrações não importam listas do código.** A 0002 importava `RLS_TABLES` dos modelos e quebrou quando a 0003 acrescentou uma tabela. Agora cada migração congela suas listas, e um teste garante que toda tabela em `RLS_TABLES` tem a política no banco.
+
+**D33 — Dado de treino.** `extraction_correction` grava uma linha por campo corrigido (valor extraído, valor corrigido, confiança e fonte), inclusive troca de tipo do documento (`_doc_type`). Tem RLS.
+
+**D34 — Fator de vencimento do boleto.** O fator reiniciou em 1000 no dia 22/02/2025. Os dois ciclos são calculados e fica a data mais próxima da data de referência.
+
+**D35 — Valores lidos por OCR.** "R$ 8.364.18" (ponto no lugar da vírgula) é lido como 8364,18: o último ponto seguido de 2 dígitos é decimal.
+
+**D36 — CNPJ no texto.** Só conta como CNPJ o número formatado ou o que vem logo após o rótulo "CNPJ". Sequências soltas de 14 dígitos aparecem dentro da linha digitável e, 1 vez em 100, passam no dígito verificador.
+
+**D37 — Acurácia sem chave de API** (`docs/extraction_accuracy.md`, Docling e modo `replay`):
+- 12 de 30 documentos sem revisão (XMLs, boletos com linha digitável e uma foto de boleto);
+- 29 de 30 com o tipo correto;
+- **0 documentos automáticos com dado divergente**.
+
+Notas fiscais em PDF, recibos, contratos e fotos ruins dependem do LLM. A meta de 90% sem revisão só pode ser medida com a chave: `LLM_MODE=record uv run python -m corpus.accuracy`.

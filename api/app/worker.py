@@ -11,6 +11,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import get_settings
 from app.core.jobs import Handler, run_one
 from app.db.session import get_worker_engine, sessionmaker_for
+from app.extraction.pipeline import process_document
+from app.ingestion.documents import PROCESS_JOB
+from app.ingestion.email import FolderEmailProvider, poll_provider
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
 logger = logging.getLogger("condoos.worker")
@@ -24,6 +27,7 @@ async def _ping(_: AsyncSession, payload: dict[str, Any]) -> None:
 # here as each milestone lands.
 HANDLERS: dict[str, Handler] = {
     "ping": _ping,
+    PROCESS_JOB: process_document,
 }
 
 
@@ -36,7 +40,19 @@ async def main() -> None:
         loop.add_signal_handler(sig, stop.set)
 
     logger.info("worker started")
+    provider = (
+        FolderEmailProvider(settings.inbound_email_dir) if settings.inbound_email_dir else None
+    )
+    next_email_poll = 0.0
     while not stop.is_set():
+        if provider is not None and loop.time() >= next_email_poll:
+            next_email_poll = loop.time() + settings.inbound_email_poll_seconds
+            try:
+                accepted = await poll_provider(maker, provider)
+                if accepted:
+                    logger.info("inbound email accepted=%s", accepted)
+            except Exception:
+                logger.exception("inbound email poll failed")
         try:
             worked = await run_one(maker, HANDLERS)
         except Exception:

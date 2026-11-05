@@ -206,3 +206,17 @@ async def test_conselheiro_is_read_only_in_permissions(
     perms = (await client.get("/me")).json()["condominiums"][0]["permissions"]
     assert "decide_finding" not in perms
     assert "comment_finding" in perms
+
+
+async def test_every_tenant_table_has_rls(admin_engine: AsyncEngine) -> None:
+    from app.db.models import RLS_TABLES
+
+    async with admin_engine.connect() as conn:
+        rows = await conn.execute(
+            text(
+                "SELECT c.relname FROM pg_class c JOIN pg_policy p ON p.polrelid = c.oid "
+                "WHERE c.relrowsecurity AND p.polname = 'tenant_isolation'"
+            )
+        )
+        protected = {r[0] for r in rows}
+    assert set(RLS_TABLES) <= protected, set(RLS_TABLES) - protected

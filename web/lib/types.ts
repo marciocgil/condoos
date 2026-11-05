@@ -61,3 +61,51 @@ export interface Finding {
   status: string;
   competence: string;
 }
+
+export interface QueueItem {
+  kind: "extracao" | "achado_grave";
+  id: string;
+  condominium_id: string;
+  condominium_name: string;
+  title: string;
+  detail: string;
+  created_at: string;
+}
+
+export interface QueueCount {
+  total: number;
+  extracao: number;
+  achado_grave: number;
+}
+
+export interface FieldSpec {
+  name: string;
+  label: string;
+  kind: "cnpj" | "doc" | "date" | "month" | "money" | "text" | "list" | "int" | "index";
+  required: boolean;
+}
+
+export interface Review {
+  document_id: string;
+  condominium_id: string;
+  condominium_cnpj: string;
+  original_filename: string;
+  mime_type: string;
+  doc_type: string;
+  reviewable_types: string[];
+  fields_by_type: Record<string, FieldSpec[]>;
+  values: Record<string, unknown>;
+  confidence: Record<string, number>;
+  reasons: string[];
+  threshold: number;
+  file_url: string;
+  text_content: string | null;
+  reviewed_at: string | null;
+}
+
+export interface UploadResult {
+  filename: string;
+  document_id: string | null;
+  duplicate: boolean;
+  error: string | null;
+}

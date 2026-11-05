@@ -95,6 +95,13 @@ export default async function ResumoPage({
         )}
       </section>
 
+      <a
+        href={`/condominio/${id}/enviar`}
+        className="block w-full rounded-lg border border-brand-600 bg-white px-4 py-3 text-center text-sm font-medium text-brand-700"
+      >
+        Enviar documentos
+      </a>
+
       <button
         type="button"
         disabled

@@ -37,7 +37,7 @@ def _parse_month(value: str | None) -> date | None:
         return date(int(year), int(month), 1)
     except ValueError as exc:
         raise HTTPException(
-            status.HTTP_422_UNPROCESSABLE_ENTITY, "Use o formato AAAA-MM para a competência."
+            status.HTTP_422_UNPROCESSABLE_CONTENT, "Use o formato AAAA-MM para a competência."
         ) from exc
 
 

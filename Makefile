@@ -19,7 +19,7 @@ logs: ## Follow logs
 	docker compose logs -f api worker web
 
 install: ## Install backend and frontend dependencies locally
-	$(API) uv sync
+	$(API) uv sync --extra docling
 	$(WEB) npm ci
 
 test: ## Backend tests (needs a local PostgreSQL 16 + pgvector; see README)
@@ -34,12 +34,18 @@ e2e: ## Playwright tests against the running stack
 	$(WEB) npx playwright test
 
 lint: ## Linters, formatters and type checks (backend + frontend)
-	$(API) uv run ruff check app tests && uv run black --check app tests && uv run mypy app tests
+	$(API) uv run ruff check app tests corpus && uv run black --check app tests corpus && uv run mypy app tests corpus
 	$(WEB) npm run lint && npm run typecheck && npm run format:check
 
 format: ## Auto-format
-	$(API) uv run ruff check --fix app tests && uv run black app tests
+	$(API) uv run ruff check --fix app tests corpus && uv run black app tests corpus
 	$(WEB) npm run format
+
+corpus: ## Regenerate the fictitious 30-document corpus (deterministic)
+	$(API) uv run python -m corpus.generate
+
+accuracy: ## Per-field extraction accuracy over the corpus (writes docs/extraction_accuracy.md)
+	$(API) uv run python -m corpus.accuracy --out ../docs/extraction_accuracy.md
 
 migrate: ## Apply migrations to the database in DATABASE_ADMIN_URL
 	$(API) uv run alembic upgrade head
@@ -47,4 +53,4 @@ migrate: ## Apply migrations to the database in DATABASE_ADMIN_URL
 seed: ## Load the fictitious seed into the database in DATABASE_ADMIN_URL
 	$(API) uv run python -m app.seed
 
-.PHONY: help up down reset logs install test test-slow e2e lint format migrate seed
+.PHONY: help up down reset logs install test test-slow e2e lint format corpus accuracy migrate seed

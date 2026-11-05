@@ -16,7 +16,26 @@ dependencies = [
     "boto3>=1.35",
     "aiosmtplib>=3.0",
     "httpx>=0.28",
+    "anthropic>=2.5.0",
+    "python-multipart>=0.0.33",
+    "pypdfium2>=5.14.0",
+    "pillow>=13.0.0",
+    "defusedxml>=0.7.1",
+    "reportlab>=5.1.0",
 ]
+
+[project.optional-dependencies]
+# Worker only: PDF/image -> structured text with OCR (MIT). Pulls CPU-only torch.
+docling = ["docling>=2.147", "torch>=2.6", "torchvision>=0.21"]
+
+[tool.uv.sources]
+torch = { index = "pytorch-cpu" }
+torchvision = { index = "pytorch-cpu" }
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
 
 [dependency-groups]
 dev = [
@@ -27,6 +46,7 @@ dev = [
     "ruff>=0.8",
     "black>=24.10",
     "boto3-stubs[s3]>=1.35",
+    "types-defusedxml>=0.7.0.20260504",
 ]
 
 [build-system]
@@ -46,11 +66,12 @@ target-version = "py312"
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "B", "UP", "N", "S", "SIM", "RUF", "ASYNC"]
-ignore = ["E501", "S101", "B008", "RUF001", "RUF002", "RUF003"]
+ignore = ["E501", "S101", "B008", "RUF001", "RUF002", "RUF003", "N818"]
 
 [tool.ruff.lint.per-file-ignores]
-"tests/**" = ["S105", "S106", "S311"]
+"tests/**" = ["S105", "S106", "S311", "ASYNC240"]
 "app/seed/**" = ["S311"]
+"corpus/**" = ["S311", "T201"]
 "app/db/migrations/**" = ["E501", "N999", "S608"]  # DDL built from our own settings
 
 [tool.mypy]
@@ -60,7 +81,7 @@ plugins = ["pydantic.mypy"]
 exclude = ["app/db/migrations/"]
 
 [[tool.mypy.overrides]]
-module = ["pgvector.*", "aiosmtplib.*"]
+module = ["pgvector.*", "aiosmtplib.*", "pypdfium2.*", "docling.*", "reportlab.*"]
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]
@@ -68,6 +89,7 @@ asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "session"
 asyncio_default_test_loop_scope = "session"
 testpaths = ["tests"]
+filterwarnings = ["error::DeprecationWarning:app.*"]
 pythonpath = ["."]
 markers = [
     "slow: testes lentos (avaliação do chat, LLM real)",
