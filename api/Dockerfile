@@ -24,7 +24,10 @@ RUN if [ "$INSTALL_DOCLING" = "true" ]; then \
     else \
       uv sync --frozen --no-dev; \
     fi
-ENV PATH="/app/.venv/bin:$PATH" HF_HOME=/app/.cache/huggingface
+ENV PATH="/app/.venv/bin:$PATH" HF_HOME=/app/.cache/huggingface \
+    EMBEDDING_CACHE_DIR=/app/.cache/fastembed
+# Local embedding model for the chat's document search (no text leaves the infrastructure).
+RUN python -m app.chat.warmup
 RUN if [ "$INSTALL_DOCLING" = "true" ]; then python -m app.extraction.warmup; fi
 EXPOSE 8000
 ENTRYPOINT ["./docker-entrypoint.sh"]

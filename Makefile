@@ -50,10 +50,13 @@ corpus: ## Regenerate the fictitious 30-document corpus (deterministic)
 accuracy: ## Per-field extraction accuracy over the corpus (writes docs/extraction_accuracy.md)
 	$(API) uv run python -m corpus.accuracy --out ../docs/extraction_accuracy.md
 
+chat-eval: ## Live chat evaluation (needs ANTHROPIC_API_KEY; writes docs/chat_eval.md)
+	$(API) uv run pytest -m slow tests/chat_eval -q
+
 migrate: ## Apply migrations to the database in DATABASE_ADMIN_URL
 	$(API) uv run alembic upgrade head
 
 seed: ## Load the fictitious seed into the database in DATABASE_ADMIN_URL
 	$(API) uv run python -m app.seed
 
-.PHONY: help up down reset logs install test coverage test-slow e2e lint format corpus accuracy migrate seed
+.PHONY: help up down reset logs install test coverage test-slow e2e lint format corpus accuracy chat-eval migrate seed

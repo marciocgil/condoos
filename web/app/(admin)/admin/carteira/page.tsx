@@ -1,6 +1,7 @@
 import { AlertTriangle, CheckCircle2, Inbox, Send, Wallet } from "lucide-react";
 import Link from "next/link";
 
+import { ReportActions } from "@/components/condoos/ReportActions";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { QueueList } from "@/components/QueueList";
 import { Badge } from "@/components/ui/Badge";
@@ -8,7 +9,7 @@ import { CardTitle } from "@/components/ui/Card";
 import { DataTable } from "@/components/ui/DataTable";
 import { KpiCard } from "@/components/ui/KpiCard";
 import { apiGet } from "@/lib/api";
-import { formatBRLShort, formatMonth } from "@/lib/format";
+import { competenceParam, formatBRLShort, formatMonth } from "@/lib/format";
 import type { Portfolio, PortfolioRow, QueueItem } from "@/lib/types";
 
 function StatusCell({ row }: { row: PortfolioRow }) {
@@ -82,6 +83,20 @@ export default async function CarteiraPage() {
             { key: "open", header: "Achados", cell: (r) => r.open_findings, align: "right" },
             { key: "serious", header: "Graves", cell: (r) => r.serious, align: "right" },
             { key: "status", header: "Status", cell: (r) => <StatusCell row={r} /> },
+            {
+              key: "report",
+              header: "Relatório do mês",
+              cell: (r) =>
+                p.latest_competence ? (
+                  <ReportActions
+                    condominiumId={r.id}
+                    month={competenceParam(p.latest_competence)}
+                    sent={r.status === "enviado"}
+                  />
+                ) : (
+                  "—"
+                ),
+            },
           ]}
         />
       </div>

@@ -32,15 +32,20 @@ api/            FastAPI + SQLAlchemy 2 (async) + Alembic; worker da fila de jobs
                   categories.py (categorias e CNAE), text.py
   app/rules/      engine.py (motor), base.py, contracts.py (valor reajustado), judge.py (IA
                   de R04/R07), r01..r12 (uma classe por regra)
+  app/chat/       search.py (trechos + busca híbrida), tools.py (9 ferramentas de leitura),
+                  agent.py (Claude Agent SDK), service.py (verificações e histórico), warmup.py
+  app/reports/    data.py (dados do relatório e pendências do mês), pdf.py, xlsx.py
   app/prompts/    prompts versionados (*.md)
   app/db/         models.py, enums.py, session.py, migrations/
   app/routers/    endpoints
-  app/seed/       seed fictício (data.py, com casos plantados por regra), carga (run.py),
+  app/seed/       seed fictício (data.py, com casos plantados por regra; documents.py com
+                  convenção, ata e textos dos contratos), carga (run.py),
                   fixtures/bcb_indices.json (séries reais do BCB)
   app/storage/    S3 (chave sempre começa com cond/<condominium_id>/)
   app/worker.py   consumidor da fila; registre handlers em HANDLERS
   tests/          pytest (precisa de PostgreSQL 16 + pgvector)
   tests/fixtures/corpus/  30 documentos fictícios + ground_truth.json
+  tests/chat_eval/        avaliação do chat (33 casos; o teste ao vivo é `slow`)
   corpus/         generate.py (gera o corpus) e accuracy.py (relatório de acurácia)
 web/            Next.js 15 (App Router) + TypeScript strict + Tailwind 4 + lucide-react
   app/globals.css tokens do Design System (cores, raios, Inter); nunca use cores fixas
@@ -67,6 +72,7 @@ make e2e           # Playwright contra a stack (zera o limite de links por hora 
 make migrate seed  # migrações e seed no banco de DATABASE_ADMIN_URL
 make corpus        # regera o corpus fictício (determinístico)
 make accuracy      # relatório de acurácia por campo → docs/extraction_accuracy.md
+make chat-eval     # avaliação do chat ao vivo (exige ANTHROPIC_API_KEY) → docs/chat_eval.md
 ```
 
 - Web: http://localhost:3000 · API: http://localhost:8000/docs · E-mails: http://localhost:8025
@@ -94,6 +100,8 @@ make accuracy      # relatório de acurácia por campo → docs/extraction_accur
 - **Decisões** seguem `findings/decisions.py` (quem pode o quê); a interface mostra só `allowed_actions`.
 - **Interface:** use os tokens e os componentes de `components/ui` e `components/condoos`; status sempre com texto e ícone, nunca só cor; verde-lima só em ação primária e item ativo.
 - **Casamento ambíguo** vai para `match_issue`, nunca é escolhido ao acaso.
+- **Chat:** só ferramentas de leitura em `app/chat/tools.py`, nenhuma recebe o condomínio (vem da sessão; o RLS da pergunta fica restrito a ele). Ferramenta nova: devolva `ref` em cada registro, respeite a visibilidade do papel e acrescente um caso em `tests/chat_eval/cases.py`. Números, citações e ação sugerida são conferidos por código (`service.py`).
+- **Relatórios** são a visão do corpo diretivo (sem achados aguardando validação). Rodapé de IA em toda página; competência só fecha com a fila daquele mês vazia.
 
 ## Status dos marcos
 
@@ -101,7 +109,7 @@ make accuracy      # relatório de acurácia por campo → docs/extraction_accur
 - [x] **Marco 2 — Ingestão e extração** (05/11/2026): upload, e-mail (.eml), OFX, CSV, CNAB 240/400 (Itaú, Bradesco, BB), Docling + LLM com confiança por campo, fila de exceções com tela de correção, corpus de 30 documentos e relatório de acurácia.
 - [x] **Marco 3 — Enriquecimento, casamento e regras** (05/11/2026): BrasilAPI com cache, índices reais do BCB, casamento documento ↔ despesa ↔ extrato ↔ contrato com fila para ambiguidades, as 12 regras com testes positivo/negativo, casos plantados no seed e teste de aceite exato.
 - [x] **Marco 4 — Achados, roteamento e telas** (05/11/2026): explicações por IA com validação numérica, decisões e trilha, telas do síndico e da administradora no Design System v1.0 (tema escuro), Playwright dos 4 fluxos.
-- [ ] Marco 5 — Chat e relatório
+- [x] **Marco 5 — Chat e relatório** (05/11/2026): busca híbrida (embeddings locais + texto completo) em contratos, convenção e atas; chat com Claude Agent SDK e 9 ferramentas de leitura, citações e ação sugerida conferidas por código; avaliação com 33 casos; relatório PDF/XLSX, trilha em PDF e fechamento de competência com fila vazia.
 - [ ] Marco 6 — Prontidão para piloto
 
 ### Pendências conhecidas
@@ -110,5 +118,5 @@ make accuracy      # relatório de acurácia por campo → docs/extraction_accur
 - Layouts CNAB não validados com arquivo real de banco (D28).
 - R04 e R07 (parte por IA) só são avaliadas de verdade com chave de API; hoje são testadas com respostas de modelo simuladas.
 - Sem chave de API, as explicações ficam no texto determinístico da regra (a reescrita por IA roda quando há chave).
-- Relatório PDF/XLSX e exportação da trilha: Marco 5.
-- Botão "Pergunte ao CondoOS" e "Baixar relatório em PDF" aparecem desabilitados até os Marcos 5.
+- **Avaliação do chat ao vivo não rodada**: sem chave de API, o chat responde 503 e só o gabarito da avaliação é testado. Rodar `make chat-eval` quando houver chave (aceite: ≥ 90%, zero vazamento).
+- O executável do Claude Code embutido no `claude-agent-sdk` segue termos comerciais da Anthropic (D54): revisar antes do piloto.

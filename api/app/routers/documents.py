@@ -6,6 +6,7 @@ from datetime import datetime
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, status
+from fastapi.responses import RedirectResponse
 from pydantic import BaseModel
 from sqlalchemy import select
 
@@ -127,3 +128,19 @@ async def get_document(
         field_confidence=doc.field_confidence,
         file_url=url,
     )
+
+
+@router.get("/{document_id}/file", response_class=RedirectResponse, status_code=307)
+async def open_document_file(
+    condominium_id: uuid.UUID, document_id: uuid.UUID, access: CanView, db: DbSession
+) -> RedirectResponse:
+    """Open the original file (used by chat citations): a short-lived storage link."""
+    doc = await db.scalar(
+        select(Document).where(
+            Document.id == document_id, Document.condominium_id == access.condominium_id
+        )
+    )
+    if doc is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Documento não encontrado.")
+    url = await asyncio.to_thread(get_storage().presigned_url, doc.storage_key)
+    return RedirectResponse(url, status_code=307)

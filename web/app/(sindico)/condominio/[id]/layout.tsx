@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { type ReactNode, Suspense } from "react";
 
 import { AskButton } from "@/components/AskButton";
 import { BottomTabs } from "@/components/BottomTabs";
@@ -24,7 +24,9 @@ export default async function SindicoLayout({
         <LogoutButton className="text-[13px] text-fg-2 hover:text-fg" />
       </header>
       <main className="space-y-5 px-4 pt-3">{children}</main>
-      <AskButton />
+      <Suspense fallback={null}>
+        <AskButton condominiumId={id} />
+      </Suspense>
       <BottomTabs condominiumId={id} />
     </div>
   );

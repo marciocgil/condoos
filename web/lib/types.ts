@@ -236,3 +236,47 @@ export interface UploadResult {
   duplicate: boolean;
   error: string | null;
 }
+
+export interface ChatCitation {
+  ref: string;
+  kind: "achado" | "despesa" | "contrato" | "documento" | "movimento" | "fornecedor" | "resumo";
+  id: string;
+  label: string;
+}
+
+export interface SuggestedAction {
+  tipo: "abrir_achado" | "ver_contrato" | "ver_despesas";
+  ref: string | null;
+  id: string | null;
+  rotulo: string | null;
+}
+
+export interface ChatMessage {
+  id: string;
+  role: "user" | "assistant";
+  content: string;
+  citations: ChatCitation[];
+  suggested_action: SuggestedAction | null;
+  created_at: string;
+}
+
+export interface ChatScreen {
+  screen: "resumo" | "achados" | "achado" | "contratos" | "historico" | "carteira" | "outra";
+  finding_id?: string;
+  competence?: string;
+}
+
+export interface MonthlyReport {
+  competence: string;
+  status: "aberta" | "fechada";
+  closed_at: string | null;
+  published_at: string | null;
+  findings: number;
+}
+
+export interface ClosingStatus {
+  competence: string;
+  status: "aberta" | "fechada";
+  pending: { documentos: number; casamentos: number; achados_graves: number };
+  can_close: boolean;
+}

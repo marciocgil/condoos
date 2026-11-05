@@ -195,3 +195,48 @@ O motor é idempotente, então reavaliar não duplica achados.
 **D50 — Valor em risco no Resumo.** Soma os achados do mês que não foram ignorados nem descartados. A Carteira soma os abertos (aguardando validação, publicados e contestados).
 
 **D51 — Testes E2E em série** (`workers: 1`). Vários testes entram como o mesmo usuário pela caixa compartilhada do Mailpit; em paralelo, um pegava o link de uso único do outro. O teste "gerente valida achado grave" usa um dos 3 graves do seed e, quando não sobra nenhum, é pulado com a instrução `make reset && make up`.
+
+## Marco 5 — Chat e relatório
+
+**D52 — Embeddings locais com `paraphrase-multilingual-MiniLM-L12-v2` via fastembed.**
+- fastembed (Apache-2.0) roda o modelo em ONNX (onnxruntime, MIT), sem PyTorch na imagem da API. O modelo (Apache-2.0, 384 dimensões, multilíngue) vai embutido nas imagens (`python -m app.chat.warmup`).
+- Substitui o e5-small da D1: o MiniLM roda em ONNX pelo fastembed, sem PyTorch na imagem da API, e não exige os prefixos "query:"/"passage:" do e5. A imagem fica bem menor que o ~1 GB estimado na D1.
+- Nenhum texto de documento sai da infraestrutura para gerar embeddings.
+- `EMBEDDINGS_ENABLED=false` (testes) deixa a coluna `embedding` nula e a busca fica só por texto.
+
+**D53 — Busca híbrida nos documentos** (`app/chat/search.py`).
+- Pontuação = 0,5 × similaridade de cosseno + 0,5 × `ts_rank_cd` do texto completo em português (consulta com OU entre as palavras).
+- Só a busca vetorial errou 2 de 3 perguntas de teste ("multa de rescisão da portaria" trazia a cláusula de reajuste de outro contrato); só o texto completo perde paráfrases.
+- Indexados: contratos, convenção e atas, em trechos de cerca de 900 caracteres com 150 de sobreposição. O job `document.index` roda após a extração e é idempotente.
+- O seed traz convenção, ata e o texto de cada contrato (fictícios), ligados a `contract.source_document_id`.
+
+**D54 — Agente de chat com o Claude Agent SDK** (`app/chat/agent.py`).
+- Só as 9 ferramentas de leitura de `app/chat/tools.py`, num servidor MCP no próprio processo. Todas as ferramentas nativas (arquivos, shell, web) desligadas (`tools=[]`), sem configurações de projeto, numa pasta temporária vazia.
+- O condomínio não é parâmetro de nenhuma ferramenta: vem da sessão. A transação da pergunta tem o RLS restrito a esse único condomínio, inclusive para o gerente que tem vários.
+- Modelo de raciocínio; até `CHAT_MAX_TURNS` turnos e `CHAT_MAX_BUDGET_USD` por pergunta; o custo entra em `llm_calls` (`purpose=chat`) e no orçamento mensal do condomínio.
+- Licença: o pacote `claude-agent-sdk` é MIT, mas inclui o executável do Claude Code (cerca de 320 MB), distribuído sob os termos comerciais da Anthropic. É o componente indicado pela especificação; fica registrado para a revisão jurídica antes do piloto.
+- Sem chave de API, o chat responde 503 com mensagem em português; o resto do produto funciona.
+
+**D55 — Verificações do chat por código** (`app/chat/service.py`).
+- Todo número da resposta tem de aparecer nas saídas das ferramentas daquela pergunta (ou na própria pergunta); inteiros de 0 a 31 são livres (dias, meses, contagens).
+- Citações só valem se a ferramenta devolveu aquele `ref` na mesma pergunta; as demais são descartadas.
+- Ação sugerida só de uma lista fechada (`abrir_achado`, `ver_contrato`, `ver_despesas`) e apontando para um registro visto.
+- Palavras proibidas derrubam a resposta.
+- Se a resposta falhar, há uma segunda tentativa com o motivo; se falhar de novo, o usuário recebe "Não consegui confirmar esta resposta…" em vez de números não verificados.
+- O histórico é por usuário e condomínio; as 6 últimas mensagens vão como contexto, e os dados são consultados de novo a cada pergunta.
+
+**D56 — Avaliação do chat** (`api/tests/chat_eval/`).
+- 33 perguntas sobre o seed, em 8 tipos: fatos, documentos, contexto de tela, papel, outro condomínio, dado inexistente, pedido de escrita e dúvida jurídica.
+- Os valores esperados não são fixos no código: cada caso os lê do seed pelas mesmas ferramentas do agente. Um teste rápido garante que todos resolvem.
+- O teste ao vivo (`slow`, exige chave) passa pela API, corrige por regras e grava `docs/chat_eval.md`. Aceite: ≥ 90% e nenhum vazamento entre condomínios.
+
+**D57 — Relatórios** (`app/reports/`).
+- O relatório é a visão do corpo diretivo: não inclui achados aguardando validação nem descartados.
+- PDF com ReportLab (BSD), em layout claro para impressão: o tema escuro do DS é de tela. O rodapé com o aviso de IA vai em toda página (desenhado no canvas) e é conferido por teste em cada página.
+- XLSX com openpyxl (MIT): o aviso vai na primeira linha de cada aba e no rodapé de impressão.
+- Competência aberta: o download é uma prévia gerada na hora e marcada como tal. Competência fechada: serve o arquivo guardado no fechamento, o que foi enviado ao síndico.
+
+**D58 — Fechamento da competência exige fila vazia daquele condomínio e daquele mês.**
+- Entram documentos em revisão, casamentos ambíguos abertos e achados graves aguardando validação.
+- O mês de um documento vem da competência, da emissão ou do vencimento extraídos. Documento ou casamento sem mês identificável bloqueia: fechar um mês com pendência que pode ser dele é o erro pior.
+- Só o gerente fecha. O fechamento gera PDF e XLSX, guarda em `cond/<id>/reports/`, marca `published_at` (status "Enviado" na Carteira) e registra auditoria. Não reabre pelo sistema.

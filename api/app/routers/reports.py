@@ -130,7 +130,8 @@ async def _report_file(db: DbSession, access: CondoAccess, month: date, ext: str
     report = await build_month_report(db, access.condominium_id, month)
     render = month_report_pdf if ext == "pdf" else month_report_xlsx
     body = await asyncio.to_thread(render, report)
-    return _file(body, media, f"previa-relatorio-{slug}-{month:%Y-%m}.{ext}")
+    prefix = "relatorio" if comp.status == CompetenceStatus.FECHADA.value else "previa-relatorio"
+    return _file(body, media, f"{prefix}-{slug}-{month:%Y-%m}.{ext}")
 
 
 @router.get("/reports/{month}.pdf")

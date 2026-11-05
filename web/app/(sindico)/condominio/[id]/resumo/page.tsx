@@ -111,14 +111,23 @@ export default async function ResumoPage({
         <Link href={`/condominio/${id}/enviar`} className={buttonClass("secondary")}>
           <Upload size={16} aria-hidden /> Enviar documentos
         </Link>
-        <button
-          type="button"
-          disabled
-          className={buttonClass("secondary")}
-          title="O relatório em PDF chega no Marco 5"
-        >
-          <Download size={16} aria-hidden /> Baixar relatório em PDF
-        </button>
+        {summary.competence ? (
+          <a
+            href={`/api/condominiums/${id}/reports/${competenceParam(summary.competence)}.pdf`}
+            className={buttonClass("secondary")}
+            title={
+              summary.competence_status === "fechada"
+                ? "Relatório do mês"
+                : "Prévia: a competência ainda está aberta"
+            }
+          >
+            <Download size={16} aria-hidden /> Baixar relatório em PDF
+          </a>
+        ) : (
+          <button type="button" disabled className={buttonClass("secondary")}>
+            <Download size={16} aria-hidden /> Baixar relatório em PDF
+          </button>
+        )}
       </div>
     </>
   );
