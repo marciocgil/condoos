@@ -71,3 +71,8 @@ def presigned_get_url(key: str) -> str:
         Params={"Bucket": s.s3_bucket, "Key": key},
         ExpiresIn=s.s3_presign_ttl_seconds,
     )
+
+
+def delete_object(key: str) -> None:
+    """Idempotent: deleting a missing key is not an error in S3."""
+    s3_client().delete_object(Bucket=get_settings().s3_bucket, Key=key)

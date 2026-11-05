@@ -8,6 +8,7 @@ from app.config import get_settings
 
 class ObjectStorage(Protocol):
     def put(self, key: str, body: bytes, content_type: str) -> None: ...
+    def delete(self, key: str) -> None: ...
     def get(self, key: str) -> bytes: ...
     def presigned_url(self, key: str) -> str: ...
 
@@ -22,6 +23,11 @@ class S3Storage:
         from app.storage.s3 import get_object
 
         return get_object(key)
+
+    def delete(self, key: str) -> None:
+        from app.storage.s3 import delete_object
+
+        delete_object(key)
 
     def presigned_url(self, key: str) -> str:
         from app.storage.s3 import presigned_get_url
@@ -38,6 +44,9 @@ class MemoryStorage:
 
     def get(self, key: str) -> bytes:
         return self.objects[key][0]
+
+    def delete(self, key: str) -> None:
+        self.objects.pop(key, None)
 
     def presigned_url(self, key: str) -> str:
         return f"memory://{key}"

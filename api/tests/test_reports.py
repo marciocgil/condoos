@@ -130,3 +130,22 @@ async def test_close_requires_empty_queue_then_stores_report(
     assert comp is not None and comp.report_pdf_key and comp.report_xlsx_key
     assert comp.report_pdf_key.startswith(f"cond/{mirante}/")
     assert audit is not None
+
+
+async def test_report_download_is_audited(
+    client: httpx.AsyncClient, mailer: MemoryMailer, admin_engine: AsyncEngine
+) -> None:
+    mirante = await condo_id(admin_engine, "mirante-do-vale")
+    await login(client, mailer, SINDICA_MIRANTE)
+    assert (await client.get(f"/condominiums/{mirante}/reports/2026-09.xlsx")).status_code == 200
+    async with sessionmaker_for(admin_engine)() as s:
+        audit = await s.scalar(
+            select(AuditLog)
+            .where(AuditLog.action == "report.exported", AuditLog.condominium_id == mirante)
+            .order_by(AuditLog.created_at.desc())
+        )
+    assert audit is not None and audit.details == {
+        "month": "2026-09",
+        "format": "xlsx",
+        "status": "fechada",
+    }

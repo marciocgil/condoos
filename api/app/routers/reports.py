@@ -122,6 +122,15 @@ async def list_reports(
 async def _report_file(db: DbSession, access: CondoAccess, month: date, ext: str) -> Response:
     comp = await _competence(db, access, month)
     slug = await _slug(db, access)
+    await record_audit(
+        db,
+        action="report.exported",
+        object_type="competence",
+        object_id=comp.id,
+        actor_user_id=access.user_id,
+        condominium_id=access.condominium_id,
+        details={"month": f"{month:%Y-%m}", "format": ext, "status": comp.status},
+    )
     media = PDF if ext == "pdf" else XLSX
     stored = comp.report_pdf_key if ext == "pdf" else comp.report_xlsx_key
     if comp.status == CompetenceStatus.FECHADA.value and stored:

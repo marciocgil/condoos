@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.chat.search import INDEX_JOB, index_job
 from app.config import get_settings
 from app.core.jobs import Handler, run_one
+from app.core.retention import RETENTION_JOB, purge_job
 from app.db.session import get_worker_engine, sessionmaker_for
 from app.enrichment.indices import refresh_indices_job
 from app.enrichment.suppliers import enrich_job
@@ -42,11 +43,13 @@ HANDLERS: dict[str, Handler] = {
     "rules.evaluate": evaluate_job,
     "finding.explain": explain_job,
     INDEX_JOB: index_job,
+    RETENTION_JOB: purge_job,
 }
 
 
 async def _schedule_daily(maker: Any) -> None:
-    """Once a day: refresh price indices from the Banco Central (deduplicated by date)."""
+    """Once a day (deduplicated by date): refresh price indices from the Banco Central and
+    apply the document retention policy."""
     from datetime import date
 
     from app.core.jobs import enqueue
@@ -57,6 +60,12 @@ async def _schedule_daily(maker: Any) -> None:
             "indices.refresh",
             {"months": 24},
             dedupe_key=f"indices:{date.today().isoformat()}",
+        )
+        await enqueue(
+            session,
+            RETENTION_JOB,
+            {},
+            dedupe_key=f"retention:{date.today().isoformat()}",
         )
 
 
