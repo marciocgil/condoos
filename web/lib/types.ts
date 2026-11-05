@@ -54,7 +54,13 @@ export interface Contract {
 
 export type Severity = "alta" | "media" | "baixa";
 export type FindingStatus =
-  "aguardando_validacao" | "publicado" | "confirmado" | "contestado" | "ignorado" | "descartado";
+  | "aguardando_validacao"
+  | "publicado"
+  | "confirmado"
+  | "contestado"
+  | "ignorado"
+  | "descartado"
+  | "superado";
 
 export interface Finding {
   id: string;

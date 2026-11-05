@@ -21,6 +21,8 @@ export const STATUS_LABEL: Record<string, string> = {
   contestado: "Contestado",
   ignorado: "Ignorado",
   descartado: "Descartado",
+  // The rule stopped detecting it after new data, before anyone acted (D61).
+  superado: "Superado por novos dados",
 };
 
 export const ACTION_LABEL: Record<string, { verb: string; button: string }> = {

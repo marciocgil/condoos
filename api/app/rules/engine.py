@@ -16,6 +16,7 @@ from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.audit import record_audit
 from app.core.jobs import enqueue
 from app.db.enums import FindingStatus, Severity
 from app.db.models import (
@@ -25,10 +26,12 @@ from app.db.models import (
     Competence,
     Condominium,
     Contract,
+    Decision,
     Document,
     Expense,
     ExpenseDocument,
     Finding,
+    FindingComment,
     Supplier,
 )
 from app.enrichment.indices import load_index_table
@@ -201,8 +204,11 @@ async def persist(
                 to_explain.append(existing.id)
             for key, value in values.items():
                 setattr(existing, key, value)
+            if existing.status == FindingStatus.SUPERADO.value:  # detected again
+                existing.status = initial_status(d.severity).value
             updated += 1
     await session.flush()
+    await supersede_stale(session, ctx, drafts)
     for finding_id in to_explain:
         await enqueue(
             session,
@@ -211,6 +217,49 @@ async def persist(
             condominium_id=ctx.condominium.id,
         )
     return created, updated
+
+
+async def supersede_stale(
+    session: AsyncSession, ctx: RuleContext, drafts: list[FindingDraft]
+) -> int:
+    """Findings of this month that the rules no longer detect and no person touched become
+    ``superado`` (D61). Rules with a subject left "not evaluated" keep their findings: no
+    evaluation is not the same as a negative one."""
+    produced = {d.subject_key for d in drafts}
+    unsure = {key.split(":")[0] for key in ctx.not_evaluated}
+    acted = select(Decision.finding_id).where(Decision.condominium_id == ctx.condominium.id)
+    commented = select(FindingComment.finding_id).where(
+        FindingComment.condominium_id == ctx.condominium.id
+    )
+    stale = list(
+        await session.scalars(
+            select(Finding).where(
+                Finding.condominium_id == ctx.condominium.id,
+                Finding.competence == ctx.competence,
+                Finding.status.in_(
+                    [FindingStatus.PUBLICADO.value, FindingStatus.AGUARDANDO_VALIDACAO.value]
+                ),
+                Finding.dedupe_key.not_in(produced) if produced else Finding.id.is_not(None),
+                Finding.rule_code.not_in(unsure) if unsure else Finding.id.is_not(None),
+                Finding.id.not_in(acted),
+                Finding.id.not_in(commented),
+            )
+        )
+    )
+    for f in stale:
+        previous = f.status
+        f.status = FindingStatus.SUPERADO.value
+        await record_audit(
+            session,
+            action="finding.superseded",
+            object_type="finding",
+            object_id=f.id,
+            condominium_id=ctx.condominium.id,
+            details={"rule": f.rule_code, "from": previous},
+        )
+    if stale:
+        await session.flush()
+    return len(stale)
 
 
 async def ensure_competence(session: AsyncSession, condominium_id: uuid.UUID, month: date) -> None:

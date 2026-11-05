@@ -53,10 +53,15 @@ accuracy: ## Per-field extraction accuracy over the corpus (writes docs/extracti
 chat-eval: ## Live chat evaluation (needs ANTHROPIC_API_KEY; writes docs/chat_eval.md)
 	$(API) uv run pytest -m slow tests/chat_eval -q
 
+PILOT_DB ?= postgresql+asyncpg://postgres:postgres@localhost:5432/condoos
+
+pilot: ## Milestone 6 acceptance: a new condominium from upload to report, timed (after reset + up)
+	$(API) PYTHONPATH=. uv run python scripts/pilot_run.py --admin-url $(PILOT_DB)
+
 migrate: ## Apply migrations to the database in DATABASE_ADMIN_URL
 	$(API) uv run alembic upgrade head
 
 seed: ## Load the fictitious seed into the database in DATABASE_ADMIN_URL
 	$(API) uv run python -m app.seed
 
-.PHONY: help up down reset logs install test coverage test-slow e2e lint format corpus accuracy chat-eval migrate seed
+.PHONY: help up down reset logs install test coverage test-slow e2e lint format corpus accuracy chat-eval pilot migrate seed

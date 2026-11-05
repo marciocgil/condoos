@@ -62,10 +62,14 @@ class Ctx:
     suppliers: dict[str, Supplier]
 
 
-def load_ctx() -> Ctx:
+def load_ctx(as_condo: tuple[str, str] | None = None) -> Ctx:
+    """Suppliers of the seed; the documents are addressed to Jardim das Acácias, or to another
+    (fictitious) condominium given as (name, cnpj) — used by the pilot run."""
     seed = build_seed()
     objs = [o for phase in seed.objects for o in phase]
     condo = next(o for o in objs if isinstance(o, Condominium) and o.slug == "jardim-das-acacias")
+    if as_condo is not None:
+        condo.name, condo.cnpj = as_condo
     suppliers = {s.trade_name or s.legal_name: s for s in objs if isinstance(s, Supplier)}
     return Ctx(condo=condo, suppliers=suppliers)
 
@@ -430,8 +434,8 @@ def degrade(pdf_bytes: bytes, angle: float, blur: float, scale: float, quality: 
 # --------------------------------------------------------------------------- build
 
 
-def build() -> dict[str, dict[str, Any]]:
-    ctx = load_ctx()
+def build(out: Path = OUT, as_condo: tuple[str, str] | None = None) -> dict[str, dict[str, Any]]:
+    ctx = load_ctx(as_condo)
     s = ctx.suppliers
     truth: dict[str, dict[str, Any]] = {}
     files: dict[str, bytes] = {}
@@ -605,10 +609,10 @@ def build() -> dict[str, dict[str, Any]]:
         )
 
     assert len(files) == 30, len(files)
-    OUT.mkdir(parents=True, exist_ok=True)
+    out.mkdir(parents=True, exist_ok=True)
     for name, data in files.items():
-        (OUT / name).write_bytes(data)
-    (OUT / "ground_truth.json").write_text(
+        (out / name).write_bytes(data)
+    (out / "ground_truth.json").write_text(
         json.dumps(
             {"condominium_cnpj": ctx.condo.cnpj, "documents": truth},
             ensure_ascii=False,

@@ -73,6 +73,9 @@ class FindingStatus(StrEnum):
     CONTESTADO = "contestado"
     IGNORADO = "ignorado"
     DESCARTADO = "descartado"
+    # The rule stopped detecting it after new data (e.g. the missing note arrived) before any
+    # person acted on it (D61). Kept for the record; not shown to the board, not at risk.
+    SUPERADO = "superado"
 
 
 class DecisionAction(StrEnum):

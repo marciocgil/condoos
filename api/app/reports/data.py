@@ -42,6 +42,7 @@ STATUS_LABEL = {
     "contestado": "Contestado",
     "ignorado": "Ignorado",
     "descartado": "Descartado",
+    "superado": "Superado por novos dados",
 }
 ACTION_LABEL = {
     "confirmar": "Confirmado",
@@ -354,7 +355,12 @@ async def build_month_report(
     open_ = [
         f
         for f in finding_rows
-        if f.status not in (FindingStatus.IGNORADO.value, FindingStatus.DESCARTADO.value)
+        if f.status
+        not in (
+            FindingStatus.IGNORADO.value,
+            FindingStatus.DESCARTADO.value,
+            FindingStatus.SUPERADO.value,
+        )
     ]
     status = comp.status if comp else "aberta"
     return MonthReport(

@@ -269,7 +269,12 @@ async def month_summary(
     open_ = [
         f
         for f in findings
-        if f.status not in (FindingStatus.IGNORADO.value, FindingStatus.DESCARTADO.value)
+        if f.status
+        not in (
+            FindingStatus.IGNORADO.value,
+            FindingStatus.DESCARTADO.value,
+            FindingStatus.SUPERADO.value,
+        )
     ]
     expenses = list(
         await db.scalars(

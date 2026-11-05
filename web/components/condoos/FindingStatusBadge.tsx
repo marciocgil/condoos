@@ -1,4 +1,12 @@
-import { CheckCircle2, Clock, EyeOff, MessageSquareWarning, Sparkles, XCircle } from "lucide-react";
+import {
+  CheckCircle2,
+  Clock,
+  EyeOff,
+  MessageSquareWarning,
+  RefreshCcw,
+  Sparkles,
+  XCircle,
+} from "lucide-react";
 
 import { Badge, type BadgeTone } from "@/components/ui/Badge";
 import { STATUS_LABEL } from "@/lib/labels";
@@ -11,6 +19,7 @@ const TONE: Record<FindingStatus, BadgeTone> = {
   contestado: "info",
   ignorado: "neutral",
   descartado: "neutral",
+  superado: "neutral",
 };
 const ICON: Record<FindingStatus, React.ReactNode> = {
   aguardando_validacao: <Clock size={12} />,
@@ -19,6 +28,7 @@ const ICON: Record<FindingStatus, React.ReactNode> = {
   contestado: <MessageSquareWarning size={12} />,
   ignorado: <EyeOff size={12} />,
   descartado: <XCircle size={12} />,
+  superado: <RefreshCcw size={12} />,
 };
 
 export function FindingStatusBadge({ status }: { status: FindingStatus }) {
