@@ -1,0 +1,88 @@
+# Local development stack. `cp .env.example .env` is optional: every value has a dev default.
+# Object storage uses SeaweedFS (Apache-2.0) instead of MinIO — see docs/decisions.md (D8).
+
+x-api-env: &api-env
+  ENVIRONMENT: ${ENVIRONMENT:-development}
+  DATABASE_URL: postgresql+asyncpg://condoos_app:${DB_APP_PASSWORD:-condoos_app}@postgres:5432/condoos
+  DATABASE_WORKER_URL: postgresql+asyncpg://condoos_worker:${DB_WORKER_PASSWORD:-condoos_worker}@postgres:5432/condoos
+  DATABASE_ADMIN_URL: postgresql+asyncpg://postgres:${POSTGRES_PASSWORD:-postgres}@postgres:5432/condoos
+  WEB_BASE_URL: ${WEB_BASE_URL:-http://localhost:3000}
+  MAILER: smtp
+  SMTP_HOST: mailpit
+  SMTP_PORT: 1025
+  S3_ENDPOINT_URL: http://s3:8333
+  S3_PUBLIC_ENDPOINT_URL: ${S3_PUBLIC_ENDPOINT_URL:-http://localhost:8333}
+  S3_BUCKET: ${S3_BUCKET:-condoos-documents}
+  S3_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID:-condoos}
+  S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY:-condoos-secret}
+  ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+  CLAUDE_MODEL_EXTRACTION: ${CLAUDE_MODEL_EXTRACTION:-claude-sonnet-5-5}
+  CLAUDE_MODEL_REASONING: ${CLAUDE_MODEL_REASONING:-claude-opus-5-5}
+  CLAUDE_MODEL_FAST: ${CLAUDE_MODEL_FAST:-claude-haiku-5-5}
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_DB: condoos
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+    ports: ["${POSTGRES_PORT:-5432}:5432"]
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d condoos"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  s3:
+    image: chrislusf/seaweedfs:4.50
+    command: server -dir=/data -s3 -s3.port=8333 -master.volumeSizeLimitMB=256
+    environment:
+      AWS_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID:-condoos}
+      AWS_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY:-condoos-secret}
+    ports: ["${S3_PORT:-8333}:8333"]
+    volumes: [s3data:/data]
+
+  mailpit:
+    image: axllent/mailpit:v1.27
+    ports: ["${MAILPIT_UI_PORT:-8025}:8025", "${MAILPIT_SMTP_PORT:-1025}:1025"]
+
+  api:
+    build: ./api
+    command: api
+    environment:
+      <<: *api-env
+      SEED_ON_START: ${SEED_ON_START:-true}
+    ports: ["${API_PORT:-8000}:8000"]
+    depends_on:
+      postgres: { condition: service_healthy }
+      s3: { condition: service_started }
+      mailpit: { condition: service_started }
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 3s
+      timeout: 3s
+      retries: 40
+
+  worker:
+    build: ./api
+    command: worker
+    environment: *api-env
+    depends_on:
+      api: { condition: service_healthy }  # api runs the migrations
+
+  web:
+    build:
+      context: ./web
+      args:
+        API_INTERNAL_URL: http://api:8000
+    environment:
+      API_INTERNAL_URL: http://api:8000
+    ports: ["${WEB_PORT:-3000}:3000"]
+    depends_on:
+      api: { condition: service_healthy }
+
+volumes:
+  pgdata:
+  s3data:

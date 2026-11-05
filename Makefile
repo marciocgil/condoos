@@ -1,0 +1,50 @@
+# CondoOS — common commands. Run `make help`.
+.DEFAULT_GOAL := help
+API := cd api &&
+WEB := cd web &&
+
+help: ## List commands
+	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  %-14s %s\n", $$1, $$2}'
+
+up: ## Build and start the whole stack (api, worker, web, postgres, s3, mailpit)
+	docker compose up -d --build --wait
+
+down: ## Stop the stack
+	docker compose down
+
+reset: ## Stop the stack and delete its data volumes
+	docker compose down -v
+
+logs: ## Follow logs
+	docker compose logs -f api worker web
+
+install: ## Install backend and frontend dependencies locally
+	$(API) uv sync
+	$(WEB) npm ci
+
+test: ## Backend tests (needs a local PostgreSQL 16 + pgvector; see README)
+	$(API) uv run pytest
+
+test-slow: ## Backend tests including the slow ones (chat evaluation, real LLM)
+	$(API) uv run pytest -m slow
+
+e2e: ## Playwright tests against the running stack
+	docker compose exec -T postgres psql -U postgres condoos -qc \
+	  "UPDATE magic_link_token SET created_at = created_at - interval '2 hours'"
+	$(WEB) npx playwright test
+
+lint: ## Linters, formatters and type checks (backend + frontend)
+	$(API) uv run ruff check app tests && uv run black --check app tests && uv run mypy app tests
+	$(WEB) npm run lint && npm run typecheck && npm run format:check
+
+format: ## Auto-format
+	$(API) uv run ruff check --fix app tests && uv run black app tests
+	$(WEB) npm run format
+
+migrate: ## Apply migrations to the database in DATABASE_ADMIN_URL
+	$(API) uv run alembic upgrade head
+
+seed: ## Load the fictitious seed into the database in DATABASE_ADMIN_URL
+	$(API) uv run python -m app.seed
+
+.PHONY: help up down reset logs install test test-slow e2e lint format migrate seed

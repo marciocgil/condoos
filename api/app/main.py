@@ -1,0 +1,42 @@
+"""FastAPI application entrypoint."""
+
+import logging
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
+
+from fastapi import FastAPI
+
+from app.config import get_settings
+from app.routers import auth, condominiums, me
+
+logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
+logger = logging.getLogger("condoos")
+
+
+@asynccontextmanager
+async def lifespan(_: FastAPI) -> AsyncIterator[None]:
+    settings = get_settings()
+    if settings.environment != "test":
+        from app.storage.s3 import ensure_bucket
+
+        try:
+            ensure_bucket()
+        except Exception:  # storage may start after the API; uploads will retry
+            logger.warning("object storage not reachable at startup")
+    yield
+
+
+def create_app() -> FastAPI:
+    app = FastAPI(title="CondoOS API", version="0.1.0", lifespan=lifespan)
+    app.include_router(auth.router)
+    app.include_router(me.router)
+    app.include_router(condominiums.router)
+
+    @app.get("/health", tags=["health"])
+    async def health() -> dict[str, str]:
+        return {"status": "ok"}
+
+    return app
+
+
+app = create_app()

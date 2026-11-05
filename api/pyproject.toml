@@ -1,0 +1,75 @@
+[project]
+name = "condoos-api"
+version = "0.1.0"
+description = "CondoOS — agente auditor de despesas de condomínios (API e worker)"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.32",
+    "pydantic>=2.9",
+    "pydantic-settings>=2.6",
+    "email-validator>=2.2",
+    "sqlalchemy[asyncio]>=2.0.36",
+    "asyncpg>=0.30",
+    "alembic>=1.14",
+    "pgvector>=0.3",
+    "boto3>=1.35",
+    "aiosmtplib>=3.0",
+    "httpx>=0.28",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3",
+    "pytest-asyncio>=0.24",
+    "pytest-cov>=6.0",
+    "mypy>=1.13",
+    "ruff>=0.8",
+    "black>=24.10",
+    "boto3-stubs[s3]>=1.35",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["app"]
+
+[tool.black]
+line-length = 100
+target-version = ["py312"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "N", "S", "SIM", "RUF", "ASYNC"]
+ignore = ["E501", "S101", "B008", "RUF001", "RUF002", "RUF003"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S105", "S106", "S311"]
+"app/seed/**" = ["S311"]
+"app/db/migrations/**" = ["E501", "N999", "S608"]  # DDL built from our own settings
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+plugins = ["pydantic.mypy"]
+exclude = ["app/db/migrations/"]
+
+[[tool.mypy.overrides]]
+module = ["pgvector.*", "aiosmtplib.*"]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "session"
+asyncio_default_test_loop_scope = "session"
+testpaths = ["tests"]
+pythonpath = ["."]
+markers = [
+    "slow: testes lentos (avaliação do chat, LLM real)",
+]
+addopts = "-m 'not slow'"
