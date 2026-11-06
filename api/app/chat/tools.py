@@ -38,7 +38,12 @@ from app.db.models import (
 )
 from app.enrichment.indices import load_index_table
 from app.matching.categories import category_label
-from app.rules.contracts import anniversaries, value_at
+from app.rules.contracts import (
+    amendments_by_contract,
+    anniversaries,
+    contract_value_at,
+    value_at,
+)
 
 MAX_ROWS = 30
 
@@ -380,6 +385,7 @@ class ChatTools:
             return {"encontrado": False, "motivo": "nenhum contrato encontrado neste condomínio"}
         names = await self._supplier_names({c.supplier_id for c in contracts})
         table = await load_index_table(self.session)
+        amendments = await amendments_by_contract(self.session, [c.id for c in contracts])
         today = await self._default_month() or date.today().replace(day=1)
         out = []
         for c in contracts:
@@ -401,14 +407,8 @@ class ChatTools:
                         ),
                     }
                 )
-            current = value_at(
-                c.monthly_value,
-                c.adjustment_index,
-                c.adjustment_base_month,
-                c.start_date,
-                today,
-                table,
-            )
+            mine = amendments.get(c.id, [])
+            current = contract_value_at(c, mine, today, table)
             item: dict[str, Any] = {
                 "ref": self._cite("contrato", c.id, f"Contrato {c.object} — {supplier_name}"),
                 "id": str(c.id),
@@ -422,6 +422,15 @@ class ChatTools:
                 "inicio": c.start_date.isoformat(),
                 "fim": c.end_date.isoformat() if c.end_date else None,
                 "reajustes": adjustments,
+                "aditivos": [
+                    {
+                        "vigente_desde": a.effective_date.isoformat(),
+                        "novo_valor_mensal": _money(a.monthly_value),
+                        "novo_fim": a.end_date.isoformat() if a.end_date else None,
+                        "descricao": a.description,
+                    }
+                    for a in mine
+                ],
             }
             if c.source_document_id:
                 doc = await self.session.get(Document, c.source_document_id)
@@ -613,8 +622,8 @@ class ChatTools:
             ),
             ToolSpec(
                 "get_contract",
-                "Contrato por id ou por fornecedor/objeto: valores, reajustes, vigência e "
-                "texto das cláusulas.",
+                "Contrato por id ou por fornecedor/objeto: valores (vigente, com aditivos), "
+                "reajustes, aditivos, vigência e texto das cláusulas.",
                 obj({"id": text, "supplier": text}),
                 self.get_contract,
             ),

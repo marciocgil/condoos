@@ -269,3 +269,9 @@ O motor é idempotente, então reavaliar não duplica achados.
 ## Pós-piloto — lacunas de uso real
 
 **D65 — Registro de aprovações (R12).** A administradora (gerente ou analista; permissão `record_approval`) registra quem aprovou a despesa (conselho, assembleia), a data (nunca futura) e uma observação, opcionalmente ligada à ata enviada. O registro é auditado e reavalia o mês com prioridade; o achado R12 em que ninguém agiu vira "superado" (D61). O corpo diretivo não registra a própria aprovação. A tela fica no detalhe do achado R12.
+
+**D66 — Termos aditivos.** Um documento de contrato cujo título (objeto ou início do texto) diz "aditivo" não vira contrato novo: vira um registro em `contract_amendment` (migração 0008, com RLS) ligado ao contrato do mesmo fornecedor. Guarda a data de efeito, o novo valor mensal, o novo fim e o escopo acrescentado.
+- O contrato guarda os termos originais; o fim da vigência e o escopo passam a refletir o aditivo.
+- R02 e o chat usam o valor do aditivo vigente no mês, e só os reajustes posteriores a ele (o valor do aditivo já inclui os anteriores). As telas de contratos mostram o valor vigente e quantos aditivos há.
+- Sem contrato original cadastrado, ou com mais de um possível do mesmo fornecedor, o aditivo volta para a fila com o motivo; nunca é ligado ao acaso.
+- Limite conhecido: aditivo só de prazo ainda exige o valor mensal na revisão (repita o valor vigente).

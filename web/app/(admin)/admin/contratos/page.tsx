@@ -55,7 +55,12 @@ export default async function ContratosPage() {
             cell: (r) => (
               <>
                 <span className="font-medium">{r.supplier_name}</span>
-                <p className="text-xs text-muted">{r.object}</p>
+                <p className="text-xs text-muted">
+                  {r.object}
+                  {r.amendments
+                    ? ` · ${r.amendments} ${r.amendments === 1 ? "aditivo" : "aditivos"}`
+                    : ""}
+                </p>
               </>
             ),
           },

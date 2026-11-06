@@ -26,6 +26,7 @@ from app.db.models import (
     Competence,
     Condominium,
     Contract,
+    ContractAmendment,
     Decision,
     Document,
     Expense,
@@ -126,6 +127,11 @@ async def build_context(
         select(Approval).where(Approval.condominium_id == condominium_id)
     ):
         approvals[a.expense_id].append(a)
+    amendments: dict[uuid.UUID, list[ContractAmendment]] = defaultdict(list)
+    for m in await session.scalars(
+        select(ContractAmendment).where(ContractAmendment.condominium_id == condominium_id)
+    ):
+        amendments[m.contract_id].append(m)
     return RuleContext(
         session=llm_session if llm_session is not None else session,
         condominium=condo,
@@ -138,6 +144,7 @@ async def build_context(
         documents=dict(docs),
         board=board,
         approvals=dict(approvals),
+        amendments=dict(amendments),
         index_table=await load_index_table(session),
     )
 

@@ -1,7 +1,7 @@
 """R02 — Valor acima do contrato.
 
 Paid value > contract monthly value adjusted by the contract index accumulated up to the
-competence, plus tolerance_pct%. In an adjustment month of an indexed contract, R03 judges
+competence (from the latest amendment in force, D66), plus tolerance_pct%. In an adjustment month of an indexed contract, R03 judges
 the adjustment instead (no double counting). Amount at risk = paid − adjusted value.
 """
 
@@ -11,7 +11,7 @@ from typing import Any, ClassVar
 from app.core.money import brl
 from app.db.enums import Severity
 from app.rules.base import FindingDraft, Rule, RuleContext, contract_evidence, expense_evidence
-from app.rules.contracts import INDEXED, is_anniversary, value_at
+from app.rules.contracts import INDEXED, contract_value_at, is_anniversary, terms_at
 
 
 class AboveContract(Rule):
@@ -31,14 +31,9 @@ class AboveContract(Rule):
                 c.start_date, c.adjustment_base_month, e.competence
             ):
                 continue  # R03
-            expected = value_at(
-                c.monthly_value,
-                c.adjustment_index,
-                c.adjustment_base_month,
-                c.start_date,
-                e.competence,
-                ctx.index_table,
-            )
+            amendments = ctx.amendments.get(c.id, [])
+            expected = contract_value_at(c, amendments, e.competence, ctx.index_table)
+            base_value, _ = terms_at(c, amendments, e.competence)
             if expected is None:
                 ctx.not_evaluated[f"R02:{c.id}"] = "índice do contrato sem valores no período"
                 continue
@@ -61,7 +56,7 @@ class AboveContract(Rule):
                     rule_inputs={
                         "valor_pago": str(e.amount),
                         "valor_contratual_reajustado": str(expected),
-                        "valor_mensal_original": str(c.monthly_value),
+                        "valor_mensal_original": str(base_value),
                         "indice": c.adjustment_index,
                         "diferenca": str(excess),
                         "tolerancia_pct": self.params(ctx)["tolerance_pct"],

@@ -29,7 +29,7 @@ from app.db.models import (
 from app.db.session import DbSession
 from app.metrics import Bucket as MetricBucket
 from app.metrics import compute as compute_metrics
-from app.rules.contracts import anniversaries
+from app.rules.contracts import amendments_by_contract, anniversaries, terms_at
 
 router = APIRouter(prefix="/portfolio", tags=["portfolio"])
 
@@ -81,6 +81,7 @@ class ContractRow(BaseModel):
     adjustment_index: str
     next_adjustment: date | None
     end_date: date | None
+    amendments: int = 0
 
 
 async def _manager_condos(db: DbSession, principal: CurrentPrincipal) -> list[Condominium]:
@@ -218,8 +219,10 @@ async def contracts(db: DbSession, principal: CurrentPrincipal) -> list[Contract
         )
     ).all()
     today = date.today()
+    amendments = await amendments_by_contract(db, [c.id for c, _ in rows])
     out = []
     for c, supplier_name in rows:
+        mine = amendments.get(c.id, [])
         upcoming = [
             a
             for a in anniversaries(
@@ -234,7 +237,7 @@ async def contracts(db: DbSession, principal: CurrentPrincipal) -> list[Contract
                 condominium_name=condos[c.condominium_id],
                 supplier_name=supplier_name,
                 object=c.object,
-                monthly_value=c.monthly_value,
+                monthly_value=terms_at(c, mine, today.replace(day=1))[0],  # in force (D66)
                 adjustment_index=c.adjustment_index,
                 next_adjustment=(
                     upcoming[0]
@@ -242,6 +245,7 @@ async def contracts(db: DbSession, principal: CurrentPrincipal) -> list[Contract
                     else None
                 ),
                 end_date=c.end_date,
+                amendments=len(mine),
             )
         )
     out.sort(key=lambda r: (r.end_date or date.max, r.condominium_name))

@@ -50,6 +50,7 @@ export interface Contract {
   adjustment_base_month: number | null;
   start_date: string;
   end_date: string | null;
+  amendments?: number;
 }
 
 export type Severity = "alta" | "media" | "baixa";
@@ -172,6 +173,7 @@ export interface PortfolioContract {
   adjustment_index: string;
   next_adjustment: string | null;
   end_date: string | null;
+  amendments?: number;
 }
 
 export interface Settings {

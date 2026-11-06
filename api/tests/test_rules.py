@@ -17,6 +17,7 @@ from app.db.models import (
     BoardMember,
     Condominium,
     Contract,
+    ContractAmendment,
     Document,
     Expense,
     Supplier,
@@ -113,6 +114,7 @@ def ctx(
     approvals: dict[uuid.UUID, list[Approval]] | None = None,
     documents: dict[uuid.UUID, list[tuple[str, Document]]] | None = None,
     c: Condominium | None = None,
+    amendments: dict[uuid.UUID, list[ContractAmendment]] | None = None,
 ) -> RuleContext:
     if transactions is None:  # every expense paid on its due date unless told otherwise
         transactions = [debit(e, str(e.amount), e.due_date or e.issue_date) for e in expenses]
@@ -129,6 +131,7 @@ def ctx(
         board=list(board),
         approvals=approvals or {},
         index_table=INDEX,
+        amendments=amendments or {},
     )
 
 
@@ -214,6 +217,45 @@ async def test_r02_value_above_adjusted_contract() -> None:
     high = expense(s, str(expected + dec("1000.00")), contract_id=k.id)
     [f] = await run("R02", ctx([high], suppliers=[s], contracts=[k]))
     assert f.amount_at_risk == dec("1000.00")
+
+
+async def test_r02_uses_the_amendment_in_force() -> None:
+    """D66: a termo aditivo sets a new value from its date; later adjustments apply on it."""
+    s = supplier()
+    k = contract(s)
+    amended = ContractAmendment(
+        id=uuid.uuid4(),
+        contract_id=k.id,
+        effective_date=date(2026, 6, 1),
+        monthly_value=dec("12000.00"),  # scope increase: more cleaning staff
+        scope_items=[],
+        description="1º Termo aditivo",
+    )
+    paid_new_value = expense(s, "12000.00", contract_id=k.id)
+    # Positive without the amendment: 12.000 is far above the adjusted 9.200.
+    [f] = await run("R02", ctx([paid_new_value], suppliers=[s], contracts=[k]))
+    assert f.rule_code == "R02"
+    # Negative with it: the value in force in October is the amended one.
+    found = await run(
+        "R02",
+        ctx([paid_new_value], suppliers=[s], contracts=[k], amendments={k.id: [amended]}),
+    )
+    assert found == []
+    # Positive above the amended value; the inputs cite the value in force.
+    high = expense(s, "13500.00", contract_id=k.id)
+    [f] = await run("R02", ctx([high], suppliers=[s], contracts=[k], amendments={k.id: [amended]}))
+    assert f.amount_at_risk == dec("1500.00")
+    assert f.rule_inputs["valor_mensal_original"] == "12000.00"
+
+
+def test_value_at_skips_adjustments_before_the_amendment() -> None:
+    k = contract(supplier())
+    base = value_at(dec("12000.00"), "IPCA", 1, k.start_date, OCT, INDEX, since=date(2026, 6, 1))
+    assert base == dec("12000.00")  # next anniversary is jan/2027
+    later = value_at(
+        dec("12000.00"), "IPCA", 1, k.start_date, date(2027, 2, 1), INDEX, since=date(2026, 6, 1)
+    )
+    assert later is None or later > dec("12000.00")
 
 
 async def test_r03_adjustment_above_index() -> None:

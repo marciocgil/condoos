@@ -208,6 +208,25 @@ class Contract(IdTimestampMixin, Base):
     )
 
 
+class ContractAmendment(IdTimestampMixin, Base):
+    """A contract amendment (termo aditivo): new value, new end date or extra scope from a date
+    on (D66). The contract keeps its original terms; rules use the terms in force."""
+
+    __tablename__ = "contract_amendment"
+    __table_args__ = (UniqueConstraint("document_id"),)
+
+    condominium_id: Mapped[uuid.UUID] = _uuid_fk("condominium.id")
+    contract_id: Mapped[uuid.UUID] = _uuid_fk("contract.id", ondelete="CASCADE")
+    document_id: Mapped[uuid.UUID | None] = _uuid_fk(
+        "document.id", nullable=True, ondelete="SET NULL"
+    )
+    effective_date: Mapped[date] = mapped_column(Date)
+    monthly_value: Mapped[Decimal | None] = mapped_column(Money, nullable=True)
+    end_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    scope_items: Mapped[list[str]] = mapped_column(Json, default=list)
+    description: Mapped[str] = mapped_column(String(500), default="")
+
+
 # --------------------------------------------------------------------------- documents / money
 
 
@@ -557,6 +576,7 @@ RLS_TABLES: dict[str, str] = {
     "expense": "condominium_id",
     "bank_transaction": "condominium_id",
     "approval": "condominium_id",
+    "contract_amendment": "condominium_id",
     "competence": "condominium_id",
     "finding": "condominium_id",
     "decision": "condominium_id",

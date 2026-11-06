@@ -15,6 +15,7 @@ from app.db.models import (
     BoardMember,
     Condominium,
     Contract,
+    ContractAmendment,
     Document,
     Expense,
     Supplier,
@@ -61,6 +62,7 @@ class RuleContext:
     approvals: dict[uuid.UUID, list[Approval]]
     index_table: dict[str, dict[date, Decimal]]
     not_evaluated: dict[str, str] = field(default_factory=dict)
+    amendments: dict[uuid.UUID, list[ContractAmendment]] = field(default_factory=dict)
 
     @property
     def month_expenses(self) -> list[Expense]:

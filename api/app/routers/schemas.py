@@ -82,6 +82,7 @@ class ContractOut(ORM):
     adjustment_base_month: int | None
     start_date: date
     end_date: date | None
+    amendments: int = 0  # termos aditivos linked to the contract (D66)
 
 
 class CompetenceOut(ORM):

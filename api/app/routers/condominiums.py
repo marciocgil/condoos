@@ -20,6 +20,7 @@ from app.routers.schemas import (
     ContractOut,
     ExpenseOut,
 )
+from app.rules.contracts import amendments_by_contract, terms_at
 
 router = APIRouter(prefix="/condominiums", tags=["condominiums"])
 
@@ -92,9 +93,15 @@ async def list_contracts(condominium_id: uuid.UUID, access: CanView, db: Db) -> 
         .where(Contract.condominium_id == access.condominium_id)
         .order_by(Contract.end_date.nulls_last(), Contract.object)
     )
+    rows_list = list(rows)
+    amendments = await amendments_by_contract(db, [c.id for c, _ in rows_list])
+    today = date.today().replace(day=1)
     out = []
-    for contract, supplier_name in rows:
+    for contract, supplier_name in rows_list:
         item = ContractOut.model_validate(contract)
         item.supplier_name = supplier_name
+        mine = amendments.get(contract.id, [])
+        item.monthly_value, _ = terms_at(contract, mine, today)  # value in force (D66)
+        item.amendments = len(mine)
         out.append(item)
     return out

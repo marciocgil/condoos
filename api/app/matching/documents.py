@@ -11,9 +11,11 @@ The contract is chosen by supplier CNPJ, then validity at the issue date, then o
 similarity. An expired contract is still linked when it is the only one (rule R05 flags it).
 - contract document: registers the contract (D59) when the contracting party is this
   condominium (otherwise back to the extraction queue); the same supplier and start date
-  links to the existing contract instead.
+  links to the existing contract instead. A termo aditivo is linked to the supplier's
+  contract as an amendment (D66).
 """
 
+import re
 import uuid
 from dataclasses import dataclass
 from datetime import date, timedelta
@@ -26,7 +28,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.jobs import enqueue
 from app.core.time import utcnow
 from app.db.enums import AdjustmentIndex, DocumentType, ExtractionStatus
-from app.db.models import Condominium, Contract, Document, Expense, ExpenseDocument, MatchIssue
+from app.db.models import (
+    Condominium,
+    Contract,
+    ContractAmendment,
+    Document,
+    Expense,
+    ExpenseDocument,
+    MatchIssue,
+)
 from app.enrichment.suppliers import get_or_create_supplier
 from app.matching.categories import category_for
 from app.matching.text import overlap
@@ -340,6 +350,9 @@ async def register_contract(session: AsyncSession, doc: Document) -> Contract | 
         ]
         return None
     supplier = await get_or_create_supplier(session, cnpj, v.get("razao_social_contratada"))
+    if is_amendment(doc):
+        await register_amendment(session, doc, supplier.id, start, value)
+        return None
     existing = await session.scalar(
         select(Contract).where(
             Contract.condominium_id == doc.condominium_id,
@@ -377,6 +390,87 @@ async def register_contract(session: AsyncSession, doc: Document) -> Contract | 
             dedupe_key=f"supplier:{supplier.cnpj}:enrich",
         )
     return contract
+
+
+AMENDMENT = re.compile(r"\b(termo\s+)?aditivo\b", re.IGNORECASE)
+
+
+def is_amendment(doc: Document) -> bool:
+    """A contract document that amends another one (termo aditivo): told by its title."""
+    head = f"{doc.extracted.get('objeto') or ''} {(doc.text_content or '')[:600]}"
+    return bool(AMENDMENT.search(head))
+
+
+def _review(doc: Document, reason: str) -> None:
+    doc.needs_review = True
+    doc.extraction_status = ExtractionStatus.NEEDS_REVIEW.value
+    doc.review_reasons = [reason]
+
+
+async def register_amendment(
+    session: AsyncSession,
+    doc: Document,
+    supplier_id: uuid.UUID,
+    effective: date,
+    value: Decimal | None,
+) -> ContractAmendment | None:
+    """Link an amendment to the supplier's contract and apply its end date and scope (D66).
+    Without a single base contract, back to the queue: never chosen at random."""
+    existing = await session.scalar(
+        select(ContractAmendment).where(ContractAmendment.document_id == doc.id)
+    )
+    if existing is not None:
+        return existing
+    v = doc.extracted
+    contracts = list(
+        await session.scalars(
+            select(Contract).where(
+                Contract.condominium_id == doc.condominium_id,
+                Contract.supplier_id == supplier_id,
+                Contract.start_date <= effective,
+            )
+        )
+    )
+    if len(contracts) > 1:
+        chosen, _ = await choose_contract(
+            session, doc.condominium_id, supplier_id, effective, str(v.get("objeto") or "")
+        )
+        contracts = [chosen] if chosen is not None else contracts
+    if not contracts:
+        _review(
+            doc,
+            "Termo aditivo sem o contrato original cadastrado: envie o contrato primeiro e "
+            "salve este documento de novo.",
+        )
+        return None
+    if len(contracts) > 1:
+        _review(
+            doc,
+            "Termo aditivo com mais de um contrato possível do mesmo fornecedor: confira o "
+            "objeto e a data de início.",
+        )
+        return None
+    contract = contracts[0]
+    scope = [str(x) for x in (v.get("itens_escopo") or [])]
+    amendment = ContractAmendment(
+        id=uuid.uuid4(),
+        condominium_id=doc.condominium_id,
+        contract_id=contract.id,
+        document_id=doc.id,
+        effective_date=effective,
+        monthly_value=value,
+        end_date=_d(v.get("data_fim")),
+        scope_items=scope,
+        description=str(v.get("objeto") or "Termo aditivo")[:500],
+    )
+    session.add(amendment)
+    if amendment.end_date is not None:
+        contract.end_date = amendment.end_date  # extension (or earlier end) from the amendment
+    new_scope = [x for x in scope if x not in contract.scope_items]
+    if new_scope:
+        contract.scope_items = [*contract.scope_items, *new_scope]
+    await session.flush()
+    return amendment
 
 
 async def open_issue(

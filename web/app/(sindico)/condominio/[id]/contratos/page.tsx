@@ -51,7 +51,12 @@ export default async function ContratosPage({ params }: { params: Promise<{ id: 
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
                   <p className="font-medium">{c.supplier_name}</p>
-                  <p className="text-[13px] text-fg-2">{c.object}</p>
+                  <p className="text-[13px] text-fg-2">
+                    {c.object}
+                    {c.amendments
+                      ? ` · ${c.amendments} ${c.amendments === 1 ? "aditivo" : "aditivos"}`
+                      : ""}
+                  </p>
                 </div>
                 {expiring && (
                   <Badge tone="warning" icon={<CalendarClock size={12} />}>

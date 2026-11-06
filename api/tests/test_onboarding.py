@@ -152,3 +152,66 @@ async def test_evaluating_a_month_opens_its_competence(admin_engine: AsyncEngine
             await s.scalars(select(Competence).where(Competence.condominium_id == condo.id))
         ).all()
     assert [(c.month, c.status) for c in comps] == [(month, "aberta")]
+
+
+async def test_amendment_document_links_to_the_contract(admin_engine: AsyncEngine) -> None:
+    """D66: a termo aditivo extends the contract and sets its new value from its date."""
+    from app.db.models import ContractAmendment
+
+    async with sessionmaker_for(admin_engine)() as s, s.begin():
+        condo = await onboard(s, _spec())
+    supplier_cnpj = generate_cnpj(random.Random(f"aditivo-{condo.id}"))
+    base = {
+        "cnpj_contratada": supplier_cnpj,
+        "razao_social_contratada": "Portaria Fictícia Ltda",
+        "cnpj_contratante": condo.cnpj,
+        "objeto": "Portaria 24 horas",
+        "itens_escopo": ["portaria 24h"],
+        "valor_mensal": "10000.00",
+        "indice_reajuste": "INPC",
+        "mes_base_reajuste": 3,
+        "data_inicio": "2025-03-01",
+        "data_fim": "2026-02-28",
+    }
+    aditivo = {
+        **base,
+        "objeto": "Primeiro termo aditivo ao contrato de portaria",
+        "itens_escopo": ["portaria 24h", "ronda noturna"],
+        "valor_mensal": "11200.00",
+        "data_inicio": "2026-03-01",
+        "data_fim": "2027-02-28",
+    }
+    async with sessionmaker_for(admin_engine)() as s, s.begin():
+        orphan = _doc(condo, "contrato", aditivo)  # sent before the original contract
+        s.add(orphan)
+        await s.flush()
+        await match_document(s, orphan)
+    async with sessionmaker_for(admin_engine)() as s:
+        sent_back = await s.get(Document, orphan.id)
+    assert sent_back is not None and sent_back.needs_review
+    assert "contrato original" in sent_back.review_reasons[0]
+
+    async with sessionmaker_for(admin_engine)() as s, s.begin():
+        original = _doc(condo, "contrato", base)
+        amendment = _doc(condo, "contrato", aditivo)
+        s.add_all([original, amendment])
+        await s.flush()
+        await match_document(s, original)
+        await match_document(s, amendment)
+        await match_document(s, amendment)  # idempotent
+    async with sessionmaker_for(admin_engine)() as s:
+        contracts = (
+            await s.scalars(select(Contract).where(Contract.condominium_id == condo.id))
+        ).all()
+        amendments = (
+            await s.scalars(
+                select(ContractAmendment).where(ContractAmendment.condominium_id == condo.id)
+            )
+        ).all()
+    assert len(contracts) == 1  # the amendment is not a new contract
+    [c] = contracts
+    assert c.monthly_value == 10000 and c.end_date == date(2027, 2, 28)
+    assert "ronda noturna" in c.scope_items
+    [a] = amendments
+    assert a.monthly_value == 11200 and a.effective_date == date(2026, 3, 1)
+    assert a.document_id == amendment.id
