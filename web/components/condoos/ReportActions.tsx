@@ -7,15 +7,18 @@ import { useState } from "react";
 import { buttonClass } from "@/components/ui/Button";
 
 /** Monthly report for the management company: download, and close the month (which
- * publishes the report). The API refuses to close while the exception queue has items. */
+ * publishes the report). The API refuses to close while the exception queue has items.
+ * Render only when the month's competence exists; "Fechar mês" only when `canClose`. */
 export function ReportActions({
   condominiumId,
   month,
   sent,
+  canClose,
 }: {
   condominiumId: string;
   month: string; // YYYY-MM
   sent: boolean;
+  canClose: boolean;
 }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
@@ -52,7 +55,7 @@ export function ReportActions({
         >
           <Download size={14} aria-hidden /> {sent ? "PDF" : "Prévia"}
         </a>
-        {!sent && (
+        {!sent && canClose && (
           <button
             type="button"
             onClick={() => void close()}

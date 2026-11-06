@@ -165,6 +165,8 @@ export interface PortfolioRow {
   pending_validation: number;
   queue_items: number;
   status: "revisar" | "enviado" | "em_dia";
+  can_close: boolean; // the user may close this condominium's competences
+  has_competence: boolean; // a competence exists for the portfolio's latest month
 }
 
 export interface Portfolio {

@@ -69,7 +69,7 @@ Precedência (pacote de prompts): requisitos aprovados > decisões aceitas > có
 | Plano D-04 | Conteúdo que sai automaticamente | Só notificações internas | Coerente: nada sai hoje |
 | Plano D-05 | RAG | Busca híbrida com ACL | **Resolvida** por D52/D53 |
 | Plano D-06 | Taxonomia de contratos/faturas | Tipos comuns dos pilotos | Parcial: tipos de documento e categorias por condomínio existem |
-| Plano D-07 | Método de economia realizada | Escopo equivalente | Aberta (antes de WP-15) |
+| Plano D-07 | Método de economia realizada | Escopo equivalente | **Resolvida** por D87 (`medicao_faturas_v1`, D84) |
 | Plano D-08 | Critérios da revisão Optimize | Dupla checagem para riscos altos | **Resolvida** por D74 (revisão proporcional ao risco; economia sempre revisada) |
 | Plano D-09 | Acesso do fornecedor | Link autenticado mínimo | Aberta (WP-18) |
 | Plano D-10 | Obrigações aplicáveis | Cadastro validado manualmente | Aberta (WP-16) |
