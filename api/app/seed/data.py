@@ -613,6 +613,7 @@ def build_seed() -> SeedResult:
                 adjustment_base_month=kspec.base_month,
                 start_date=kspec.start,
                 end_date=kspec.end,
+                billing_frequency_months=3 if kspec.supplier == "dedetizacao" else 1,
             )
             contracts.append(contract)
             contract_rows.append((kspec, contract))

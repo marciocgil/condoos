@@ -11,8 +11,10 @@ interface Condo {
   slug: string;
 }
 
-export function AdminUpload({ condos }: { condos: Condo[] }) {
-  const [selected, setSelected] = useState(condos[0]?.id ?? "");
+export function AdminUpload({ condos, initial }: { condos: Condo[]; initial?: string }) {
+  const [selected, setSelected] = useState(
+    condos.some((c) => c.id === initial) ? initial! : (condos[0]?.id ?? ""),
+  );
   if (condos.length === 0)
     return <p className="text-fg-2">Seu papel não permite enviar documentos.</p>;
   const current = condos.find((c) => c.id === selected);

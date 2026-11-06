@@ -39,6 +39,7 @@ api/            FastAPI + SQLAlchemy 2 (async) + Alembic; worker da fila de jobs
   app/routers/registry.py   telas de cadastro (dados, corpo diretivo, acessos, contratos, novo condomínio)
   app/routers/approvals.py  aprovações de despesa (R12)
   app/metrics.py  métricas internas do piloto (precisão, extração automática, revisão, custo)
+  app/pending.py  cockpit de pendências: faturamento dos contratos e aprovação dos avulsos (D70)
   app/core/retention.py  política de retenção (job diário retention.purge)
   scripts/pilot_run.py   aceite do Marco 6: condomínio fictício do upload ao relatório
   app/prompts/    prompts versionados (*.md)
@@ -112,7 +113,8 @@ make pilot         # aceite do Marco 6 (após reset + up) → docs/pilot/run.md
 - **Chat:** só ferramentas de leitura em `app/chat/tools.py`, nenhuma recebe o condomínio (vem da sessão; o RLS da pergunta fica restrito a ele). Ferramenta nova: devolva `ref` em cada registro, respeite a visibilidade do papel e acrescente um caso em `tests/chat_eval/cases.py`. Números, citações e ação sugerida são conferidos por código (`service.py`).
 - **Relatórios** são a visão do corpo diretivo (sem achados aguardando validação). Rodapé de IA em toda página; competência só fecha com a fila daquele mês vazia.
 - **Condomínio novo** entra pela Carteira ("Novo condomínio") ou por `app.onboarding` (nunca sobrescreve). Contratos chegam como documentos (D59) ou pelo formulário de Contratos (D67); termo aditivo vira `contract_amendment` ligado ao contrato (D66). Corpo diretivo e acessos são editados em Configurações. Achado não mais detectado e sem ação de pessoa vira `superado` (D61).
-- **Aprovações (R12)** são registradas pela administradora no detalhe do achado (D65).
+- **Aprovações (R12)** são registradas pela administradora no detalhe do achado (D65) ou no cockpit de Pendências, ligadas ao documento (proposta, ata, contrato).
+- **Pendências** (D70) não são achados: contrato vigente sem NF no mês (pela periodicidade do contrato) e serviço avulso sem aprovação. Só a administradora vê.
 
 ## Status dos marcos
 

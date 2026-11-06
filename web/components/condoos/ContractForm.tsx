@@ -43,6 +43,7 @@ export interface ContractFormValues {
   start_date: string;
   end_date: string;
   indeterminate: boolean;
+  billing_frequency_months: string;
 }
 
 export const EMPTY_CONTRACT: ContractFormValues = {
@@ -57,7 +58,17 @@ export const EMPTY_CONTRACT: ContractFormValues = {
   start_date: "",
   end_date: "",
   indeterminate: true, // most condominium contracts have no end date
+  billing_frequency_months: "1",
 };
+
+const FREQUENCIES = [
+  ["1", "Mensal"],
+  ["2", "Bimestral"],
+  ["3", "Trimestral"],
+  ["6", "Semestral"],
+  ["12", "Anual"],
+  ["0", "Sob demanda (sem faturamento fixo)"],
+] as const;
 
 /** Typed registration of a contract, for when there is no document to send (D67). */
 export function ContractForm({
@@ -195,6 +206,24 @@ export function ContractForm({
             </select>
           </Field>
         </div>
+        <Field
+          id="c-freq"
+          label="Faturamento"
+          hint="Em quais meses deve chegar NF deste contrato (acompanhado em Pendências)."
+        >
+          <select
+            id="c-freq"
+            className={controlClass}
+            value={f.billing_frequency_months}
+            onChange={set("billing_frequency_months")}
+          >
+            {FREQUENCIES.map(([v, label]) => (
+              <option key={v} value={v}>
+                {label}
+              </option>
+            ))}
+          </select>
+        </Field>
         {f.adjustment_index === "OUTRO" && (
           <Field
             id="c-other"

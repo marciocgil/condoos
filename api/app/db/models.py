@@ -192,6 +192,9 @@ class Contract(IdTimestampMixin, Base):
             "adjustment_base_month IS NULL OR adjustment_base_month BETWEEN 1 AND 12",
             name="base_month_range",
         ),
+        CheckConstraint(
+            "billing_frequency_months IN (0, 1, 2, 3, 6, 12)", name="billing_frequency_valid"
+        ),
     )
 
     condominium_id: Mapped[uuid.UUID] = _uuid_fk("condominium.id")
@@ -203,6 +206,8 @@ class Contract(IdTimestampMixin, Base):
     # When adjustment_index is OUTRO: which one, as the contract says (e.g. "IGP-DI").
     adjustment_index_other: Mapped[str | None] = mapped_column(String(120), nullable=True)
     adjustment_base_month: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # Expected billing (NF) every N months from the start; 0 = on demand, no fixed billing (D70).
+    billing_frequency_months: Mapped[int] = mapped_column(Integer, default=1, server_default="1")
     start_date: Mapped[date] = mapped_column(Date)
     end_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     source_document_id: Mapped[uuid.UUID | None] = _uuid_fk(

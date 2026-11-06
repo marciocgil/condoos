@@ -3,7 +3,12 @@ import { PageHeader } from "@/components/layout/PageHeader";
 import { apiGet } from "@/lib/api";
 import type { Me } from "@/lib/types";
 
-export default async function AdminEnviarPage() {
+export default async function AdminEnviarPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ condominio?: string }>;
+}) {
+  const { condominio } = await searchParams;
   const me = await apiGet<Me>("/me");
   const condos = me.condominiums.filter((c) => c.permissions.includes("upload_document"));
   return (
@@ -13,7 +18,10 @@ export default async function AdminEnviarPage() {
         subtitle="Escolha o condomínio e envie os arquivos do mês. Cada condomínio também recebe documentos por e-mail."
       />
       <div className="max-w-2xl">
-        <AdminUpload condos={condos.map((c) => ({ id: c.id, name: c.name, slug: c.slug }))} />
+        <AdminUpload
+          condos={condos.map((c) => ({ id: c.id, name: c.name, slug: c.slug }))}
+          initial={condominio}
+        />
       </div>
     </>
   );

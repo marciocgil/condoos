@@ -249,6 +249,7 @@ class ContractIn(BaseModel):
     adjustment_index: AdjustmentIndex
     adjustment_index_other: str | None = Field(default=None, max_length=120)
     adjustment_base_month: int | None = Field(default=None, ge=1, le=12)
+    billing_frequency_months: Literal[0, 1, 2, 3, 6, 12] = 1  # 0 = on demand (D70)
     start_date: date
     end_date: date | None = None
 
@@ -301,6 +302,7 @@ async def _apply(db: DbSession, contract: Contract, body: ContractIn) -> None:
         else None
     )
     contract.adjustment_base_month = body.base_month()
+    contract.billing_frequency_months = body.billing_frequency_months
     contract.start_date = body.start_date
     contract.end_date = body.end_date
     if supplier.enriched_at is None:

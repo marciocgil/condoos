@@ -384,6 +384,7 @@ async def register_contract(session: AsyncSession, doc: Document) -> Contract | 
             else None
         ),
         adjustment_base_month=base_month,
+        billing_frequency_months=billing_frequency(str(v.get("objeto") or "")),
         start_date=start,
         end_date=_d(v.get("data_fim")),
         source_document_id=doc.id,
@@ -401,6 +402,15 @@ async def register_contract(session: AsyncSession, doc: Document) -> Contract | 
 
 
 AMENDMENT = re.compile(r"\b(termo\s+)?aditivo\b", re.IGNORECASE)
+
+
+def billing_frequency(text: str) -> int:
+    """Expected invoice every N months, from the contract object (monthly by default, D70)."""
+    t = text.lower()
+    for word, months in (("bimestral", 2), ("trimestral", 3), ("semestral", 6), ("anual", 12)):
+        if word in t:
+            return months
+    return 1
 
 
 def is_amendment(doc: Document) -> bool:

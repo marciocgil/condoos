@@ -5,6 +5,7 @@ import {
   ChevronsLeft,
   BarChart3,
   ChevronsRight,
+  ClipboardList,
   FileSignature,
   Inbox,
   LayoutGrid,
@@ -22,6 +23,7 @@ import { cx } from "@/components/ui/cx";
 const ITEMS = [
   { href: "/admin/carteira", label: "Carteira", icon: LayoutGrid },
   { href: "/admin/fila", label: "Fila de exceções", icon: Inbox, counter: true },
+  { href: "/admin/pendencias", label: "Pendências", icon: ClipboardList },
   { href: "/admin/fornecedores", label: "Fornecedores", icon: Store },
   { href: "/admin/contratos", label: "Contratos", icon: FileSignature },
   { href: "/admin/metricas", label: "Métricas do piloto", icon: BarChart3 },

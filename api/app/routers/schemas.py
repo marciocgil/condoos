@@ -82,6 +82,7 @@ class ContractOut(ORM):
     adjustment_index: str
     adjustment_index_other: str | None = None
     adjustment_base_month: int | None
+    billing_frequency_months: int = 1
     start_date: date
     end_date: date | None
     amendments: int = 0  # termos aditivos linked to the contract (D66)

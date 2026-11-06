@@ -299,3 +299,14 @@ O condomínio novo ainda não está no escopo de RLS da requisição. Por isso �
 - Fornecedores e Métricas recalculam os totais na API (`condominium_id`) para o condomínio escolhido; não é só um filtro de tela.
 - Um id fora da carteira do usuário devolve vazio.
 - Novo contrato a partir do filtro já vem com o condomínio escolhido.
+
+**D70 — Cockpit de pendências: faturamento dos contratos e aprovação dos avulsos** (`app/pending.py`, tela "Pendências").
+- **Contrato vigente × NF do mês.** Cada contrato tem uma periodicidade de faturamento (migração 0010): mensal por padrão; bimestral, trimestral, semestral, anual ou sob demanda (0, sem faturamento fixo). Um contrato lido de documento com "trimestral" (etc.) no objeto já vem com a periodicidade.
+- Nos meses em que a NF é esperada, a situação é:
+  - *faturado*: despesa do contrato com número de nota ou NF anexada;
+  - *cobrado sem NF*: boleto ou débito sem nota;
+  - *sem faturamento*: nada do contrato no mês;
+  - *aguardando*: até 10 dias depois do fim do mês, o prazo usual de emissão.
+- **Serviço avulso** (despesa sem contrato; energia, água e gás fora, como na R12) fica pendente até ter aprovação registrada. A aprovação pode ser ligada a um documento já enviado: proposta assinada ou orçamento (tipo "outro"), ata ou contrato.
+- São pendências de acompanhamento da administradora, não achados: não aparecem para o síndico e não acusam ninguém. A auditoria continua com R09, R10 e R12.
+- Filtro por condomínio e pelos últimos 6 meses, com a contagem de pendências por mês.

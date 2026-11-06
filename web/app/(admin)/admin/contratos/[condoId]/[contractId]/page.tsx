@@ -35,6 +35,7 @@ export default async function EditarContratoPage({
           start_date: c.start_date,
           end_date: c.end_date ?? "",
           indeterminate: c.end_date === null,
+          billing_frequency_months: String(c.billing_frequency_months ?? 1),
         }}
       />
     </>

@@ -55,6 +55,7 @@ export interface Contract {
   supplier_cnpj?: string | null;
   scope_items?: string[];
   original_monthly_value?: string | null;
+  billing_frequency_months?: number;
 }
 
 export type Severity = "alta" | "media" | "baixa";
@@ -323,4 +324,51 @@ export interface Metrics {
   totals: MetricSummary;
   by_month: (MetricSummary & { month: string })[];
   condominiums: (MetricSummary & { id: string; name: string })[];
+}
+
+export interface PendingContract {
+  contract_id: string;
+  supplier: string;
+  object: string;
+  expected_value: string;
+  status: "faturado" | "sem_nf" | "sem_faturamento" | "aguardando";
+  expense_id: string | null;
+  billed_value: string | null;
+  invoice_number: string | null;
+}
+
+export interface PendingOneOff {
+  expense_id: string;
+  supplier: string | null;
+  description: string;
+  amount: string;
+  issue_date: string;
+  invoice_number: string | null;
+  approvals: {
+    id: string;
+    approved_by: string;
+    approved_at: string;
+    document: string | null;
+    document_id: string | null;
+  }[];
+  pending: boolean;
+}
+
+export interface PendingCockpit {
+  month: string;
+  months: { month: string; open: number }[];
+  condominiums: {
+    id: string;
+    name: string;
+    open_count: number;
+    contracts: PendingContract[];
+    one_off: PendingOneOff[];
+  }[];
+}
+
+export interface DocumentItem {
+  id: string;
+  doc_type: string;
+  original_filename: string;
+  created_at: string;
 }

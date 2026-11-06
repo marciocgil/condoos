@@ -5,11 +5,11 @@ import uuid
 from collections import defaultdict
 from datetime import date
 from decimal import Decimal
-from typing import Annotated
+from typing import Annotated, Any
 
 from fastapi import APIRouter, Query
 from pydantic import BaseModel
-from sqlalchemy import select
+from sqlalchemy import func, select
 
 from app.auth.deps import CurrentPrincipal, roles_on_condominium
 from app.auth.rbac import CondoAccess, Permission
@@ -29,6 +29,7 @@ from app.db.models import (
 from app.db.session import DbSession
 from app.metrics import Bucket as MetricBucket
 from app.metrics import compute as compute_metrics
+from app.pending import month_pending
 from app.rules.contracts import amendments_by_contract, anniversaries, terms_at
 
 router = APIRouter(prefix="/portfolio", tags=["portfolio"])
@@ -296,4 +297,87 @@ async def metrics(
         totals=totals.summary(),
         by_month=[{"month": m.isoformat(), **per_month[m].summary()} for m in month_list],
         condominiums=rows,
+    )
+
+
+class PendingCondoOut(BaseModel):
+    id: uuid.UUID
+    name: str
+    open_count: int
+    contracts: list[dict[str, Any]]
+    one_off: list[dict[str, Any]]
+
+
+class PendingOut(BaseModel):
+    month: date
+    months: list[dict[str, Any]]  # recent months with the number of open items
+    condominiums: list[PendingCondoOut]
+
+
+@router.get("/pending")
+async def pending(
+    db: DbSession,
+    principal: CurrentPrincipal,
+    month: Annotated[str | None, Query(pattern=r"^\d{4}-\d{2}$")] = None,
+    condominium_id: uuid.UUID | None = None,
+) -> PendingOut:
+    """Cockpit of pending items (D70): contract billing and one-off services to back."""
+    condos = _only(await _manager_condos(db, principal), condominium_id)
+    today = date.today()
+    if month:
+        chosen = date(int(month[:4]), int(month[5:7]), 1)
+    else:
+        latest = await db.scalar(
+            select(func.max(Expense.competence)).where(
+                Expense.condominium_id.in_([c.id for c in condos] or [uuid.uuid4()])
+            )
+        )
+        chosen = latest or today.replace(day=1)
+    recent = [add_months(chosen, -i) for i in range(5, -1, -1)]
+    per_month: dict[date, int] = {m: 0 for m in recent}
+    out: list[PendingCondoOut] = []
+    for c in condos:
+        for m in recent:
+            result = await month_pending(db, c.id, m, today)
+            per_month[m] += result.open_count
+            if m != chosen:
+                continue
+            out.append(
+                PendingCondoOut(
+                    id=c.id,
+                    name=c.name,
+                    open_count=result.open_count,
+                    contracts=[
+                        {
+                            "contract_id": str(b.contract_id),
+                            "supplier": b.supplier,
+                            "object": b.object,
+                            "expected_value": str(b.expected_value),
+                            "status": b.status,
+                            "expense_id": str(b.expense_id) if b.expense_id else None,
+                            "billed_value": str(b.billed_value) if b.billed_value else None,
+                            "invoice_number": b.invoice_number,
+                        }
+                        for b in result.contracts
+                    ],
+                    one_off=[
+                        {
+                            "expense_id": str(o.expense_id),
+                            "supplier": o.supplier,
+                            "description": o.description,
+                            "amount": str(o.amount),
+                            "issue_date": o.issue_date.isoformat(),
+                            "invoice_number": o.invoice_number,
+                            "approvals": o.approvals,
+                            "pending": o.pending,
+                        }
+                        for o in result.one_off
+                    ],
+                )
+            )
+    out.sort(key=lambda r: (-r.open_count, r.name))
+    return PendingOut(
+        month=chosen,
+        months=[{"month": m.isoformat(), "open": per_month[m]} for m in recent],
+        condominiums=out,
     )
