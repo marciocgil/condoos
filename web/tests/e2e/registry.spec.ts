@@ -4,22 +4,6 @@ import { loginAs } from "./auth";
 
 const GERENTE = "diego.gerente@atlantida.example.com";
 
-/** A fictitious CNPJ with valid check digits, new on every run. */
-function randomCnpj(): string {
-  const base = Array.from({ length: 8 }, () => Math.floor(Math.random() * 10)).concat([0, 0, 0, 1]);
-  const digit = (nums: number[]) => {
-    const weights =
-      nums.length === 12
-        ? [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]
-        : [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2];
-    const r = nums.reduce((sum, n, i) => sum + n * weights[i]!, 0) % 11;
-    return r < 2 ? 0 : 11 - r;
-  };
-  const d1 = digit(base);
-  const d2 = digit([...base, d1]);
-  return [...base, d1, d2].join("");
-}
-
 test.describe("gerente — cadastros", () => {
   test.beforeEach(() => {
     test.skip(test.info().project.name !== "admin-desktop", "fluxo do desktop");
@@ -40,14 +24,21 @@ test.describe("gerente — cadastros", () => {
     await page.goto("/admin/contratos");
     await page.getByRole("link", { name: "Novo contrato" }).click();
     await page.getByRole("link", { name: /Mirante do Vale/ }).click();
-    await page.getByLabel("CNPJ do fornecedor").fill(randomCnpj());
-    await page.getByLabel("Razão social").fill(`Jardins Teste ${tag} Ltda`);
-    await page.getByLabel("Objeto").fill("Manutenção de jardins");
+    // A seed supplier (fictitious and already enriched): a random valid CNPJ may belong to a
+    // real company, and the registry lookup would bring real data into the test database.
+    const suppliers = (await (await page.request.get("/api/portfolio/suppliers")).json()) as {
+      name: string;
+      cnpj: string;
+    }[];
+    const seed = suppliers.find((s) => s.name.startsWith("Verde Vivo"))!;
+    await page.getByLabel("CNPJ do fornecedor").fill(seed.cnpj);
+    await page.getByLabel("Razão social").fill(seed.name);
+    await page.getByLabel("Objeto").fill(`Jardins teste ${tag}`);
     await page.getByLabel("Valor mensal (R$)").fill("1.250,00");
     await page.getByLabel("Mês do reajuste").selectOption("4");
     await page.getByLabel("Início da vigência").fill("2026-04-01");
     await page.getByRole("button", { name: "Cadastrar contrato" }).click();
     await expect(page).toHaveURL(/\/admin\/contratos$/);
-    await expect(page.getByText(`Jardins Teste ${tag} Ltda`)).toBeVisible();
+    await expect(page.getByText(`Jardins teste ${tag}`)).toBeVisible();
   });
 });

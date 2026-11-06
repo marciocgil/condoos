@@ -8,7 +8,7 @@ Especificação completa: o prompt do MVP (seções 0–15) e o PDF "CondoOS —
 
 - Trabalhar marco a marco. Ao fim de cada marco: testes passando, `docker compose up` funcionando, commit, resumo e atualização deste arquivo.
 - Perguntar só quando a escolha for difícil de desfazer (modelo de dados, contrato de API). O resto: decidir e registrar em `docs/decisions.md`.
-- **Dados sempre fictícios.** CNPJs com dígito verificador válido, gerados ao acaso (`app.core.br.generate_cnpj`). E-mails em subdomínios de `example.com`.
+- **Dados sempre fictícios.** CNPJs com dígito verificador válido, gerados ao acaso (`app.core.br.generate_cnpj`). E-mails em subdomínios de `example.com`. Testes que rodam contra a stack (E2E) não cadastram fornecedor com CNPJ aleatório: um CNPJ válido pode ser de empresa real e a consulta à BrasilAPI traria dados reais. Use os fornecedores do seed (já enriquecidos, sem consulta).
 - Segredos só por variável de ambiente (`.env.example`). Nunca commitar `.env`.
 - Licenças: só MIT, Apache-2.0, BSD ou equivalentes no produto. Nada de n8n, Dify, GPL, AGPL ou LGPL. Na dúvida, perguntar.
 - Idioma: código, nomes e commits em inglês; interface, relatórios e mensagens ao usuário em português do Brasil.
@@ -106,6 +106,7 @@ make pilot         # aceite do Marco 6 (após reset + up) → docs/pilot/run.md
 - **Achados** nunca usam "fraude", "desvio" ou "irregularidade comprovada" (o motor recusa).
 - **Explicações por IA** só citam números dos dados da regra e das evidências; `findings/explain.py` confere por código.
 - **Decisões** seguem `findings/decisions.py` (quem pode o quê); a interface mostra só `allowed_actions`.
+- **Telas da administradora** aceitam `?condominio=<id>` (filtro por condomínio, D69); o menu lateral mantém a escolha.
 - **Interface:** use os tokens e os componentes de `components/ui` e `components/condoos`; status sempre com texto e ícone, nunca só cor; verde-lima só em ação primária e item ativo.
 - **Casamento ambíguo** vai para `match_issue`, nunca é escolhido ao acaso.
 - **Chat:** só ferramentas de leitura em `app/chat/tools.py`, nenhuma recebe o condomínio (vem da sessão; o RLS da pergunta fica restrito a ele). Ferramenta nova: devolva `ref` em cada registro, respeite a visibilidade do papel e acrescente um caso em `tests/chat_eval/cases.py`. Números, citações e ação sugerida são conferidos por código (`service.py`).

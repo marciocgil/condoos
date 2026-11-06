@@ -1,6 +1,7 @@
 import { Bot, Clock, FileCheck2, Target } from "lucide-react";
 import Link from "next/link";
 
+import { CondoFilter } from "@/components/condoos/CondoFilter";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { CardTitle } from "@/components/ui/Card";
 import { cx } from "@/components/ui/cx";
@@ -8,7 +9,7 @@ import { DataTable } from "@/components/ui/DataTable";
 import { KpiCard } from "@/components/ui/KpiCard";
 import { apiGet } from "@/lib/api";
 import { formatMonth } from "@/lib/format";
-import type { MetricSummary, Metrics } from "@/lib/types";
+import type { MetricSummary, Metrics, Portfolio } from "@/lib/types";
 
 const PERIODS = [3, 6, 12] as const;
 
@@ -67,11 +68,16 @@ const COLUMNS = [
 export default async function MetricasPage({
   searchParams,
 }: {
-  searchParams: Promise<{ meses?: string }>;
+  searchParams: Promise<{ meses?: string; condominio?: string }>;
 }) {
   const sp = await searchParams;
   const months = PERIODS.find((p) => String(p) === sp.meses) ?? 6;
-  const m = await apiGet<Metrics>(`/portfolio/metrics?months=${months}`);
+  const portfolio = await apiGet<Portfolio>("/portfolio");
+  const condos = portfolio.condominiums;
+  const selected = condos.some((c) => c.id === sp.condominio) ? sp.condominio! : null;
+  const m = await apiGet<Metrics>(
+    `/portfolio/metrics?months=${months}${selected ? `&condominium_id=${selected}` : ""}`,
+  );
   const t = m.totals;
   const span =
     m.months.length > 0
@@ -87,7 +93,7 @@ export default async function MetricasPage({
             {PERIODS.map((p) => (
               <Link
                 key={p}
-                href={`/admin/metricas?meses=${p}`}
+                href={`/admin/metricas?meses=${p}${selected ? `&condominio=${selected}` : ""}`}
                 aria-current={p === months ? "page" : undefined}
                 className={cx(
                   "transition-ui rounded-full border px-3 py-1.5 text-[13px]",
@@ -101,6 +107,12 @@ export default async function MetricasPage({
             ))}
           </nav>
         }
+      />
+      <CondoFilter
+        pathname="/admin/metricas"
+        condos={condos}
+        selected={selected}
+        extra={{ meses: String(months) }}
       />
       <section
         className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4"

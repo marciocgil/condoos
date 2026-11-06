@@ -124,3 +124,18 @@ async def test_metrics_endpoint_is_for_the_management_company(
     await client.post("/auth/logout")
     await login(client, mailer, SINDICA_ACACIAS)
     assert (await client.get("/portfolio/metrics")).json()["condominiums"] == []
+
+
+async def test_portfolio_views_filter_by_condominium(
+    client: httpx.AsyncClient, mailer: MemoryMailer, admin_engine: AsyncEngine
+) -> None:
+    from tests.helpers import condo_id
+
+    mirante = await condo_id(admin_engine, "mirante-do-vale")
+    await login(client, mailer, GERENTE)
+    m = (await client.get(f"/portfolio/metrics?months=3&condominium_id={mirante}")).json()
+    assert [c["name"] for c in m["condominiums"]] == ["Condomínio Edifício Mirante do Vale"]
+    sups = (await client.get(f"/portfolio/suppliers?condominium_id={mirante}")).json()
+    assert sups and all(s["condominiums"] == ["Condomínio Edifício Mirante do Vale"] for s in sups)
+    other = uuid.uuid4()
+    assert (await client.get(f"/portfolio/suppliers?condominium_id={other}")).json() == []

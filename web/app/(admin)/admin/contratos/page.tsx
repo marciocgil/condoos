@@ -1,6 +1,7 @@
 import { CalendarClock, Plus } from "lucide-react";
 import Link from "next/link";
 
+import { CondoFilter } from "@/components/condoos/CondoFilter";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Badge } from "@/components/ui/Badge";
 import { buttonClass } from "@/components/ui/Button";
@@ -9,14 +10,25 @@ import { KpiCard } from "@/components/ui/KpiCard";
 import { apiGet } from "@/lib/api";
 import { indexLabel } from "@/lib/labels";
 import { formatBRL, formatBRLShort, formatDate } from "@/lib/format";
-import type { PortfolioContract } from "@/lib/types";
+import type { Portfolio, PortfolioContract } from "@/lib/types";
 
 function days(iso: string | null): number | null {
   return iso ? Math.ceil((new Date(`${iso}T00:00:00`).getTime() - Date.now()) / 86_400_000) : null;
 }
 
-export default async function ContratosPage() {
-  const rows = await apiGet<PortfolioContract[]>("/portfolio/contracts");
+export default async function ContratosPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ condominio?: string }>;
+}) {
+  const { condominio } = await searchParams;
+  const [all, portfolio] = await Promise.all([
+    apiGet<PortfolioContract[]>("/portfolio/contracts"),
+    apiGet<Portfolio>("/portfolio"),
+  ]);
+  const condos = portfolio.condominiums;
+  const selected = condos.some((c) => c.id === condominio) ? condominio! : null;
+  const rows = selected ? all.filter((r) => r.condominium_id === selected) : all;
   const active = rows.filter((r) => (days(r.end_date) ?? 1) >= 0);
   const expiring = rows.filter((r) => {
     const d = days(r.end_date);
@@ -29,11 +41,15 @@ export default async function ContratosPage() {
         title="Contratos"
         subtitle="Contratos de todos os condomínios da carteira. Clique no fornecedor para editar."
         actions={
-          <Link href="/admin/contratos/novo" className={buttonClass("secondary", "sm")}>
+          <Link
+            href={`/admin/contratos/novo${selected ? `?condominio=${selected}` : ""}`}
+            className={buttonClass("secondary", "sm")}
+          >
             <Plus size={14} aria-hidden /> Novo contrato
           </Link>
         }
       />
+      <CondoFilter pathname="/admin/contratos" condos={condos} selected={selected} />
       <section className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-3" aria-label="Indicadores">
         <KpiCard label="Contratos ativos" value={active.length} />
         <KpiCard

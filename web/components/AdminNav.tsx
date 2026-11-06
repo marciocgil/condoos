@@ -13,7 +13,7 @@ import {
   Store,
 } from "lucide-react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { Logo } from "@/components/layout/Logo";
@@ -33,6 +33,9 @@ const STORAGE_KEY = "condoos.sidebar.collapsed";
 /** Sidebar of the app shell (DS §3.1): 232 px expanded, 64 px collapsed. */
 export function AdminNav({ queueCount, companyName }: { queueCount: number; companyName: string }) {
   const pathname = usePathname();
+  // The condominium chosen in a screen's filter follows to the other screens.
+  const condo = useSearchParams().get("condominio");
+  const withCondo = (href: string) => (condo ? `${href}?condominio=${condo}` : href);
   const [collapsed, setCollapsed] = useState(false);
   useEffect(() => {
     try {
@@ -77,7 +80,7 @@ export function AdminNav({ queueCount, companyName }: { queueCount: number; comp
             return (
               <li key={item.href}>
                 <Link
-                  href={item.href}
+                  href={withCondo(item.href)}
                   aria-current={active ? "page" : undefined}
                   title={collapsed ? item.label : undefined}
                   className={cx(
@@ -105,7 +108,7 @@ export function AdminNav({ queueCount, companyName }: { queueCount: number; comp
       </nav>
       <div className="space-y-2 p-3">
         <Link
-          href="/admin/pergunte"
+          href={withCondo("/admin/pergunte")}
           className="transition-ui flex h-10 items-center justify-center gap-2 rounded-[var(--radius-button)] border border-control text-sm text-fg-2 hover:text-fg"
           title="Pergunte à IA"
         >

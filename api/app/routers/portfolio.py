@@ -158,9 +158,16 @@ async def portfolio(db: DbSession, principal: CurrentPrincipal) -> PortfolioOut:
     )
 
 
+def _only(condos: list[Condominium], condominium_id: uuid.UUID | None) -> list[Condominium]:
+    """Optional filter by one condominium of the portfolio (an unknown id gives nothing)."""
+    return condos if condominium_id is None else [c for c in condos if c.id == condominium_id]
+
+
 @router.get("/suppliers")
-async def suppliers(db: DbSession, principal: CurrentPrincipal) -> list[SupplierRow]:
-    condos = {c.id: c.name for c in await _manager_condos(db, principal)}
+async def suppliers(
+    db: DbSession, principal: CurrentPrincipal, condominium_id: uuid.UUID | None = None
+) -> list[SupplierRow]:
+    condos = {c.id: c.name for c in _only(await _manager_condos(db, principal), condominium_id)}
     if not condos:
         return []
     since = add_months(date.today().replace(day=1), -11)
@@ -266,9 +273,10 @@ async def metrics(
     db: DbSession,
     principal: CurrentPrincipal,
     months: Annotated[int, Query(ge=1, le=24)] = 6,
+    condominium_id: uuid.UUID | None = None,
 ) -> MetricsOut:
     """Internal pilot metrics (D60): precision, automatic extraction, review time, LLM cost."""
-    condos = await _manager_condos(db, principal)
+    condos = _only(await _manager_condos(db, principal), condominium_id)
     last = date.today().replace(day=1)
     first = add_months(last, -(months - 1))
     month_list = [add_months(first, i) for i in range(months)]

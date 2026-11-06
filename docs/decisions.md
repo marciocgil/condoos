@@ -294,3 +294,8 @@ O condomínio novo ainda não está no escopo de RLS da requisição. Por isso �
 - **Mês do reajuste.** Sem outro mês no contrato, é o mês do início da vigência, para todo contrato com índice.
 - **Prazo indeterminado.** É a opção padrão no formulário; o fim da vigência só é pedido quando houver.
 - **Índice "Outro"** (migração 0009), com descrição em texto: IGP-DI, IPC-Fipe, dissídio etc. Índices não acompanhados pelo sistema viram "Outro" com o nome guardado. A R02 avalia o valor até o primeiro reajuste; depois fica "não avaliada" (não adivinha o índice).
+
+**D69 — Filtro por condomínio nas telas da administradora.** Contratos, Fornecedores, Fila de exceções e Métricas ganham o filtro "Condomínio" (Todos ou um). A escolha vai na URL (`?condominio=`) e o menu lateral a leva para as outras telas.
+- Fornecedores e Métricas recalculam os totais na API (`condominium_id`) para o condomínio escolhido; não é só um filtro de tela.
+- Um id fora da carteira do usuário devolve vazio.
+- Novo contrato a partir do filtro já vem com o condomínio escolhido.

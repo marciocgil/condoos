@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { type ReactNode, Suspense } from "react";
 
 import { AdminNav } from "@/components/AdminNav";
 import { AdminHeader } from "@/components/layout/AdminHeader";
@@ -10,7 +10,9 @@ export default async function AdminLayout({ children }: { children: ReactNode })
   const company = me.management_companies[0]?.name ?? "Administradora";
   return (
     <div className="flex min-h-dvh">
-      <AdminNav queueCount={queue.total} companyName={company} />
+      <Suspense fallback={<div className="w-[232px] shrink-0 border-r border-line bg-bg-2" />}>
+        <AdminNav queueCount={queue.total} companyName={company} />
+      </Suspense>
       <div className="min-w-0 flex-1">
         <AdminHeader companyName={company} userName={me.name} />
         <main className="mx-auto max-w-[1280px] px-8 py-8">{children}</main>
