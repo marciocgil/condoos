@@ -23,6 +23,9 @@ logger = logging.getLogger(__name__)
 Handler = Callable[[AsyncSession, dict[str, Any]], Awaitable[None]]
 
 STALE_AFTER = timedelta(minutes=15)
+# Light, follow-up jobs (e.g. matching a document a person just corrected) must not wait
+# behind minutes of OCR: the queue is ordered by run_after, so they get an earlier one.
+PRIORITY_HEAD_START = timedelta(days=1)
 MAX_BACKOFF_SECONDS = 3600
 
 
@@ -35,8 +38,11 @@ async def enqueue(
     dedupe_key: str | None = None,
     run_after: datetime | None = None,
     max_attempts: int = 5,
+    priority: bool = False,
 ) -> uuid.UUID | None:
-    """Insert a job. Returns None when a job with the same dedupe_key already exists."""
+    """Insert a job. Returns None when a job with the same dedupe_key already exists.
+
+    ``priority=True`` puts the job ahead of everything already queued (light jobs only)."""
     values: dict[str, Any] = {
         "id": uuid.uuid4(),
         "job_type": job_type,
@@ -47,7 +53,9 @@ async def enqueue(
         "status": JobStatus.QUEUED.value,
         "attempts": 0,
     }
-    if run_after is not None:
+    if priority:
+        values["run_after"] = utcnow() - PRIORITY_HEAD_START
+    elif run_after is not None:
         values["run_after"] = run_after
     stmt = insert(Job).values(**values).on_conflict_do_nothing(index_elements=["dedupe_key"])
     result = await session.scalar(stmt.returning(Job.id))

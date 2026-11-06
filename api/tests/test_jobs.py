@@ -3,7 +3,7 @@ import uuid
 from datetime import timedelta
 from typing import Any
 
-from sqlalchemy import select, update
+from sqlalchemy import delete, select, update
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession
 
 from app.core.jobs import Handler, backoff_seconds, claim_next, enqueue, run_one
@@ -141,3 +141,14 @@ async def test_parallel_run_one_processes_each_job_once(worker_engine: AsyncEngi
     async with maker() as s:
         remaining = await s.scalars(select(Job).where(Job.status == JobStatus.QUEUED.value))
         assert remaining.all() == []
+
+
+async def test_priority_job_runs_before_queued_backlog(worker_engine: AsyncEngine) -> None:
+    async with sessionmaker_for(worker_engine)() as s, s.begin():
+        await s.execute(delete(Job))
+        for i in range(3):
+            await enqueue(s, "slow", {"i": i})
+        await enqueue(s, "light", {}, priority=True)
+    async with sessionmaker_for(worker_engine)() as s, s.begin():
+        job = await claim_next(s)
+        assert job is not None and job.job_type == "light"

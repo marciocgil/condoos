@@ -227,6 +227,7 @@ async def enqueue_match(session: AsyncSession, doc: Document) -> None:
         {"document_id": str(doc.id)},
         condominium_id=doc.condominium_id,
         dedupe_key=None,  # matching is idempotent; a corrected document is matched again
+        priority=True,  # seconds of work: never behind a backlog of OCR
     )
 
 
