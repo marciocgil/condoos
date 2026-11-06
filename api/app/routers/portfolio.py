@@ -79,6 +79,7 @@ class ContractRow(BaseModel):
     object: str
     monthly_value: Decimal
     adjustment_index: str
+    adjustment_index_other: str | None = None
     next_adjustment: date | None
     end_date: date | None
     amendments: int = 0
@@ -239,9 +240,10 @@ async def contracts(db: DbSession, principal: CurrentPrincipal) -> list[Contract
                 object=c.object,
                 monthly_value=terms_at(c, mine, today.replace(day=1))[0],  # in force (D66)
                 adjustment_index=c.adjustment_index,
+                adjustment_index_other=c.adjustment_index_other,
                 next_adjustment=(
                     upcoming[0]
-                    if upcoming and c.adjustment_index in ("IPCA", "IGPM", "INPC")
+                    if upcoming and c.adjustment_index in ("IPCA", "IGPM", "INPC", "OUTRO")
                     else None
                 ),
                 end_date=c.end_date,

@@ -200,6 +200,8 @@ class Contract(IdTimestampMixin, Base):
     scope_items: Mapped[list[str]] = mapped_column(Json, default=list)
     monthly_value: Mapped[Decimal] = mapped_column(Money)
     adjustment_index: Mapped[str] = mapped_column(String(10))
+    # When adjustment_index is OUTRO: which one, as the contract says (e.g. "IGP-DI").
+    adjustment_index_other: Mapped[str | None] = mapped_column(String(120), nullable=True)
     adjustment_base_month: Mapped[int | None] = mapped_column(Integer, nullable=True)
     start_date: Mapped[date] = mapped_column(Date)
     end_date: Mapped[date | None] = mapped_column(Date, nullable=True)

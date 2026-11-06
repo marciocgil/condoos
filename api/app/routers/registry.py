@@ -247,6 +247,7 @@ class ContractIn(BaseModel):
     scope_items: list[str] = []
     monthly_value: str
     adjustment_index: AdjustmentIndex
+    adjustment_index_other: str | None = Field(default=None, max_length=120)
     adjustment_base_month: int | None = Field(default=None, ge=1, le=12)
     start_date: date
     end_date: date | None = None
@@ -273,13 +274,17 @@ class ContractIn(BaseModel):
     def check(self) -> None:
         if self.end_date is not None and self.end_date < self.start_date:
             raise _unprocessable("O fim da vigência é anterior ao início.")
-        indexed = self.adjustment_index in (
-            AdjustmentIndex.IPCA,
-            AdjustmentIndex.IGPM,
-            AdjustmentIndex.INPC,
-        )
-        if indexed and self.adjustment_base_month is None:
-            raise _unprocessable("Informe o mês do reajuste para contrato com índice.")
+        if (
+            self.adjustment_index == AdjustmentIndex.OUTRO
+            and not (self.adjustment_index_other or "").strip()
+        ):
+            raise _unprocessable("Descreva qual é o índice de reajuste.")
+
+    def base_month(self) -> int | None:
+        """D68: without an explicit month, the adjustment is in the month the term started."""
+        if self.adjustment_index in (AdjustmentIndex.FIXO, AdjustmentIndex.NENHUM):
+            return None
+        return self.adjustment_base_month or self.start_date.month
 
 
 async def _apply(db: DbSession, contract: Contract, body: ContractIn) -> None:
@@ -290,7 +295,12 @@ async def _apply(db: DbSession, contract: Contract, body: ContractIn) -> None:
     contract.scope_items = [s.strip() for s in body.scope_items if s.strip()]
     contract.monthly_value = body.value()
     contract.adjustment_index = body.adjustment_index.value
-    contract.adjustment_base_month = body.adjustment_base_month
+    contract.adjustment_index_other = (
+        (body.adjustment_index_other or "").strip() or None
+        if body.adjustment_index == AdjustmentIndex.OUTRO
+        else None
+    )
+    contract.adjustment_base_month = body.base_month()
     contract.start_date = body.start_date
     contract.end_date = body.end_date
     if supplier.enriched_at is None:

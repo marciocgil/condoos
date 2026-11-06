@@ -51,6 +51,14 @@ def value_at(
     ``since``: the value was set by an amendment effective that month, so only the
     adjustments after it apply (the amendment value already includes the earlier ones)."""
     value = monthly_value
+    if index == AdjustmentIndex.OUTRO.value:
+        # An index we do not track (D68): the value is known only until the first adjustment.
+        due = [
+            a
+            for a in anniversaries(start, base_month, month)
+            if since is None or a > since.replace(day=1)
+        ]
+        return None if due else value
     if index not in INDEXED:
         return value
     for anniversary in anniversaries(start, base_month, month):

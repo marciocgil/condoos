@@ -3,16 +3,9 @@ import { CalendarClock, FileSignature } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { apiGet } from "@/lib/api";
+import { indexLabel } from "@/lib/labels";
 import { formatBRL, formatDate } from "@/lib/format";
 import type { Contract } from "@/lib/types";
-
-const INDEX_LABEL: Record<string, string> = {
-  IPCA: "IPCA",
-  IGPM: "IGP-M",
-  INPC: "INPC",
-  FIXO: "Valor fixo",
-  NENHUM: "Sem reajuste",
-};
 
 function nextAdjustment(baseMonth: number | null, index: string, today: Date): string | null {
   if (!baseMonth || !["IPCA", "IGPM", "INPC"].includes(index)) return null;
@@ -72,7 +65,7 @@ export default async function ContratosPage({ params }: { params: Promise<{ id: 
                 </div>
                 <div>
                   <dt className="text-muted">Índice</dt>
-                  <dd>{INDEX_LABEL[c.adjustment_index] ?? c.adjustment_index}</dd>
+                  <dd>{indexLabel(c.adjustment_index, c.adjustment_index_other)}</dd>
                 </div>
                 <div>
                   <dt className="text-muted">Próximo reajuste</dt>

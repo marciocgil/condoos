@@ -14,6 +14,7 @@ const INDEXES = [
   ["INPC", "INPC"],
   ["FIXO", "Fixo (sem índice)"],
   ["NENHUM", "Sem reajuste"],
+  ["OUTRO", "Outro (descrever)"],
 ] as const;
 const MONTHS = [
   "janeiro",
@@ -37,9 +38,11 @@ export interface ContractFormValues {
   scope: string; // one item per line
   monthly_value: string;
   adjustment_index: string;
+  adjustment_index_other: string;
   adjustment_base_month: string;
   start_date: string;
   end_date: string;
+  indeterminate: boolean;
 }
 
 export const EMPTY_CONTRACT: ContractFormValues = {
@@ -49,9 +52,11 @@ export const EMPTY_CONTRACT: ContractFormValues = {
   scope: "",
   monthly_value: "",
   adjustment_index: "IPCA",
+  adjustment_index_other: "",
   adjustment_base_month: "",
   start_date: "",
   end_date: "",
+  indeterminate: true, // most condominium contracts have no end date
 };
 
 /** Typed registration of a contract, for when there is no document to send (D67). */
@@ -68,7 +73,9 @@ export function ContractForm({
   const [f, setF] = useState(initial);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const indexed = ["IPCA", "IGPM", "INPC"].includes(f.adjustment_index);
+  const indexed = ["IPCA", "IGPM", "INPC", "OUTRO"].includes(f.adjustment_index);
+  // D68: without another month in the contract, the adjustment is in the start month.
+  const startMonth = f.start_date ? String(Number(f.start_date.slice(5, 7))) : "";
 
   async function save() {
     setBusy(true);
@@ -169,7 +176,7 @@ export function ContractForm({
               ))}
             </select>
           </Field>
-          <Field id="c-base" label="Mês do reajuste" required={indexed}>
+          <Field id="c-base" label="Mês do reajuste" hint="Padrão: mês do início da vigência.">
             <select
               id="c-base"
               className={controlClass}
@@ -177,7 +184,9 @@ export function ContractForm({
               onChange={set("adjustment_base_month")}
               disabled={!indexed}
             >
-              <option value="">—</option>
+              <option value="">
+                {startMonth ? `Mês do início (${MONTHS[Number(startMonth) - 1]})` : "Mês do início"}
+              </option>
               {MONTHS.map((m, i) => (
                 <option key={m} value={i + 1}>
                   {m}
@@ -186,8 +195,29 @@ export function ContractForm({
             </select>
           </Field>
         </div>
+        {f.adjustment_index === "OUTRO" && (
+          <Field
+            id="c-other"
+            label="Qual índice ou critério"
+            required
+            hint="Ex.: IGP-DI, IPC-Fipe, dissídio coletivo da categoria."
+          >
+            <input
+              id="c-other"
+              className={controlClass}
+              maxLength={120}
+              value={f.adjustment_index_other}
+              onChange={set("adjustment_index_other")}
+            />
+          </Field>
+        )}
         <div className="grid gap-4 md:grid-cols-2">
-          <Field id="c-start" label="Início da vigência" required>
+          <Field
+            id="c-start"
+            label="Início da vigência"
+            required
+            hint="Se o contrato não informar, use a data da assinatura."
+          >
             <input
               id="c-start"
               type="date"
@@ -196,14 +226,24 @@ export function ContractForm({
               onChange={set("start_date")}
             />
           </Field>
-          <Field id="c-end" label="Fim da vigência" hint="Em branco: prazo indeterminado.">
-            <input
-              id="c-end"
-              type="date"
-              className={controlClass}
-              value={f.end_date}
-              onChange={set("end_date")}
-            />
+          <Field id="c-end" label="Fim da vigência">
+            <label className="mb-2 flex items-center gap-2 text-[13px]">
+              <input
+                type="checkbox"
+                checked={f.indeterminate}
+                onChange={(e) => setF({ ...f, indeterminate: e.target.checked })}
+              />
+              Prazo indeterminado
+            </label>
+            {!f.indeterminate && (
+              <input
+                id="c-end"
+                type="date"
+                className={controlClass}
+                value={f.end_date}
+                onChange={set("end_date")}
+              />
+            )}
           </Field>
         </div>
         {error && (

@@ -30,9 +30,11 @@ export default async function EditarContratoPage({
           scope: (c.scope_items ?? []).join("\n"),
           monthly_value: c.original_monthly_value ?? c.monthly_value,
           adjustment_index: c.adjustment_index,
+          adjustment_index_other: c.adjustment_index_other ?? "",
           adjustment_base_month: c.adjustment_base_month ? String(c.adjustment_base_month) : "",
           start_date: c.start_date,
           end_date: c.end_date ?? "",
+          indeterminate: c.end_date === null,
         }}
       />
     </>

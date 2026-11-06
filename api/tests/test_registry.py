@@ -95,7 +95,7 @@ async def test_manager_edits_profile_board_logins_and_contracts(
         "end_date": "2027-03-31",
     }
     assert (
-        await client.post(f"{base}/contracts", json={**contract, "adjustment_base_month": None})
+        await client.post(f"{base}/contracts", json={**contract, "adjustment_index": "OUTRO"})
     ).status_code == 422
     assert (
         await client.post(f"{base}/contracts", json={**contract, "supplier_cnpj": "11111111111111"})

@@ -418,6 +418,7 @@ class ChatTools:
                 "valor_mensal_original": _money(c.monthly_value),
                 "valor_mensal_vigente": _money(current),
                 "indice_reajuste": c.adjustment_index,
+                "indice_reajuste_descricao": c.adjustment_index_other,
                 "mes_base_reajuste": c.adjustment_base_month,
                 "inicio": c.start_date.isoformat(),
                 "fim": c.end_date.isoformat() if c.end_date else None,

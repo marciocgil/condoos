@@ -80,6 +80,7 @@ class ContractOut(ORM):
     scope_items: list[str]
     monthly_value: Decimal
     adjustment_index: str
+    adjustment_index_other: str | None = None
     adjustment_base_month: int | None
     start_date: date
     end_date: date | None

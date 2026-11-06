@@ -365,8 +365,11 @@ async def register_contract(session: AsyncSession, doc: Document) -> Contract | 
         return existing
     index = str(v.get("indice_reajuste") or AdjustmentIndex.NENHUM.value)
     if index not in {i.value for i in AdjustmentIndex}:
-        index = AdjustmentIndex.NENHUM.value
+        index = AdjustmentIndex.OUTRO.value
     base = v.get("mes_base_reajuste")
+    base_month = int(base) if base and 1 <= int(base) <= 12 else None
+    if base_month is None and index not in (AdjustmentIndex.FIXO, AdjustmentIndex.NENHUM):
+        base_month = start.month  # D68: the adjustment happens in the month the term started
     contract = Contract(
         id=uuid.uuid4(),
         condominium_id=doc.condominium_id,
@@ -375,7 +378,12 @@ async def register_contract(session: AsyncSession, doc: Document) -> Contract | 
         scope_items=[str(x) for x in (v.get("itens_escopo") or [])],
         monthly_value=value,
         adjustment_index=index,
-        adjustment_base_month=int(base) if base and 1 <= int(base) <= 12 else None,
+        adjustment_index_other=(
+            str(v.get("indice_reajuste_outro") or "")[:120] or None
+            if index == AdjustmentIndex.OUTRO
+            else None
+        ),
+        adjustment_base_month=base_month,
         start_date=start,
         end_date=_d(v.get("data_fim")),
         source_document_id=doc.id,

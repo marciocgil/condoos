@@ -77,9 +77,11 @@ SPECS: dict[DocumentType, list[FieldSpec]] = {
         FieldSpec("itens_escopo", "list", True, "Itens do escopo"),
         FieldSpec("valor_mensal", "money", True, "Valor mensal"),
         FieldSpec("indice_reajuste", "index", True, "Índice de reajuste"),
-        FieldSpec("mes_base_reajuste", "int", False, "Mês-base do reajuste"),
+        FieldSpec("indice_reajuste_outro", "text", False, "Qual índice (se Outro)"),
+        FieldSpec("mes_base_reajuste", "int", False, "Mês do reajuste (padrão: mês do início)"),
         FieldSpec("data_inicio", "date", True, "Início da vigência"),
-        FieldSpec("data_fim", "date", False, "Fim da vigência"),
+        FieldSpec("data_assinatura", "date", False, "Data da assinatura"),
+        FieldSpec("data_fim", "date", False, "Fim da vigência (em branco: indeterminado)"),
     ],
 }
 
@@ -151,10 +153,11 @@ def normalize(kind: Kind, value: Any) -> Any:
             "FIXO": "FIXO",
             "SEMREAJUSTE": "NENHUM",
             "NENHUM": "NENHUM",
+            "OUTRO": "OUTRO",
         }
-        if key not in aliases:
-            raise InvalidValue("índice deve ser IPCA, IGP-M, INPC, FIXO ou NENHUM")
-        return AdjustmentIndex(aliases[key]).value
+        # Any other index (IGP-DI, IPC-Fipe, collective agreement...) is OUTRO; the text is
+        # kept in indice_reajuste_outro by the contract step (D68).
+        return AdjustmentIndex(aliases.get(key, "OUTRO")).value
     if kind == "list":
         if isinstance(value, list):
             return [str(v).strip() for v in value if str(v).strip()]

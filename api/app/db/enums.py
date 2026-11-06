@@ -23,6 +23,7 @@ class AdjustmentIndex(StrEnum):
     INPC = "INPC"
     FIXO = "FIXO"
     NENHUM = "NENHUM"
+    OUTRO = "OUTRO"  # another index or criterion, described in text (D68)
 
 
 class DocumentType(StrEnum):

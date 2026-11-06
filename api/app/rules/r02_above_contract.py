@@ -35,7 +35,11 @@ class AboveContract(Rule):
             expected = contract_value_at(c, amendments, e.competence, ctx.index_table)
             base_value, _ = terms_at(c, amendments, e.competence)
             if expected is None:
-                ctx.not_evaluated[f"R02:{c.id}"] = "índice do contrato sem valores no período"
+                ctx.not_evaluated[f"R02:{c.id}"] = (
+                    "reajuste por índice não acompanhado pelo sistema"
+                    if c.adjustment_index == "OUTRO"
+                    else "índice do contrato sem valores no período"
+                )
                 continue
             if e.amount <= expected * (1 + tol):
                 continue

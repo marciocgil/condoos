@@ -51,6 +51,8 @@ def assess(
     today: date,
 ) -> Assessment:
     labels = {s.name: s.label for s in specs_for(doc_type)}
+    if doc_type == DocumentType.CONTRATO:
+        raw_values, source_confidence = _contract_inputs(raw_values, source_confidence)
     values: dict[str, Any] = {}
     conf: dict[str, float] = {}
     notes: dict[str, str] = {}
@@ -100,6 +102,7 @@ def assess(
     if doc_type == DocumentType.NFSE:
         _check_nfse_totals(values, conf, notes)
     if doc_type == DocumentType.CONTRATO:
+        _contract_defaults(values, conf, notes)
         start, end = values.get("data_inicio"), values.get("data_fim")
         if start and end and end < start:
             for name in ("data_inicio", "data_fim"):
@@ -130,6 +133,44 @@ def assess(
                 values[spec.name] = None
                 conf[spec.name] = 0.0
     return Assessment(values=values, confidence=conf, reasons=reasons)
+
+
+KNOWN_INDEXES = {"IPCA", "IGPM", "IGP", "INPC", "FIXO", "SEMREAJUSTE", "NENHUM", "OUTRO"}
+
+
+def _contract_inputs(
+    raw: dict[str, Any], conf: dict[str, float]
+) -> tuple[dict[str, Any], dict[str, float]]:
+    """An index other than the tracked ones becomes OUTRO with its name kept (D68)."""
+    raw, conf = dict(raw), dict(conf)
+    index = str(raw.get("indice_reajuste") or "").strip()
+    key = index.upper().replace("-", "").replace(" ", "")
+    if index and key not in KNOWN_INDEXES:
+        raw["indice_reajuste"] = "OUTRO"
+        if not raw.get("indice_reajuste_outro"):
+            raw["indice_reajuste_outro"] = index[:120]
+            conf["indice_reajuste_outro"] = conf.get("indice_reajuste", 0.0)
+    return raw, conf
+
+
+def _contract_defaults(
+    values: dict[str, Any], conf: dict[str, float], notes: dict[str, str]
+) -> None:
+    """Rules of the management company for contracts (D68):
+    - no start date in the contract: the term starts on the signature date;
+    - no adjustment month: the adjustment happens in the month the term started."""
+    if values.get("data_inicio") is None and values.get("data_assinatura"):
+        values["data_inicio"] = values["data_assinatura"]
+        conf["data_inicio"] = conf.get("data_assinatura", 0.0)
+        notes.setdefault("data_inicio", "Início da vigência: assumida a data da assinatura")
+    index = values.get("indice_reajuste")
+    adjusts = index not in (None, "FIXO", "NENHUM")
+    if adjusts and values.get("mes_base_reajuste") is None and values.get("data_inicio"):
+        values["mes_base_reajuste"] = date.fromisoformat(values["data_inicio"]).month
+        conf["mes_base_reajuste"] = conf.get("data_inicio", 0.0)
+    if index == "OUTRO" and not values.get("indice_reajuste_outro"):
+        conf["indice_reajuste"] = min(conf.get("indice_reajuste", 0.0), 0.3)
+        notes["indice_reajuste"] = "Índice de reajuste: informe qual é o índice"
 
 
 def _check_nfse_totals(

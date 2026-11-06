@@ -14,6 +14,7 @@ const INDEXES = [
   ["INPC", "INPC"],
   ["FIXO", "Valor fixo"],
   ["NENHUM", "Sem reajuste"],
+  ["OUTRO", "Outro (descreva abaixo)"],
 ] as const;
 
 function toInput(spec: FieldSpec, value: unknown): string {

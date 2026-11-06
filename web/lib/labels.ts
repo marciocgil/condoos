@@ -41,3 +41,18 @@ export const ROLE_LABEL: Record<string, string> = {
   gerente: "Gerente",
   analista: "Analista",
 };
+
+export const INDEX_LABEL: Record<string, string> = {
+  IPCA: "IPCA",
+  IGPM: "IGP-M",
+  INPC: "INPC",
+  FIXO: "Fixo",
+  NENHUM: "Sem reajuste",
+  OUTRO: "Outro",
+};
+
+/** "IGP-DI" for an OUTRO index with a description; the standard label otherwise. */
+export function indexLabel(index: string, other?: string | null): string {
+  if (index === "OUTRO") return other ? other : "Outro";
+  return INDEX_LABEL[index] ?? index;
+}

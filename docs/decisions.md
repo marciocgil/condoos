@@ -286,3 +286,11 @@ O motor é idempotente, então reavaliar não duplica achados.
 Toda alteração é auditada (ids e nomes de campos, nunca dados de pessoas). Mudanças que afetam regras (corpo diretivo, contratos) reavaliam os meses em aberto com prioridade.
 
 O condomínio novo ainda não está no escopo de RLS da requisição. Por isso é criado numa transação própria com o papel do worker, depois da verificação de que o usuário é gerente da administradora. O comando `app.onboarding` continua existindo para cargas por arquivo.
+
+**D68 — Calibração da leitura de contratos (retorno com documentos reais).**
+- **Contrato que cita nota fiscal continua contrato.** Os marcadores de NF-e/NFS-e só valem no cabeçalho do documento (cerca de 1.200 caracteres). Documento com contratante, contratada e "contrato" ou "aditivo" no título, ou com três cláusulas ou mais, é contrato. Antes, a cláusula "mediante apresentação de nota fiscal de serviço" fazia o contrato ser lido como NFS-e.
+- **CNPJ da contratada.** Aceita espaços e ruído de OCR nos separadores; o dígito verificador continua obrigatório. Prefere o CNPJ que aparece na qualificação da CONTRATADA, não o de testemunhas ou intervenientes.
+- **Início da vigência.** Sem data de início no contrato, vale a data da assinatura (campo novo, lido também da linha "Cidade, 10 de março de 2025").
+- **Mês do reajuste.** Sem outro mês no contrato, é o mês do início da vigência, para todo contrato com índice.
+- **Prazo indeterminado.** É a opção padrão no formulário; o fim da vigência só é pedido quando houver.
+- **Índice "Outro"** (migração 0009), com descrição em texto: IGP-DI, IPC-Fipe, dissídio etc. Índices não acompanhados pelo sistema viram "Outro" com o nome guardado. A R02 avalia o valor até o primeiro reajuste; depois fica "não avaliada" (não adivinha o índice).

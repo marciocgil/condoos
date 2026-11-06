@@ -47,6 +47,7 @@ export interface Contract {
   object: string;
   monthly_value: string;
   adjustment_index: string;
+  adjustment_index_other?: string | null;
   adjustment_base_month: number | null;
   start_date: string;
   end_date: string | null;
@@ -174,6 +175,7 @@ export interface PortfolioContract {
   object: string;
   monthly_value: string;
   adjustment_index: string;
+  adjustment_index_other?: string | null;
   next_adjustment: string | null;
   end_date: string | null;
   amendments?: number;

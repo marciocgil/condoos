@@ -7,16 +7,9 @@ import { buttonClass } from "@/components/ui/Button";
 import { DataTable } from "@/components/ui/DataTable";
 import { KpiCard } from "@/components/ui/KpiCard";
 import { apiGet } from "@/lib/api";
+import { indexLabel } from "@/lib/labels";
 import { formatBRL, formatBRLShort, formatDate } from "@/lib/format";
 import type { PortfolioContract } from "@/lib/types";
-
-const INDEX_LABEL: Record<string, string> = {
-  IPCA: "IPCA",
-  IGPM: "IGP-M",
-  INPC: "INPC",
-  FIXO: "Fixo",
-  NENHUM: "Sem reajuste",
-};
 
 function days(iso: string | null): number | null {
   return iso ? Math.ceil((new Date(`${iso}T00:00:00`).getTime() - Date.now()) / 86_400_000) : null;
@@ -85,7 +78,7 @@ export default async function ContratosPage() {
           {
             key: "index",
             header: "Índice",
-            cell: (r) => INDEX_LABEL[r.adjustment_index] ?? r.adjustment_index,
+            cell: (r) => indexLabel(r.adjustment_index, r.adjustment_index_other),
           },
           {
             key: "next",

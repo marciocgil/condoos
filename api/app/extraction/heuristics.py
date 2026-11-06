@@ -32,6 +32,36 @@ _CHAVE = re.compile(r"(?<!\d)(\d{4}(?:\s?\d{4}){10})(?!\d)")
 # Bare 14-digit runs are not enough: boleto codes contain such runs, and 1 in 100 of them
 # passes the check digits by chance.
 _CNPJ_FORMATTED = re.compile(r"(?<!\d)(\d{2}\.\d{3}\.\d{3}/\d{4}-\d{2})(?!\d)")
+# OCR and typing variants: spaces around separators, missing dots, "." for "-" (check digits
+# still have to match, so noise does not become a CNPJ).
+_CNPJ_LOOSE = re.compile(
+    r"(?<![\d.])(\d{2}\s?[.,]?\s?\d{3}\s?[.,]?\s?\d{3}\s?/\s?\d{4}\s?[-–.]?\s?\d{2})(?![\d])"
+)
+_LONG_DATE = re.compile(
+    r"(\d{1,2})\s*(?:º|o)?\s+de\s+(janeiro|fevereiro|mar[cç]o|abril|maio|junho|julho|agosto|"
+    r"setembro|outubro|novembro|dezembro)\s+de\s+(\d{4})",
+    re.I,
+)
+_MONTHS = {
+    m: i
+    for i, m in enumerate(
+        [
+            "janeiro",
+            "fevereiro",
+            "marco",
+            "abril",
+            "maio",
+            "junho",
+            "julho",
+            "agosto",
+            "setembro",
+            "outubro",
+            "novembro",
+            "dezembro",
+        ],
+        start=1,
+    )
+}
 _CNPJ_LABELED = re.compile(r"CNPJ[^\d\n]{0,25}(\d{14})(?!\d)", re.I)
 _MONEY = r"R?\$?\s*(\d{1,3}(?:\.\d{3})*,\d{2})"
 _DATE = r"(\d{2}/\d{2}/\d{4})"
@@ -49,11 +79,20 @@ def classify_text(text: str, reference: date) -> Classification:
     if not t:
         return Classification(None, 0.0)
     signals: list[str] = []
+    head = t[:1200]  # titles live at the top; payment clauses mention "nota fiscal" too
+    clauses = t.count("clausula")
+    if (
+        ("contrato" in head or "termo aditivo" in head or "aditivo" in head)
+        and "contratante" in t
+        and "contratada" in t
+    ) or (clauses >= 3 and "contratante" in t):
+        signals.append("contrato: partes e cláusulas")
+        return Classification(DocumentType.CONTRATO, 0.93, signals)
     if "danfe" in t or ("nota fiscal eletronica" in t and _CHAVE.search(text)):
         signals.append("DANFE/chave de acesso")
         return Classification(DocumentType.NFE, 0.95, signals)
     if any(
-        k in t
+        k in head
         for k in (
             "nfs-e",
             "nota fiscal de servico",
@@ -84,7 +123,12 @@ def classify_text(text: str, reference: date) -> Classification:
 def valid_cnpjs(text: str) -> list[str]:
     seen: list[str] = []
     matches = sorted(
-        [*_CNPJ_FORMATTED.finditer(text), *_CNPJ_LABELED.finditer(text)], key=lambda m: m.start()
+        [
+            *_CNPJ_FORMATTED.finditer(text),
+            *_CNPJ_LABELED.finditer(text),
+            *_CNPJ_LOOSE.finditer(text),
+        ],
+        key=lambda m: m.start(),
     )
     for m in matches:
         digits = only_digits(m.group(1))
@@ -135,6 +179,30 @@ def _other_cnpj(text: str, condo_cnpj: str, pf: Prefill, name: str) -> None:
         pf.put(name, others[0], CHECKED_CONFIDENCE)
     elif others:
         pf.put(name, others[0], 0.5)
+
+
+def _cnpj_after_party(text: str, condo_cnpj: str, party: str) -> str | None:
+    """The CNPJ in the description of a party ("CONTRATADA: X, inscrita no CNPJ sob o nº ...").
+    Several CNPJs in a contract (witnesses, guarantors) make "the other one" ambiguous."""
+    folded = _fold_same_length(text)
+    for m in re.finditer(party, folded):
+        window = text[m.start() : m.start() + 400]
+        for c in valid_cnpjs(window):
+            if c != condo_cnpj:
+                return c
+    return None
+
+
+def signature_date(text: str) -> str | None:
+    """The last long-form date ("São Paulo, 10 de março de 2025"): usually the signature."""
+    found = None
+    for m in _LONG_DATE.finditer(text):
+        month = _MONTHS.get(fold(m.group(2)))
+        try:
+            found = date(int(m.group(3)), month or 0, int(m.group(1))).isoformat()
+        except ValueError:
+            continue
+    return found
 
 
 def prefill(doc_type: DocumentType, text: str, condo_cnpj: str, reference: date) -> Prefill:
@@ -256,7 +324,14 @@ def prefill(doc_type: DocumentType, text: str, condo_cnpj: str, reference: date)
             pf.put("documento_recebedor", docs[0], TEXT_CONFIDENCE)
 
     elif doc_type == DocumentType.CONTRATO:
-        _other_cnpj(text, condo_cnpj, pf, "cnpj_contratada")
+        contracted = _cnpj_after_party(text, condo_cnpj, "contratada")
+        if contracted:
+            pf.put("cnpj_contratada", contracted, CHECKED_CONFIDENCE)
+        else:
+            _other_cnpj(text, condo_cnpj, pf, "cnpj_contratada")
+        signed = signature_date(text)
+        if signed:
+            pf.put("data_assinatura", signed, TEXT_CONFIDENCE)
         if has_condo:
             pf.put("cnpj_contratante", condo_cnpj, CHECKED_CONFIDENCE)
         pf.put(
