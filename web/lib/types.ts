@@ -104,6 +104,9 @@ export interface FindingDetail extends Finding {
   validated_by_management: boolean;
   allowed_actions: string[];
   can_comment: boolean;
+  approval_expense_id?: string | null;
+  approvals?: { id: string; approved_by: string; approved_at: string; notes: string | null }[];
+  can_record_approval?: boolean;
 }
 
 export interface Summary {

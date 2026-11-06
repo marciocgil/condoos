@@ -21,6 +21,7 @@ class Permission(StrEnum):
     CORRECT_EXTRACTION = "correct_extraction"
     CONFIGURE = "configure"  # approval limits, rule params, categories, members
     CLOSE_COMPETENCE = "close_competence"
+    RECORD_APPROVAL = "record_approval"  # register a board/assembly approval of an expense
     EXPORT = "export"
 
 
@@ -42,6 +43,7 @@ ROLE_PERMISSIONS: dict[Role, frozenset[Permission]] = {
             Permission.VIEW_PENDING_FINDINGS,
             Permission.UPLOAD_DOCUMENT,
             Permission.CORRECT_EXTRACTION,
+            Permission.RECORD_APPROVAL,
             Permission.EXPORT,
         }
     ),

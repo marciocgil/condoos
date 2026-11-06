@@ -265,3 +265,7 @@ O motor é idempotente, então reavaliar não duplica achados.
 **D63 — Boleto repetido.** A linha digitável identifica a cobrança. Um segundo arquivo do mesmo boleto (por exemplo, a foto do PDF) entra na mesma despesa, em vez de criar uma despesa nova e um falso "pagamento duplicado". Notas repetidas já eram unidas pelo número.
 
 **D64 — Aceite do Marco 6 por script** (`make pilot`, `api/scripts/pilot_run.py`). Cadastra o condomínio fictício "Bosque dos Ipês", gera os 30 documentos do corpus endereçados ao CNPJ dele e um extrato OFX de outubro, e percorre pela API o que as pessoas fariam: envio, correção da fila (com o gabarito do corpus, como uma pessoa lendo o documento), validação dos graves, fechamento e download do relatório. O tempo medido é o do sistema; a leitura humana é instantânea no script. Resultado em `docs/pilot/run.md`.
+
+## Pós-piloto — lacunas de uso real
+
+**D65 — Registro de aprovações (R12).** A administradora (gerente ou analista; permissão `record_approval`) registra quem aprovou a despesa (conselho, assembleia), a data (nunca futura) e uma observação, opcionalmente ligada à ata enviada. O registro é auditado e reavalia o mês com prioridade; o achado R12 em que ninguém agiu vira "superado" (D61). O corpo diretivo não registra a própria aprovação. A tela fica no detalhe do achado R12.

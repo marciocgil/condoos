@@ -20,6 +20,7 @@ from app.auth.rbac import CondoAccess, Permission
 from app.core.br import format_cnpj
 from app.db.enums import VISIBLE_TO_BOARD, DecisionAction, FindingStatus
 from app.db.models import (
+    Approval,
     AppUser,
     Competence,
     Decision,
@@ -96,6 +97,10 @@ class FindingDetailOut(FindingOut):
     validated_by_management: bool
     allowed_actions: list[str]
     can_comment: bool
+    # R12 (above the approval limit): the expense and the approvals already recorded for it
+    approval_expense_id: uuid.UUID | None = None
+    approvals: list[dict[str, Any]] = []
+    can_record_approval: bool = False
 
 
 class SummaryOut(BaseModel):
@@ -390,7 +395,35 @@ async def _detail(db: DbSession, access: CondoAccess, f: Finding) -> FindingDeta
         validated_by_management=any(d.action == DecisionAction.VALIDAR.value for d, _ in decisions),
         allowed_actions=[a.value for a in allowed_actions(access, f)],
         can_comment=access.can(Permission.COMMENT_FINDING),
+        **await _approval_info(db, access, f),
     )
+
+
+async def _approval_info(db: DbSession, access: CondoAccess, f: Finding) -> dict[str, Any]:
+    if f.rule_code != "R12" or not f.dedupe_key.startswith("R12:"):
+        return {}
+    try:
+        expense_id = uuid.UUID(f.dedupe_key.split(":", 1)[1])
+    except ValueError:
+        return {}
+    rows = await db.scalars(
+        select(Approval)
+        .where(Approval.expense_id == expense_id, Approval.condominium_id == f.condominium_id)
+        .order_by(Approval.approved_at)
+    )
+    return {
+        "approval_expense_id": expense_id,
+        "approvals": [
+            {
+                "id": str(a.id),
+                "approved_by": a.approved_by,
+                "approved_at": a.approved_at.isoformat(),
+                "notes": a.notes,
+            }
+            for a in rows
+        ],
+        "can_record_approval": access.can(Permission.RECORD_APPROVAL),
+    }
 
 
 @router.get("/findings/{finding_id}")

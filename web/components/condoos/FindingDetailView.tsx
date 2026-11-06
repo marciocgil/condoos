@@ -6,6 +6,7 @@ import { formatBRL, formatDateTime, formatMonth } from "@/lib/format";
 import { ACTION_LABEL } from "@/lib/labels";
 import type { FindingDetail } from "@/lib/types";
 
+import { ApprovalPanel } from "./ApprovalPanel";
 import { CommentForm } from "./CommentForm";
 import { DecisionBar } from "./DecisionBar";
 import { EvidenceList } from "./EvidenceList";
@@ -92,6 +93,15 @@ export function FindingDetailView({
         </h2>
         <EvidenceList items={f.evidence} />
       </section>
+
+      {f.approval_expense_id && (
+        <ApprovalPanel
+          condominiumId={condominiumId}
+          expenseId={f.approval_expense_id}
+          approvals={f.approvals ?? []}
+          canRecord={f.can_record_approval ?? false}
+        />
+      )}
 
       <DecisionBar condominiumId={condominiumId} findingId={f.id} actions={f.allowed_actions} />
 

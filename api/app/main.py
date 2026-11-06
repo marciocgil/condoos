@@ -8,6 +8,7 @@ from fastapi import FastAPI
 
 from app.config import get_settings
 from app.routers import (
+    approvals,
     auth,
     chat,
     condominiums,
@@ -49,6 +50,7 @@ def create_app() -> FastAPI:
     app.include_router(settings.router)
     app.include_router(chat.router)
     app.include_router(reports.router)
+    app.include_router(approvals.router)
 
     @app.get("/health", tags=["health"])
     async def health() -> dict[str, str]:
