@@ -275,3 +275,14 @@ O motor é idempotente, então reavaliar não duplica achados.
 - R02 e o chat usam o valor do aditivo vigente no mês, e só os reajustes posteriores a ele (o valor do aditivo já inclui os anteriores). As telas de contratos mostram o valor vigente e quantos aditivos há.
 - Sem contrato original cadastrado, ou com mais de um possível do mesmo fornecedor, o aditivo volta para a fila com o motivo; nunca é ligado ao acaso.
 - Limite conhecido: aditivo só de prazo ainda exige o valor mensal na revisão (repita o valor vigente).
+
+**D67 — Telas de cadastro da administradora** (`app/routers/registry.py`). Só o gerente (permissão `configure`):
+- dados do condomínio (nome, endereço, unidades, retenção; o CNPJ não muda);
+- corpo diretivo: incluir, editar e remover, com mandato;
+- acessos do condomínio: dar acesso por e-mail com papel de síndico, subsíndico ou conselheiro, e remover. Os acessos da administradora aparecem, mas não são removidos por condomínio;
+- contratos: cadastrar e editar à mão quando não há documento. Na edição vale o valor original; os aditivos seguem valendo pelas datas deles;
+- novo condomínio pela Carteira.
+
+Toda alteração é auditada (ids e nomes de campos, nunca dados de pessoas). Mudanças que afetam regras (corpo diretivo, contratos) reavaliam os meses em aberto com prioridade.
+
+O condomínio novo ainda não está no escopo de RLS da requisição. Por isso é criado numa transação própria com o papel do worker, depois da verificação de que o usuário é gerente da administradora. O comando `app.onboarding` continua existindo para cargas por arquivo.

@@ -85,6 +85,12 @@ test.describe("gerente — chat e fechamento", () => {
     const row = page.getByRole("row", { name: /Jardim das Acácias/ });
     const close = row.getByRole("button", { name: "Fechar mês" });
     test.skip(!(await close.isVisible()), "o mês de Acácias já foi fechado neste banco");
+    // The refusal needs a pending item: once the seed's serious findings were all validated
+    // (by the validation test in earlier runs), closing is rightly accepted.
+    test.skip(
+      (await row.getByText("Revisar").count()) === 0,
+      "sem pendências em Acácias. Rode `make reset && make up` para recriá-las.",
+    );
     page.once("dialog", (d) => void d.accept());
     await close.click();
     await expect(row.getByRole("alert")).toContainText("fila de exceções");

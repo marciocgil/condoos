@@ -1,7 +1,9 @@
-import { CalendarClock } from "lucide-react";
+import { CalendarClock, Plus } from "lucide-react";
+import Link from "next/link";
 
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Badge } from "@/components/ui/Badge";
+import { buttonClass } from "@/components/ui/Button";
 import { DataTable } from "@/components/ui/DataTable";
 import { KpiCard } from "@/components/ui/KpiCard";
 import { apiGet } from "@/lib/api";
@@ -30,7 +32,15 @@ export default async function ContratosPage() {
   const annual = active.reduce((s, r) => s + Number(r.monthly_value) * 12, 0);
   return (
     <>
-      <PageHeader title="Contratos" subtitle="Contratos de todos os condomínios da carteira" />
+      <PageHeader
+        title="Contratos"
+        subtitle="Contratos de todos os condomínios da carteira. Clique no fornecedor para editar."
+        actions={
+          <Link href="/admin/contratos/novo" className={buttonClass("secondary", "sm")}>
+            <Plus size={14} aria-hidden /> Novo contrato
+          </Link>
+        }
+      />
       <section className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-3" aria-label="Indicadores">
         <KpiCard label="Contratos ativos" value={active.length} />
         <KpiCard
@@ -48,6 +58,7 @@ export default async function ContratosPage() {
         caption="Contratos da carteira"
         rows={rows}
         rowKey={(r) => r.id}
+        rowHref={(r) => `/admin/contratos/${r.condominium_id}/${r.id}`}
         columns={[
           {
             key: "supplier",

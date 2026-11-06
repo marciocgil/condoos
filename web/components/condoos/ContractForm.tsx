@@ -1,0 +1,228 @@
+"use client";
+
+import { useRouter } from "next/navigation";
+import { useState } from "react";
+
+import { Button } from "@/components/ui/Button";
+import { Card } from "@/components/ui/Card";
+import { controlClass, Field } from "@/components/ui/Field";
+import { send } from "@/lib/client";
+
+const INDEXES = [
+  ["IPCA", "IPCA"],
+  ["IGPM", "IGP-M"],
+  ["INPC", "INPC"],
+  ["FIXO", "Fixo (sem índice)"],
+  ["NENHUM", "Sem reajuste"],
+] as const;
+const MONTHS = [
+  "janeiro",
+  "fevereiro",
+  "março",
+  "abril",
+  "maio",
+  "junho",
+  "julho",
+  "agosto",
+  "setembro",
+  "outubro",
+  "novembro",
+  "dezembro",
+];
+
+export interface ContractFormValues {
+  supplier_cnpj: string;
+  supplier_name: string;
+  object: string;
+  scope: string; // one item per line
+  monthly_value: string;
+  adjustment_index: string;
+  adjustment_base_month: string;
+  start_date: string;
+  end_date: string;
+}
+
+export const EMPTY_CONTRACT: ContractFormValues = {
+  supplier_cnpj: "",
+  supplier_name: "",
+  object: "",
+  scope: "",
+  monthly_value: "",
+  adjustment_index: "IPCA",
+  adjustment_base_month: "",
+  start_date: "",
+  end_date: "",
+};
+
+/** Typed registration of a contract, for when there is no document to send (D67). */
+export function ContractForm({
+  condominiumId,
+  contractId,
+  initial,
+}: {
+  condominiumId: string;
+  contractId?: string;
+  initial: ContractFormValues;
+}) {
+  const router = useRouter();
+  const [f, setF] = useState(initial);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const indexed = ["IPCA", "IGPM", "INPC"].includes(f.adjustment_index);
+
+  async function save() {
+    setBusy(true);
+    setError(null);
+    const body = {
+      supplier_cnpj: f.supplier_cnpj,
+      supplier_name: f.supplier_name,
+      object: f.object,
+      scope_items: f.scope
+        .split("\n")
+        .map((s) => s.trim())
+        .filter(Boolean),
+      monthly_value: f.monthly_value,
+      adjustment_index: f.adjustment_index,
+      adjustment_base_month:
+        indexed && f.adjustment_base_month ? Number(f.adjustment_base_month) : null,
+      start_date: f.start_date,
+      end_date: f.end_date || null,
+    };
+    const r = contractId
+      ? await send("PUT", `/condominiums/${condominiumId}/contracts/${contractId}`, body)
+      : await send("POST", `/condominiums/${condominiumId}/contracts`, body);
+    setBusy(false);
+    if (!r.ok) return setError(r.error);
+    router.push("/admin/contratos");
+    router.refresh();
+  }
+
+  const set = (k: keyof ContractFormValues) => (e: { target: { value: string } }) =>
+    setF({ ...f, [k]: e.target.value });
+
+  return (
+    <Card className="max-w-2xl">
+      <div className="space-y-4">
+        <div className="grid gap-4 md:grid-cols-2">
+          <Field id="c-cnpj" label="CNPJ do fornecedor" required>
+            <input
+              id="c-cnpj"
+              className={controlClass}
+              value={f.supplier_cnpj}
+              onChange={set("supplier_cnpj")}
+              placeholder="00.000.000/0000-00"
+            />
+          </Field>
+          <Field id="c-supplier" label="Razão social" required>
+            <input
+              id="c-supplier"
+              className={controlClass}
+              value={f.supplier_name}
+              onChange={set("supplier_name")}
+            />
+          </Field>
+        </div>
+        <Field id="c-object" label="Objeto" required>
+          <input
+            id="c-object"
+            className={controlClass}
+            value={f.object}
+            onChange={set("object")}
+            placeholder="Ex.: Portaria 24 horas"
+          />
+        </Field>
+        <Field
+          id="c-scope"
+          label="Itens do escopo"
+          hint="Um por linha. Usados na regra de serviço fora do escopo (R04)."
+        >
+          <textarea
+            id="c-scope"
+            rows={3}
+            className={`${controlClass} h-auto py-2`}
+            value={f.scope}
+            onChange={set("scope")}
+          />
+        </Field>
+        <div className="grid gap-4 md:grid-cols-3">
+          <Field id="c-value" label="Valor mensal (R$)" required>
+            <input
+              id="c-value"
+              inputMode="decimal"
+              className={controlClass}
+              value={f.monthly_value}
+              onChange={set("monthly_value")}
+              placeholder="1.250,00"
+            />
+          </Field>
+          <Field id="c-index" label="Índice de reajuste" required>
+            <select
+              id="c-index"
+              className={controlClass}
+              value={f.adjustment_index}
+              onChange={set("adjustment_index")}
+            >
+              {INDEXES.map(([v, label]) => (
+                <option key={v} value={v}>
+                  {label}
+                </option>
+              ))}
+            </select>
+          </Field>
+          <Field id="c-base" label="Mês do reajuste" required={indexed}>
+            <select
+              id="c-base"
+              className={controlClass}
+              value={f.adjustment_base_month}
+              onChange={set("adjustment_base_month")}
+              disabled={!indexed}
+            >
+              <option value="">—</option>
+              {MONTHS.map((m, i) => (
+                <option key={m} value={i + 1}>
+                  {m}
+                </option>
+              ))}
+            </select>
+          </Field>
+        </div>
+        <div className="grid gap-4 md:grid-cols-2">
+          <Field id="c-start" label="Início da vigência" required>
+            <input
+              id="c-start"
+              type="date"
+              className={controlClass}
+              value={f.start_date}
+              onChange={set("start_date")}
+            />
+          </Field>
+          <Field id="c-end" label="Fim da vigência" hint="Em branco: prazo indeterminado.">
+            <input
+              id="c-end"
+              type="date"
+              className={controlClass}
+              value={f.end_date}
+              onChange={set("end_date")}
+            />
+          </Field>
+        </div>
+        {error && (
+          <p role="alert" className="text-[13px] text-danger">
+            {error}
+          </p>
+        )}
+        <p className="text-xs text-muted">
+          Ao salvar, as regras dos meses em aberto são reavaliadas com os novos termos.
+        </p>
+        <div className="flex gap-2">
+          <Button variant="primary" onClick={() => void save()} disabled={busy}>
+            {busy ? "Salvando…" : contractId ? "Salvar alterações" : "Cadastrar contrato"}
+          </Button>
+          <Button variant="ghost" onClick={() => router.push("/admin/contratos")}>
+            Cancelar
+          </Button>
+        </div>
+      </div>
+    </Card>
+  );
+}

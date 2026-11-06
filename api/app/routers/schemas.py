@@ -75,6 +75,7 @@ class ContractOut(ORM):
     id: uuid.UUID
     supplier_id: uuid.UUID
     supplier_name: str | None = None
+    supplier_cnpj: str | None = None
     object: str
     scope_items: list[str]
     monthly_value: Decimal
@@ -83,6 +84,7 @@ class ContractOut(ORM):
     start_date: date
     end_date: date | None
     amendments: int = 0  # termos aditivos linked to the contract (D66)
+    original_monthly_value: Decimal | None = None  # as signed; monthly_value is in force
 
 
 class CompetenceOut(ORM):

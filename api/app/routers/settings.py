@@ -2,6 +2,7 @@
 and members. Every change is recorded in audit_log (keys only, never values of people)."""
 
 import uuid
+from datetime import date
 from decimal import Decimal, InvalidOperation
 from typing import Annotated, Any
 
@@ -12,6 +13,7 @@ from sqlalchemy import or_, select
 from app.auth.deps import require
 from app.auth.rbac import CondoAccess, Permission
 from app.core.audit import record_audit
+from app.core.br import format_cnpj
 from app.db.models import AppUser, BoardMember, Condominium, Membership
 from app.db.session import DbSession
 from app.rules.engine import ALL_RULES
@@ -28,6 +30,7 @@ class RuleParamsOut(BaseModel):
 
 
 class MemberOut(BaseModel):
+    id: uuid.UUID | None = None  # membership id (condominium-scoped ones can be removed)
     name: str
     email: str
     role: str
@@ -35,11 +38,24 @@ class MemberOut(BaseModel):
 
 
 class BoardOut(BaseModel):
+    id: uuid.UUID | None = None
     full_name: str
     position: str
+    term_start: date | None = None
+    term_end: date | None = None
+    has_login: bool = False
+
+
+class ProfileOut(BaseModel):
+    name: str
+    cnpj: str
+    units: int
+    address: str
+    retention_years: int
 
 
 class SettingsOut(BaseModel):
+    profile: ProfileOut | None = None
     approval_limits: dict[str, Any]
     expense_categories: list[str]
     rules: list[RuleParamsOut]
@@ -70,7 +86,13 @@ def _money(value: Any, label: str) -> str:
 async def _out(db: DbSession, condo: Condominium) -> SettingsOut:
     members = (
         await db.execute(
-            select(AppUser.name, AppUser.email, Membership.role, Membership.condominium_id)
+            select(
+                AppUser.name,
+                AppUser.email,
+                Membership.role,
+                Membership.condominium_id,
+                Membership.id,
+            )
             .join(Membership, Membership.user_id == AppUser.id)
             .where(
                 or_(
@@ -87,6 +109,13 @@ async def _out(db: DbSession, condo: Condominium) -> SettingsOut:
         .order_by(BoardMember.position)
     )
     return SettingsOut(
+        profile=ProfileOut(
+            name=condo.name,
+            cnpj=format_cnpj(condo.cnpj),
+            units=condo.units,
+            address=condo.address,
+            retention_years=condo.retention_years,
+        ),
         approval_limits=condo.approval_limits or {},
         expense_categories=condo.expense_categories or [],
         rules=[
@@ -99,10 +128,26 @@ async def _out(db: DbSession, condo: Condominium) -> SettingsOut:
             for r in ALL_RULES
         ],
         members=[
-            MemberOut(name=n, email=e, role=r, scope="condominio" if cid else "administradora")
-            for n, e, r, cid in members
+            MemberOut(
+                id=mid if cid else None,
+                name=n,
+                email=e,
+                role=r,
+                scope="condominio" if cid else "administradora",
+            )
+            for n, e, r, cid, mid in members
         ],
-        board=[BoardOut(full_name=b.full_name, position=b.position) for b in board],
+        board=[
+            BoardOut(
+                id=b.id,
+                full_name=b.full_name,
+                position=b.position,
+                term_start=b.term_start,
+                term_end=b.term_end,
+                has_login=b.user_id is not None,
+            )
+            for b in board
+        ],
     )
 
 

@@ -17,6 +17,7 @@ from app.routers import (
     me,
     portfolio,
     queue,
+    registry,
     reports,
     settings,
 )
@@ -51,6 +52,7 @@ def create_app() -> FastAPI:
     app.include_router(chat.router)
     app.include_router(reports.router)
     app.include_router(approvals.router)
+    app.include_router(registry.router)
 
     @app.get("/health", tags=["health"])
     async def health() -> dict[str, str]:

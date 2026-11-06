@@ -51,6 +51,9 @@ export interface Contract {
   start_date: string;
   end_date: string | null;
   amendments?: number;
+  supplier_cnpj?: string | null;
+  scope_items?: string[];
+  original_monthly_value?: string | null;
 }
 
 export type Severity = "alta" | "media" | "baixa";
@@ -185,8 +188,16 @@ export interface Settings {
     defaults: Record<string, unknown>;
     overrides: Record<string, unknown>;
   }[];
-  members: { name: string; email: string; role: string; scope: string }[];
-  board: { full_name: string; position: string }[];
+  members: { id: string | null; name: string; email: string; role: string; scope: string }[];
+  board: {
+    id: string | null;
+    full_name: string;
+    position: string;
+    term_start: string | null;
+    term_end: string | null;
+    has_login: boolean;
+  }[];
+  profile: { name: string; cnpj: string; units: number; address: string; retention_years: number };
 }
 
 export interface QueueItem {

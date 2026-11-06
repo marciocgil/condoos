@@ -1,16 +1,17 @@
-import { AlertTriangle, CheckCircle2, Inbox, Send, Wallet } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Inbox, Plus, Send, Wallet } from "lucide-react";
 import Link from "next/link";
 
 import { ReportActions } from "@/components/condoos/ReportActions";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { QueueList } from "@/components/QueueList";
 import { Badge } from "@/components/ui/Badge";
+import { buttonClass } from "@/components/ui/Button";
 import { CardTitle } from "@/components/ui/Card";
 import { DataTable } from "@/components/ui/DataTable";
 import { KpiCard } from "@/components/ui/KpiCard";
 import { apiGet } from "@/lib/api";
 import { competenceParam, formatBRLShort, formatMonth } from "@/lib/format";
-import type { Portfolio, PortfolioRow, QueueItem } from "@/lib/types";
+import type { Me, Portfolio, PortfolioRow, QueueItem } from "@/lib/types";
 
 function StatusCell({ row }: { row: PortfolioRow }) {
   if (row.status === "revisar")
@@ -33,16 +34,25 @@ function StatusCell({ row }: { row: PortfolioRow }) {
 }
 
 export default async function CarteiraPage() {
-  const [p, queue] = await Promise.all([
+  const [p, queue, me] = await Promise.all([
     apiGet<Portfolio>("/portfolio"),
     apiGet<QueueItem[]>("/queue"),
+    apiGet<Me>("/me"),
   ]);
+  const isManager = me.management_companies.some((c) => c.roles.includes("gerente"));
   const n = p.condominiums.length;
   return (
     <>
       <PageHeader
         title="Carteira"
         subtitle={`${n} ${n === 1 ? "condomínio" : "condomínios"}${p.latest_competence ? ` · ${formatMonth(p.latest_competence)}` : ""}`}
+        actions={
+          isManager ? (
+            <Link href="/admin/condominios/novo" className={buttonClass("secondary", "sm")}>
+              <Plus size={14} aria-hidden /> Novo condomínio
+            </Link>
+          ) : undefined
+        }
       />
       <section className="grid grid-cols-1 gap-4 md:grid-cols-3" aria-label="Indicadores">
         <KpiCard

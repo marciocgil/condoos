@@ -1,12 +1,11 @@
 import Link from "next/link";
 
+import { BoardCard, MembersCard, ProfileCard } from "@/components/condoos/RegistryCards";
 import { SettingsForm } from "@/components/condoos/SettingsForm";
 import { PageHeader } from "@/components/layout/PageHeader";
-import { Card, CardTitle } from "@/components/ui/Card";
 import { cx } from "@/components/ui/cx";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { apiGet } from "@/lib/api";
-import { ROLE_LABEL } from "@/lib/labels";
 import type { Me, Settings } from "@/lib/types";
 
 export default async function ConfiguracoesPage({
@@ -31,7 +30,7 @@ export default async function ConfiguracoesPage({
     <>
       <PageHeader
         title="Configurações"
-        subtitle="Alçadas, parâmetros das regras, categorias e membros, por condomínio."
+        subtitle="Dados do condomínio, corpo diretivo, acessos, alçadas e parâmetros das regras."
       />
       <nav aria-label="Condomínio" className="mb-6 flex flex-wrap gap-2">
         {condos.map((c) => (
@@ -53,34 +52,17 @@ export default async function ConfiguracoesPage({
       <div className="grid gap-6 xl:grid-cols-[1fr_360px]">
         <SettingsForm key={current.id} condominiumId={current.id} settings={settings} />
         <div className="space-y-6">
-          <Card>
-            <CardTitle>Membros com acesso</CardTitle>
-            <ul className="divide-y divide-line text-sm">
-              {settings.members.map((m) => (
-                <li key={`${m.email}-${m.role}`} className="py-2">
-                  <p>{m.name}</p>
-                  <p className="text-xs text-muted">
-                    {ROLE_LABEL[m.role] ?? m.role} ·{" "}
-                    {m.scope === "administradora" ? "toda a carteira" : "este condomínio"}
-                  </p>
-                </li>
-              ))}
-            </ul>
-          </Card>
-          <Card>
-            <CardTitle>Corpo diretivo</CardTitle>
-            <p className="mb-2 text-xs text-muted">
-              Usado na regra de conflito de interesse (R08).
-            </p>
-            <ul className="divide-y divide-line text-sm">
-              {settings.board.map((b) => (
-                <li key={`${b.full_name}-${b.position}`} className="flex justify-between py-2">
-                  <span>{b.full_name}</span>
-                  <span className="text-xs text-muted">{ROLE_LABEL[b.position] ?? b.position}</span>
-                </li>
-              ))}
-            </ul>
-          </Card>
+          <ProfileCard
+            key={`p-${current.id}`}
+            condominiumId={current.id}
+            profile={settings.profile}
+          />
+          <BoardCard key={`b-${current.id}`} condominiumId={current.id} board={settings.board} />
+          <MembersCard
+            key={`m-${current.id}`}
+            condominiumId={current.id}
+            members={settings.members}
+          />
         </div>
       </div>
     </>

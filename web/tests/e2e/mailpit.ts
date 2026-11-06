@@ -5,13 +5,28 @@ interface MailpitList {
   messages: { ID: string; To: { Address: string }[]; Created: string }[];
 }
 
-export async function latestMagicLink(email: string, after: Date): Promise<string> {
+/** IDs of the messages already in the inbox for this address (taken before asking a link). */
+export async function existingMessageIds(email: string): Promise<Set<string>> {
+  const res = await fetch(
+    `${MAILPIT_URL}/api/v1/search?query=${encodeURIComponent(`to:${email}`)}`,
+  );
+  const list = (await res.json()) as MailpitList;
+  return new Set(list.messages.map((m) => m.ID));
+}
+
+export async function latestMagicLink(
+  email: string,
+  after: Date,
+  seen: Set<string> = new Set(),
+): Promise<string> {
   for (let attempt = 0; attempt < 20; attempt++) {
     const res = await fetch(
       `${MAILPIT_URL}/api/v1/search?query=${encodeURIComponent(`to:${email}`)}`,
     );
     const list = (await res.json()) as MailpitList;
-    const msg = list.messages.find((m) => new Date(m.Created) >= after);
+    // A message sent in the same second to the same user (by an earlier test) is skipped by
+    // id, not only by time: its link was already used.
+    const msg = list.messages.find((m) => !seen.has(m.ID) && new Date(m.Created) >= after);
     if (msg) {
       const full = (await (await fetch(`${MAILPIT_URL}/api/v1/message/${msg.ID}`)).json()) as {
         Text: string;
