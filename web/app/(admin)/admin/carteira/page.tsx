@@ -87,11 +87,12 @@ export default async function CarteiraPage() {
               key: "report",
               header: "Relatório do mês",
               cell: (r) =>
-                p.latest_competence ? (
+                p.latest_competence && r.has_competence ? (
                   <ReportActions
                     condominiumId={r.id}
                     month={competenceParam(p.latest_competence)}
                     sent={r.status === "enviado"}
+                    canClose={r.can_close}
                   />
                 ) : (
                   "—"

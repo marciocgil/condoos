@@ -49,6 +49,8 @@ class CondoRow(BaseModel):
     pending_validation: int
     queue_items: int
     status: str  # revisar | enviado | em_dia
+    can_close: bool  # the user may close this condominium's competences
+    has_competence: bool  # a competence exists for the portfolio's latest month
 
 
 class PortfolioOut(BaseModel):
@@ -84,6 +86,12 @@ class ContractRow(BaseModel):
 
 
 async def _manager_condos(db: DbSession, principal: CurrentPrincipal) -> list[Condominium]:
+    return [c for c, _ in await _manager_access(db, principal)]
+
+
+async def _manager_access(
+    db: DbSession, principal: CurrentPrincipal
+) -> list[tuple[Condominium, CondoAccess]]:
     condos = list(
         await db.scalars(
             select(Condominium)
@@ -91,19 +99,21 @@ async def _manager_condos(db: DbSession, principal: CurrentPrincipal) -> list[Co
             .order_by(Condominium.name)
         )
     )
-    out = []
+    out: list[tuple[Condominium, CondoAccess]] = []
     for c in condos:
         access = CondoAccess(
             principal.user.id, c.id, await roles_on_condominium(db, principal.user.id, c)
         )
         if access.can(Permission.VIEW_PENDING_FINDINGS):
-            out.append(c)
+            out.append((c, access))
     return out
 
 
 @router.get("")
 async def portfolio(db: DbSession, principal: CurrentPrincipal) -> PortfolioOut:
-    condos = await _manager_condos(db, principal)
+    accesses = await _manager_access(db, principal)
+    condos = [c for c, _ in accesses]
+    can_close = {c.id: a.can(Permission.CLOSE_COMPETENCE) for c, a in accesses}
     ids = [c.id for c in condos]
     findings = (
         list(await db.scalars(select(Finding).where(Finding.condominium_id.in_(ids))))
@@ -129,10 +139,8 @@ async def portfolio(db: DbSession, principal: CurrentPrincipal) -> PortfolioOut:
     for c in condos:
         mine = [f for f in findings if f.condominium_id == c.id and f.status in OPEN]
         pending = sum(f.status == FindingStatus.AGUARDANDO_VALIDACAO.value for f in mine)
-        published = any(
-            x.condominium_id == c.id and x.month == latest and x.published_at is not None
-            for x in comps
-        )
+        current = next((x for x in comps if x.condominium_id == c.id and x.month == latest), None)
+        published = current is not None and current.published_at is not None
         rows.append(
             CondoRow(
                 id=c.id,
@@ -143,6 +151,8 @@ async def portfolio(db: DbSession, principal: CurrentPrincipal) -> PortfolioOut:
                 pending_validation=pending,
                 queue_items=pending + docs_review[c.id],
                 status="revisar" if pending else ("enviado" if published else "em_dia"),
+                can_close=can_close[c.id],
+                has_competence=current is not None,
             )
         )
     rows.sort(key=lambda r: r.amount_at_risk, reverse=True)

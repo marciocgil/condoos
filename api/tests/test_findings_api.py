@@ -1,6 +1,7 @@
 """Milestone 4 API: finding detail and decisions by role, comments, trail, summary,
 portfolio and settings."""
 
+import random
 import uuid
 from datetime import date
 from decimal import Decimal
@@ -11,8 +12,10 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncEngine
 
 from app.auth.mailer import MemoryMailer
-from app.db.models import AuditLog, Decision, Finding
+from app.core.br import generate_cnpj
+from app.db.models import AuditLog, Decision, Finding, ManagementCompany
 from app.db.session import sessionmaker_for
+from app.onboarding import OnboardingIn, onboard
 from tests.helpers import (
     ANALISTA,
     CONSELHEIRO_ACACIAS,
@@ -260,3 +263,49 @@ async def test_manager_updates_settings_with_audit(
             "rule_params": {},
         },
     )
+
+
+async def test_portfolio_report_flags(
+    client: httpx.AsyncClient, mailer: MemoryMailer, admin_engine: AsyncEngine
+) -> None:
+    """The portfolio tells the screen who may close the month and whether it exists."""
+    async with sessionmaker_for(admin_engine)() as s, s.begin():
+        company = await s.scalar(
+            select(ManagementCompany).where(ManagementCompany.name.like("Atlântida%"))
+        )
+        assert company is not None
+        tag = uuid.uuid4().hex[:8]
+        fresh = await onboard(
+            s,
+            OnboardingIn.model_validate(
+                {
+                    "management_company_name": company.name,
+                    "condominium": {
+                        "name": f"Condomínio Novo {tag} (fictício)",
+                        "slug": f"novo-{tag}",
+                        "cnpj": generate_cnpj(random.Random(tag)),
+                        "units": 12,
+                        "address": "Rua Fictícia, 20 — Cidade Modelo/SP",
+                        "approval_limits": {"default": "5.000,00"},
+                    },
+                    "board": [
+                        {
+                            "name": "Síndico Novo",
+                            "position": "sindico",
+                            "term_start": "2026-01-01",
+                        }
+                    ],
+                }
+            ),
+        )
+    acacias = await condo_id(admin_engine, "jardim-das-acacias")
+
+    await login(client, mailer, GERENTE)
+    rows = {r["id"]: r for r in (await client.get("/portfolio")).json()["condominiums"]}
+    assert rows[str(acacias)]["can_close"] and rows[str(acacias)]["has_competence"]
+    assert rows[str(fresh.id)]["can_close"] and not rows[str(fresh.id)]["has_competence"]
+
+    await _switch(client, mailer, ANALISTA)
+    rows = {r["id"]: r for r in (await client.get("/portfolio")).json()["condominiums"]}
+    assert rows[str(acacias)]["has_competence"] and not rows[str(acacias)]["can_close"]
+    assert not any(r["can_close"] for r in rows.values())
