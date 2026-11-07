@@ -7,6 +7,7 @@ person reviews a document it is never overwritten by automatic extraction again.
 import asyncio
 import uuid
 from datetime import date, datetime
+from decimal import Decimal, InvalidOperation
 from typing import Annotated, Any, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -19,10 +20,17 @@ from app.core.audit import record_audit
 from app.core.br import is_valid_cnpj, is_valid_cpf
 from app.core.money import brl
 from app.core.time import utcnow
-from app.db.enums import UNDER_REVIEW, DocumentType, ExtractionStatus, FindingStatus
+from app.db.enums import (
+    UNDER_REVIEW,
+    DataIssueStatus,
+    DocumentType,
+    ExtractionStatus,
+    FindingStatus,
+)
 from app.db.models import (
     BankTransaction,
     Condominium,
+    DataIssue,
     Document,
     Expense,
     ExpenseDocument,
@@ -44,13 +52,41 @@ REVIEWABLE_TYPES = [t.value for t in SPECS]
 
 
 class QueueItemOut(BaseModel):
-    kind: Literal["extracao", "achado_grave", "casamento"]
+    kind: Literal["extracao", "achado_grave", "casamento", "conflito"]
     id: uuid.UUID
     condominium_id: uuid.UUID
     condominium_name: str
     title: str
     detail: str
     created_at: datetime
+    # Validation centre (LB-032, D96): the money the item is about, to sort by what matters
+    # most. A document's largest read amount, an expense or bank entry, a finding's amount at
+    # risk, or the monthly difference of a value conflict. Zero when there is none.
+    value_at_stake: Decimal = Decimal("0")
+
+
+def _document_value(doc: Document) -> Decimal:
+    """The largest money value read in the document (any confidence: it only orders)."""
+    best = Decimal("0")
+    for spec in specs_for(DocumentType(doc.doc_type)) if doc.doc_type in SPECS else []:
+        if spec.kind != "money":
+            continue
+        try:
+            value = Decimal(str((doc.extracted or {}).get(spec.name)))
+        except (InvalidOperation, ValueError):
+            continue
+        best = max(best, abs(value))
+    return best
+
+
+def _conflict_value(issue: DataIssue) -> Decimal:
+    if issue.field_name != "monthly_value":
+        return Decimal("0")
+    try:
+        values = [Decimal(str(s.get("value"))) for s in issue.sources]
+    except (InvalidOperation, ValueError):
+        return Decimal("0")
+    return max(values) - min(values) if values else Decimal("0")
 
 
 class FieldSpecOut(BaseModel):
@@ -97,12 +133,15 @@ async def _queue(db: DbSession, principal: CurrentPrincipal) -> list[QueueItemOu
     ).all()
     can_correct: dict[uuid.UUID, str] = {}
     can_validate: dict[uuid.UUID, str] = {}
+    can_resolve: dict[uuid.UUID, str] = {}
     for condo in condos:
         access = await access_for(db, principal.user.id, condo)
         if access.can(Permission.CORRECT_EXTRACTION):
             can_correct[condo.id] = condo.name
         if access.can(Permission.VALIDATE_FINDING):
             can_validate[condo.id] = condo.name
+        if access.can(Permission.RESOLVE_DATA_ISSUE):
+            can_resolve[condo.id] = condo.name
 
     items: list[QueueItemOut] = []
     if can_correct:
@@ -121,6 +160,7 @@ async def _queue(db: DbSession, principal: CurrentPrincipal) -> list[QueueItemOu
                     title=f"Extração com baixa confiança: {d.original_filename}",
                     detail="; ".join(d.review_reasons[:2]),
                     created_at=d.created_at,
+                    value_at_stake=_document_value(d),
                 )
             )
     if can_correct:
@@ -130,8 +170,18 @@ async def _queue(db: DbSession, principal: CurrentPrincipal) -> list[QueueItemOu
             .order_by(MatchIssue.created_at)
         )
         for issue in issues:
+            amount: Decimal | None = None
+            if issue.subject_type == "expense":
+                amount = await db.scalar(
+                    select(Expense.amount).where(Expense.id == issue.subject_id)
+                )
+            elif issue.subject_type == "bank_transaction":
+                amount = await db.scalar(
+                    select(BankTransaction.amount).where(BankTransaction.id == issue.subject_id)
+                )
             items.append(
                 QueueItemOut(
+                    value_at_stake=abs(amount) if amount is not None else Decimal("0"),
                     kind="casamento",
                     id=issue.id,
                     condominium_id=issue.condominium_id,
@@ -164,8 +214,33 @@ async def _queue(db: DbSession, principal: CurrentPrincipal) -> list[QueueItemOu
                     ),
                     detail=f"{brl(f.amount_at_risk)} em risco",
                     created_at=f.created_at,
+                    value_at_stake=f.amount_at_risk,
                 )
             )
+    if can_resolve:
+        conflicts = await db.scalars(
+            select(DataIssue).where(
+                DataIssue.condominium_id.in_(can_resolve),
+                DataIssue.status == DataIssueStatus.ABERTO.value,
+            )
+        )
+        for c in conflicts:
+            items.append(
+                QueueItemOut(
+                    kind="conflito",
+                    id=c.id,
+                    condominium_id=c.condominium_id,
+                    condominium_name=can_resolve[c.condominium_id],
+                    title=f"Conflito de dados: {c.title}",
+                    detail=" × ".join(f"{s.get('label')}: {s.get('value')}" for s in c.sources)[
+                        :300
+                    ],
+                    created_at=c.detected_at,
+                    value_at_stake=_conflict_value(c),
+                )
+            )
+    # Most money first; the oldest first among equals (LB-032).
+    items.sort(key=lambda i: (-i.value_at_stake, i.created_at))
     return items
 
 
@@ -182,6 +257,7 @@ async def queue_count(db: DbSession, principal: CurrentPrincipal) -> dict[str, i
         "extracao": sum(i.kind == "extracao" for i in items),
         "achado_grave": sum(i.kind == "achado_grave" for i in items),
         "casamento": sum(i.kind == "casamento" for i in items),
+        "conflito": sum(i.kind == "conflito" for i in items),
     }
 
 

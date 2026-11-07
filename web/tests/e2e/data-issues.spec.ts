@@ -113,7 +113,12 @@ test("admin escolhe a versão certa de um contrato em conflito", async ({ page }
   });
   expect(changed.ok()).toBeTruthy();
 
-  await page.goto(`/admin/configuracoes?condominio=${id}`);
+  // The validation centre (LB-032, D96) lists it with the money involved, and leads to it.
+  await page.goto(`/admin/fila?condominio=${id}`);
+  const item = page.getByRole("listitem").filter({ hasText: "Conflito de dados" });
+  await expect(item).toContainText("Valor envolvido: R$ 600,00");
+  await item.getByRole("link", { name: "Escolher versão" }).click();
+  await expect(page).toHaveURL(new RegExp(`/admin/configuracoes\\?condominio=${id}#conflitos`));
   const card = page.getByTestId("data-issues");
   await expect(card).toBeVisible();
   await expect(card.getByText(/valor mensal do cadastro difere do documento/)).toBeVisible();

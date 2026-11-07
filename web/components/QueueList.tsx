@@ -1,7 +1,8 @@
-import { AlertOctagon, FileWarning, GitMerge } from "lucide-react";
+import { AlertOctagon, FileWarning, GitCompare, GitMerge } from "lucide-react";
 
 import { ButtonLink } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { formatBRL } from "@/lib/format";
 import type { QueueItem } from "@/lib/types";
 
 const KIND = {
@@ -23,11 +24,19 @@ const KIND = {
     label: "Achado grave",
     action: "Validar",
   },
+  conflito: {
+    icon: <GitCompare size={16} />,
+    tone: "text-warning",
+    label: "Conflito de dados",
+    action: "Escolher versão",
+  },
 } as const;
 
 function hrefFor(item: QueueItem): string {
   if (item.kind === "extracao") return `/admin/fila/documento/${item.condominium_id}/${item.id}`;
   if (item.kind === "casamento") return `/admin/fila/casamento/${item.condominium_id}/${item.id}`;
+  if (item.kind === "conflito")
+    return `/admin/configuracoes?condominio=${item.condominium_id}#conflitos`;
   return `/admin/achados/${item.condominium_id}/${item.id}`;
 }
 
@@ -57,6 +66,11 @@ export function QueueList({ items }: { items: QueueItem[] }) {
                 {item.title} · {item.condominium_name}
               </p>
               {item.detail && <p className="truncate text-xs text-fg-2">{item.detail}</p>}
+              {Number(item.value_at_stake) > 0 && (
+                <p className="tabular text-xs text-muted">
+                  Valor envolvido: {formatBRL(item.value_at_stake)}
+                </p>
+              )}
             </div>
             <ButtonLink
               href={hrefFor(item)}

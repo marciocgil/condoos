@@ -24,7 +24,7 @@ export default async function FilaPage({
     <>
       <PageHeader
         title="Fila de exceções"
-        subtitle={`${items.length} ${items.length === 1 ? "item" : "itens"} · leituras incertas, casamentos ambíguos e achados graves aguardando validação`}
+        subtitle={`${items.length} ${items.length === 1 ? "item" : "itens"} · leituras incertas, casamentos ambíguos, achados graves e conflitos de dados, do maior valor envolvido para o menor`}
         actions={
           <ButtonLink
             href="/admin/enviar"

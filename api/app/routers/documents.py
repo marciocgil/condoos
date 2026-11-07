@@ -5,7 +5,7 @@ import uuid
 from datetime import datetime
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, status
 from fastapi.responses import RedirectResponse
 from pydantic import BaseModel
 from sqlalchemy import delete, select
@@ -14,7 +14,7 @@ from app.auth.deps import require
 from app.auth.rbac import CondoAccess, Permission
 from app.config import get_settings
 from app.core.audit import record_audit
-from app.db.enums import DocumentOrigin, DocumentType
+from app.db.enums import DocumentOrigin, DocumentType, ExtractionStatus
 from app.db.models import Contract, Document, DocumentChunk
 from app.db.session import DbSession
 from app.ingestion.documents import ingest_file
@@ -102,6 +102,59 @@ async def upload(
             )
         )
     return results
+
+
+class DocumentStatusOut(BaseModel):
+    id: uuid.UUID
+    filename: str
+    doc_type: str
+    status: str  # lendo | lido | revisao | falhou
+    detail: str
+
+
+def _status(doc: Document) -> DocumentStatusOut:
+    """The batch upload's view of one document (LB-033, D96): where it stands, in words."""
+    extraction = doc.extraction_status
+    if extraction in (ExtractionStatus.PENDING.value, ExtractionStatus.PROCESSING.value):
+        status_, detail = "lendo", "Lendo o documento…"
+    elif extraction == ExtractionStatus.FAILED.value:
+        status_, detail = "falhou", "Não consegui ler este arquivo. Tente o original."
+    elif doc.needs_review and doc.reviewed_at is None:
+        reason = (doc.review_reasons or ["Um campo precisa de confirmação."])[0]
+        status_, detail = "revisao", f"Para revisão: {reason}"
+    else:
+        status_, detail = "lido", "Lido."
+    return DocumentStatusOut(
+        id=doc.id,
+        filename=doc.original_filename,
+        doc_type=doc.doc_type,
+        status=status_,
+        detail=detail,
+    )
+
+
+@router.get("/status")
+async def documents_status(
+    condominium_id: uuid.UUID,
+    access: CanView,
+    db: DbSession,
+    ids: Annotated[str, Query(max_length=30 * 37)],
+) -> list[DocumentStatusOut]:
+    """Status of the documents of one upload (comma-separated ids, at most 30). Ids of other
+    condominiums are simply not found (RLS and the filter below)."""
+    try:
+        wanted = [uuid.UUID(x) for x in ids.split(",") if x.strip()][:MAX_FILES_PER_REQUEST]
+    except ValueError as exc:
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_CONTENT, "Identificador inválido."
+        ) from exc
+    rows = await db.scalars(
+        select(Document).where(
+            Document.condominium_id == access.condominium_id, Document.id.in_(wanted)
+        )
+    )
+    found = {d.id: d for d in rows}
+    return [_status(found[i]) for i in wanted if i in found]
 
 
 @router.get("")

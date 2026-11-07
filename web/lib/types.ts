@@ -249,13 +249,23 @@ export interface Settings {
 }
 
 export interface QueueItem {
-  kind: "extracao" | "achado_grave" | "casamento";
+  kind: "extracao" | "achado_grave" | "casamento" | "conflito";
   id: string;
   condominium_id: string;
   condominium_name: string;
   title: string;
   detail: string;
   created_at: string;
+  /** Money the item is about (D96); "0" when there is none. The queue is sorted by it. */
+  value_at_stake: string;
+}
+
+export interface DocumentStatus {
+  id: string;
+  filename: string;
+  doc_type: string;
+  status: "lendo" | "lido" | "revisao" | "falhou";
+  detail: string;
 }
 
 export interface QueueCount {

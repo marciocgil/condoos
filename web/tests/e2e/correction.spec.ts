@@ -26,7 +26,12 @@ test("gerente envia um recibo, corrige a extração e o item sai da fila", async
     mimeType: "application/pdf",
     buffer: unique,
   });
-  await expect(page.getByRole("list", { name: "Resultado do envio" })).toContainText("Recebido");
+  // The upload follows the file (LB-033, D96): without the model a receipt goes to review.
+  await expect(page.getByRole("list", { name: "Resultado do envio" })).toContainText(
+    "Para revisão",
+    { timeout: 90_000 },
+  );
+  await expect(page.getByTestId("upload-summary")).toHaveText("0 de 1 lidos · 1 para revisão");
 
   // The worker classifies and extracts in the background; wait for the queue item.
   const item = page.getByRole("listitem").filter({ hasText: filename });
