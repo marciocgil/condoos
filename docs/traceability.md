@@ -5,7 +5,7 @@ Data: 07/11/2026. Atualizar ao fim de cada fatia (CLAUDE.md, item 6). "Entrega" 
 | FR | Tarefa(s) | Código | Teste(s) | Entrega |
 |---|---|---|---|---|
 | FR-001 | CB-002 | `models.Condominium`, `routers/registry.py` (`POST /portfolio/condominiums`), `app/onboarding/` | `test_registry.py::test_manager_creates_a_condominium`, `test_onboarding.py` | Marco 1, Marco 6, D67 |
-| FR-002 | CB-004, CB-005 | `routers/registry.py` (members), `auth/service.py`, `auth/tokens.py` | `test_auth.py`, `test_registry.py` | Marco 1, D67 |
+| FR-002 | CB-004, CB-013, CB-014 | `routers/registry.py` (members), `auth/service.py`, `auth/tokens.py` | `test_auth.py`, `test_registry.py` | Marco 1, D67 |
 | FR-003 | CB-001, CB-003 | `db/models.py::RLS_TABLES`, migração `0002_security.py`, `auth/deps.py` | `test_isolation.py` (10) | Marco 1 |
 | FR-004 | CB-004 | `auth/rbac.py`, `auth/deps.py::require` | `test_rbac.py`, `test_findings_api.py` | Marco 1 |
 | FR-005 | CB-010, CB-012 | `core/audit.py`, `models.AuditLog`, `models.Decision` | `test_isolation.py::test_append_only_tables`, `test_auth.py::test_login_is_audited` | Marco 1, Marco 4 |
@@ -23,7 +23,7 @@ Data: 07/11/2026. Atualizar ao fim de cada fatia (CLAUDE.md, item 6). "Entrega" 
 | FR-018 | — | `ingestion/documents.py` (hash), `matching/documents.py` (boleto, D63) | `test_ingestion.py`, `test_matching.py` | Marco 2, D63 |
 | FR-019 | — | `reports/pdf.py`, `reports/xlsx.py`, `routers/reports.py` | `test_reports.py` | Marco 5 |
 | FR-020 | — | `core/retention.py` | `test_retention.py` | Marco 6 |
-| FR-021..025 | CB-020..025 | — (achado: `findings/decisions.py`, `routers/findings.py`, `routers/queue.py`, `pending.py`) | — (`test_findings_api.py`, `test_pending.py` cobrem os análogos) | — |
+| FR-021..025 | CB-020..027 | — (achado: `findings/decisions.py`, `routers/findings.py`, `routers/queue.py`, `pending.py`) | — (`test_findings_api.py`, `test_pending.py` cobrem os análogos) | — |
 | FR-026 | CB-023 | `agenda.py` (em atraso, sem alerta) | `test_agenda.py` | D71 |
 | FR-027..030 | — | — | — | — |
 | FR-031 | CB-040 | `chat/agent.py`, `chat/tools.py`, `chat/service.py`, `prompts/chat_system.md` | `test_chat.py`, `tests/chat_eval/` (ao vivo não rodado) | Marco 5 |
@@ -35,8 +35,8 @@ Data: 07/11/2026. Atualizar ao fim de cada fatia (CLAUDE.md, item 6). "Entrega" 
 | FR-042 | CB-060 | `agenda.py`, `rules/contracts.py` | `test_agenda.py` | D71 |
 | FR-043 | — | `extraction/*`, `ingestion/bank/` (OFX, CSV, CNAB) | `test_extraction.py`, `test_bank_parsers.py` | Marco 2 |
 | FR-044 | CB-061 | `rules/r02_above_contract.py`, `r03_adjustment.py`, `r04_scope.py`, `rules/contracts.py`, `enrichment/indices.py` | `test_rules.py`, `test_planted_cases.py` | Marco 3 |
-| FR-045 | CB-061 | (valor em risco em `models.Finding`) | — | — |
-| FR-046 | CB-062 | (validação de graves em `findings/decisions.py`) | `test_rbac.py::test_pending_findings_visibility` | Marco 4 (divergente, DV-02) |
+| FR-045 | CB-061, CB-064 | (valor em risco em `models.Finding`) | — | — |
+| FR-046 | CB-015, CB-016, CB-062 | (validação de graves em `findings/decisions.py`) | `test_rbac.py::test_pending_findings_visibility` | Marco 4; política em D74 |
 | FR-047 | — | — | — | — |
 | FR-048 | — | `matching/bank.py`, `models.MatchIssue` | `test_matching.py` | Marco 3 |
 | FR-049 / FR-050 | CB-063 (050) | — | — | — |

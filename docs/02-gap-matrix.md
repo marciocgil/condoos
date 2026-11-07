@@ -1,6 +1,6 @@
 # 02 — Matriz de lacunas: FR-001..065 × produto atual
 
-Data: 07/11/2026. Fonte dos requisitos: Especificação Mestra v1.0 §15. Fonte do estado: código inspecionado (`docs/01-repo-audit.md`).
+Data: 07/11/2026 (FR-046 revisto após D74). Fonte dos requisitos: Especificação Mestra v1.0 §15. Fonte do estado: código inspecionado (`docs/01-repo-audit.md`).
 
 **Colunas.** *Repo*: real / parcial / inexistente, contra o **critério verificável da Especificação** (não contra o escopo do MVP auditor). *Status*: vocabulário do pacote (`nao_iniciado`, `em_analise`, `em_desenvolvimento`, `em_teste`, `bloqueado`, `pronto_para_validar`, `validado`, `adiado`). Nenhum FR está `validado`: isso exige aceite contra a Especificação, que ainda não ocorreu. `pronto_para_validar` = o critério parece atendido e há teste no repositório, mas os testes não foram executados nesta sessão. `em_analise` = existe código parcial e a lacuna está descrita. P2/P3 sem código ficam `adiado` (regra do Plano Diretor §4.4).
 
@@ -73,7 +73,7 @@ Data: 07/11/2026. Fonte dos requisitos: Especificação Mestra v1.0 §15. Fonte 
 | FR-043 | P0 | WP-12 | real | NFS-e, NF-e, boleto, recibo, XML, OFX, CSV, CNAB; competência normalizada | Planilha/balancete de ERP | `test_extraction.py`, `test_bank_parsers.py` (12) | pronto_para_validar |
 | FR-044 | P0 | WP-13 | real | R02 (acima do contrato), R03 (reajuste), R04 (escopo) com cálculo determinístico e índices BCB reais | Rótulo "divergência aparente" até validação (já é "indício") | `test_rules.py` (23), `test_planted_cases.py` | pronto_para_validar |
 | FR-045 | P0 | WP-13 | parcial | Achado com valor em risco | Entidade Oportunidade (tipo, economia bruta/líquida, risco, confiança, status) | — | em_analise |
-| FR-046 | P0 | WP-14 | parcial (divergente) | Gerente da administradora valida graves antes do síndico ver (D48) | Revisor **interno CondoOS** antes de qualquer recomendação ao condomínio; médios/baixos hoje publicam direto | `test_rbac.py::test_pending_findings_visibility` | bloqueado (decisão ADR-P02) |
+| FR-046 | P0 | WP-14 | parcial | Gerente da administradora valida graves antes do síndico ver (D48) | Revisor **interno CondoOS** antes de qualquer recomendação ao condomínio; médios/baixos hoje publicam direto | `test_rbac.py::test_pending_findings_visibility` | em_analise (D74: revisão proporcional; CB-015/016/062) |
 | FR-047 | P1 | WP-22 | inexistente | (R11 compara com histórico, não com orçamento) | Orçamento × realizado | — | nao_iniciado |
 | FR-048 | P1 | WP-22 | real | Casamento despesa ↔ extrato com `match_issue` (D41) | — | `test_matching.py` (9) | pronto_para_validar |
 | FR-049 | P1 | WP-22 | inexistente | — | Caixa por cenários | — | nao_iniciado |
@@ -111,7 +111,7 @@ Data: 07/11/2026. Fonte dos requisitos: Especificação Mestra v1.0 §15. Fonte 
 | Operate etc. (051–065) | 15 | 0 | 1 | 14 |
 | **Total** | **65** | **9** | **24** | **32** |
 
-P0 (29 FRs): 7 real, 19 parcial, 3 inexistentes (FR-007 kill switch, FR-021 assunto, FR-022 tarefa). FR-045 (oportunidade) e FR-046 (revisão interna) são parciais, mas centrais ao Optimize, e FR-046 depende de decisão.
+P0 (29 FRs): 7 real, 19 parcial, 3 inexistentes (FR-007 kill switch, FR-021 assunto, FR-022 tarefa). FR-045 (oportunidade) e FR-046 (revisão interna) são parciais, mas centrais ao Optimize, e FR-046 foi decidido em D74 (revisão proporcional ao risco).
 
 ## 8. Cobertura por CAP
 

@@ -12,10 +12,10 @@ O MVP auditor antecipou boa parte de trilhos que o Plano previa para depois: doc
 
 | Marco | Objetivo | Estado | O que falta para o gate |
 |---|---|---|---|
-| **M0 — Diagnóstico** | Inventário, decisões, baseline | **Em andamento** (este ciclo) | Respostas DV-01..DV-05; dados e acesso de piloto (G0) |
+| **M0 — Diagnóstico** | Inventário, decisões, baseline | **Em andamento** | DV-01..05 respondidas (D73–D77); falta aprovar o plano de migração e dados/acesso de piloto (G0) |
 | **M1 — Core confiável** | Tenant, RBAC, assuntos, tarefas, timeline, documentos, auditoria | Parcial: tenant/RBAC/RLS/documentos/auditoria reais | CI; fuso; convite; evento de segurança; prova SEC-10; política + kill switch; Assunto/Tarefa (VS-01) |
 | **M2 — Advisor** | Busca fundamentada, briefing, recomendações, Hoje | Parcial: busca e chat reais | Avaliação ao vivo do chat; briefing (VS-04); tela Hoje; proveniência por campo |
-| **M3 — Optimize** | Contratos, faturas, comparação, oportunidades, revisão interna | Parcial forte: contratos, faturas, R02/R03/R04 | Oportunidade (ADR-P05); revisão interna CondoOS (ADR-P02); cláusulas de aviso prévio; VS-03 completo |
+| **M3 — Optimize** | Contratos, faturas, comparação, oportunidades, revisão interna | Parcial forte: contratos, faturas, R02/R03/R04 | Oportunidade e estágios de economia (D76); política de revisão e reviewer (D74, D77); cláusulas de aviso prévio; VS-03 completo |
 | **M4 — Operate supervisionado** | OS, manutenção, fornecedores, notificações, aprovações | Não iniciado | Depende de G4 (política, outbox, kill switch) |
 | **M5 — Expansão** | Procurement, governança, obras, integrações | Não iniciado | Depende de G5 |
 
@@ -26,7 +26,7 @@ O MVP auditor antecipou boa parte de trilhos que o Plano previa para depois: doc
 | G0 Discovery | Piloto, direitos de uso, fluxo real, baseline | **Aberto** | Sem piloto real nem baseline; dados reais só com autorização (CLAUDE.md) |
 | G1 Plataforma segura | Isolamento, papéis, auditoria, revogação | **Quase**: isolamento e papéis com testes; faltam CI, teste de revogação (SEC-10) e evento de segurança | `test_isolation.py`, `test_rbac.py`, `test_auth.py` |
 | G2 Informação confiável | Versões, origem, citação, incerteza | Parcial: citação e incerteza no chat e na extração; faltam página/trecho por campo e cadeia de versões | D25, D55, `test_extraction.py` |
-| G3 Valor Optimize | Cálculo conferível; revisão interna obrigatória | **Bloqueado** por DV-02 | R02/R03 reproduzíveis (`test_rules.py`) |
+| G3 Valor Optimize | Cálculo conferível; revisão interna obrigatória | Desbloqueado por D74; depende de CB-015/016/061/062 | R02/R03 reproduzíveis (`test_rules.py`) |
 | G4 Execução segura | Política e aprovação no backend, idempotência, kill switch | Não iniciado (e hoje não há execução externa) | — |
 | G5 Piloto replicável | Onboarding repetível, suporte, ROI | Parcial: onboarding fictício em 112 s | `docs/pilot/run.md` |
 
@@ -51,7 +51,7 @@ WP-12 ──► WP-22 Financeiro ampliado ○     WP-07/10 ──► WP-23 Gover
 
 **Caminho crítico** (Plano §4.2, ajustado ao código): WP-00 → **WP-01** → fechar **WP-02** → **WP-03** (política mínima + kill switch) → **WP-04/07** (Assunto, VS-01) → WP-08 (Hoje) → WP-09 (briefing, VS-04).
 
-**Trilho paralelo do Optimize** (após WP-03 e decisões DV-01/DV-02): WP-11 (aviso prévio, cláusulas) → WP-13 (Oportunidade) → WP-14 (revisão interna) → VS-03 → WP-15.
+**Trilho paralelo do Optimize** (após WP-03 e o modelo de acesso/revisão, EP-09): WP-11 (aviso prévio, cláusulas) → WP-13 (Oportunidade) → WP-14 (revisão interna) → VS-03 → WP-15.
 
 **Paralelizáveis sem conflito:** ADR-P04 (proveniência por campo, WP-05) com WP-04/07; avaliação ao vivo do chat (só precisa de chave); WP-11 cláusulas novas com WP-07.
 
@@ -61,13 +61,14 @@ WP-12 ──► WP-22 Financeiro ampliado ○     WP-07/10 ──► WP-23 Gover
 
 | Ciclo | Conteúdo | Pacotes | Critério de passagem |
 |---|---|---|---|
-| C0 | Este diagnóstico + respostas às divergências | WP-00 | Docs vivos criados; DV-01..05 respondidas |
+| C0 | Diagnóstico + decisões | WP-00 | Docs vivos criados; DV-01..05 respondidas (D73–D77); plano de migração aprovado |
 | C1 | **Fechar G1**: CI, fuso, evento de segurança, revogação provada | WP-01, WP-02 | CI verde com isolamento; SEC-01/SEC-10 automatizados |
-| C2 | Política mínima e kill switch | WP-03 | SEC-08 (kill switch) e "nega por padrão" testados |
-| C3 | **VS-01** Assunto completo | WP-04, WP-07 | Aceite VS-01 |
+| C2 | Modelo de acesso e revisão proporcional (migrações 0011–0012) | WP-02, WP-03 | Critérios de `docs/data-model.md` §8 (0011, 0012) |
+| C2b | Política mínima e kill switch | WP-03 | SEC-08 (kill switch) e "nega por padrão" testados |
+| C3 | **VS-01** Assunto completo (migração 0013) | WP-04, WP-07 | Aceite VS-01 + critérios 0013 |
 | C4 | Proveniência por campo + tela Hoje | WP-05, WP-08 | G2 |
 | C5 | **VS-04** briefing + **VS-05** aprovação (sem envio externo) | WP-09, WP-10 | Briefing sem afirmação inventada; escopo congelado |
-| C6 | **VS-03** Oportunidade + revisão interna | WP-11, WP-13, WP-14 | G3 |
+| C6 | **VS-03** Oportunidade, estágios de economia e revisão interna (migração 0014) | WP-11, WP-13, WP-14 | G3 + critérios 0014 |
 | C7 | Piloto Core/Optimize (shadow mode) | WP-15, qualidade | Go/No-go por módulo |
 | C8+ | Operate (OS, fornecedor, notificações), WhatsApp, compras | WP-16..22 | G4 antes de qualquer envio |
 
@@ -81,6 +82,6 @@ C6 pode subir para logo após C2 se o Marcio decidir que o Optimize vem antes do
 | T2 Memória e documentos | Forte | Proveniência por campo (ADR-P04) |
 | T3 Workflow | Inexistente | VS-01 |
 | T4 Advisor e UX | Chat e telas de auditoria | Hoje, briefing |
-| T5 Optimize | Comparação forte; sem oportunidade/revisão | VS-03 após DV-02 |
+| T5 Optimize | Comparação forte; sem oportunidade/revisão | EP-09 e depois VS-03 |
 | T6 Operate/Procurement | Inexistente | Após G4 |
 | T7 Validação | Aceite fictício; sem baseline real | `docs/pilot-protocol.md` |
