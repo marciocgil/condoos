@@ -5,7 +5,8 @@ import { loginAs } from "./auth";
 // D93 (LF3-b): a second contract of a seed supplier for the same service, with periods that
 // cross, is a data conflict. The síndica sees the capability as partial; the manager decides
 // which version prevails, with a reason, in the Validation Centre.
-const SUPPLIER = { cnpj: "79522044000131", name: "Vigilare Serviços de Portaria Ltda" };
+// A seed supplier no other test looks for by name: each run adds one contract of it.
+const SUPPLIER = { cnpj: "30980381000183", name: "Verde Vivo Paisagismo Ltda" };
 const TITLE = "Dois contratos vigentes do mesmo fornecedor para o mesmo serviço";
 
 test("conflito entre contratos: síndica vê análise parcial e a gerente decide", async ({
@@ -22,8 +23,8 @@ test("conflito entre contratos: síndica vê análise parcial e a gerente decide
     data: {
       supplier_cnpj: SUPPLIER.cnpj,
       supplier_name: SUPPLIER.name,
-      object: "Serviço de portaria 24 horas",
-      monthly_value: "9100,00",
+      object: "Serviço de manutenção de jardins",
+      monthly_value: "2900,00",
       adjustment_index: "IPCA",
       start_date: "2026-06-01",
       end_date: "2026-12-31",

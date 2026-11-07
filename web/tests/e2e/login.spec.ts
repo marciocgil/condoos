@@ -11,7 +11,7 @@ test("síndica entra pelo link mágico e vê só o próprio condomínio", async 
   );
   await expect(page.getByTestId("amount-at-risk")).toBeVisible();
   await page.getByRole("link", { name: "Contratos" }).click();
-  await expect(page.getByText("Vigilare Serviços de Portaria Ltda")).toBeVisible();
+  await expect(page.getByText("Vigilare Serviços de Portaria Ltda").first()).toBeVisible();
 });
 
 test("gerente entra e vê a carteira com os dois condomínios", async ({ page }, info) => {
