@@ -1,16 +1,17 @@
 # CondoOS Launch — estado e próximos passos
 
-**Leia isto primeiro ao retomar o Launch.** Prompt de origem: `docs/condoos-planning/prompts/CONDOOS_LAUNCH_PROMPT_MESTRE.md` (v1.0). Decisão de abertura: D88 em `docs/decisions.md`.
+**Leia isto primeiro ao retomar o Launch.** Prompt de origem: `docs/condoos-planning/prompts/CONDOOS_LAUNCH_PROMPT_MESTRE.md` (v1.0). Decisão de abertura: D88; respostas do Marcio e gate LG1: D89 (`docs/decisions.md`).
 
 ## Estado (07/11/2026)
 
 | Fase | Estado | Evidência |
 |---|---|---|
 | LF0 Diagnóstico | ✅ concluída (gate LG0 verificado) | `01-diagnostico-as-is.md` |
-| LF1 Blueprint | **pronto_para_validar** — aguarda revisão do Marcio (gate LG1) | `02`–`06` deste diretório |
-| LF2–LF8 | nao_iniciado | `05-backlog.md` |
+| LF1 Blueprint | ✅ aprovado pelo Marcio (gate LG1, D89) | `02`–`06` deste diretório |
+| LF2 Primeiro valor | **próxima**: nao_iniciado, dividida em LF2-a..d (abaixo) | `05-backlog.md` |
+| LF3–LF8 | nao_iniciado | `05-backlog.md` |
 
-Nenhum código, migração ou teste foi alterado no Launch até aqui.
+Nenhum código, migração ou teste do Launch existe ainda.
 
 ## Nomes (sem colisão, D88)
 
@@ -27,21 +28,29 @@ Marcos do Launch **LM1–LM5** · fases **LF0–LF8** · gates **LG0–LG8** · 
 | `05-backlog.md` | LB-xxx por fase, gates, ordem de LF2 |
 | `06-testes-pilotos-metricas.md` | Cenários, métricas, experimentos |
 
-## Perguntas para o Marcio (bloqueiam partes específicas)
+## Respostas do Marcio (D89, 07/11/2026)
 
-| # | Pergunta | Bloqueia | Hipótese se não houver resposta |
+| # | Pergunta | Resposta |
+|---|---|---|
+| Q-L01 | Auto-cadastro ou implantação assistida? | **Assistida pelo Admin CondoOS** no piloto; auto-cadastro em P2 |
+| Q-L02 | Pedidos a terceiros: quem envia? | **Corte manual**: o CondoOS gera link e texto, o síndico envia; nada sai do sistema |
+| Q-L03 | LF2 antes da VS-06? | **Sim** |
+| Q-L04 | Migração 0018 e alçadas opcionais no cadastro (LB-009)? | **Aprovadas** |
+
+Ainda pedem aprovação própria, quando chegar a vez: migração de tipos documentais (LB-020, CHECK de `document.doc_type`) e migração `data_issue` (LF3, ADR-L05). ADR-L06 (triagem de arquivo malicioso) antes de LF4.
+
+## Próximos incrementos (LF2, nesta ordem)
+
+Uma tentativa anterior de LF2 parou por limite de uso antes de qualquer commit; nada dela existe no repositório. Recomeça do LF2-a.
+
+| Incremento | Itens | Migração | Aceite principal |
 |---|---|---|---|
-| Q-L01 | Auto-cadastro do síndico ou implantação assistida (Admin CondoOS cria e convida) no piloto? | LB-009, DL-01 | Assistida no piloto; auto-cadastro P2 com verificação de autoridade |
-| Q-L02 | Pedidos a terceiros: o sistema gera link e texto e o síndico envia (nada sai), ou o CondoOS envia e-mail como ação aprovada? | LF4, LB-053 | Primeiro corte manual (coerente com D83 e Plano D-04) |
-| Q-L03 | Ordem: Launch LF2 antes da VS-06 (Operate controlado, aguardando decisão)? | Sequência | LF2 primeiro: não depende de piloto real e alimenta a VS-06 |
-| Q-L04 | Aprovar migração 0018 (`launch_state`, ADR-L01) e a mudança de API de LB-009 (alçadas opcionais no cadastro)? | LF2 | Sem aprovação, LF2 começa pelas partes sem migração (LB-021, LB-002, LB-010, LB-006) |
+| **LF2-a — fundação da jornada** | LB-021 (teste SEC-02, PDF com instrução maliciosa), LB-001 (`launch_state`, rotas de objetivo e "fazer depois"), LB-002 (marcos LM1–LM5 derivados), LB-010 (prontidão C1–C3), LB-003 (próximo passo), LB-004 (`GET /condominiums/{id}/launch`) | 0018 (aprovada) | Positivo e negativo por marco e capacidade; seed Acácias com LM1–LM3, condomínio novo só LM1; conselheiro 403 na escrita, outro condomínio 404 + evento; migração ida e volta; `make lint` e `make test` verdes |
+| **LF2-b — primeiro valor na tela** | LB-006 (cartão de primeiro valor), LB-007 (upload com retorno), LB-005 (cartão da jornada em "Hoje"), LB-008 ("o que o CondoOS já fez") | — | Nenhum número fora de `extracted`; campo < 0,9 rotulado "a confirmar"; 390 px; E2E do F01 com contrato do corpus |
+| **LF2-c — medição e visão da equipe** | LB-090 (eventos `launch.*` e métricas), LB-011 (prontidão em Ajustes e Configurações), LB-012 (implantações na Carteira), LB-022 (bordas do upload) | — | Tempo até primeiro valor medido; mensagens de borda em PT-BR sem documento fantasma |
+| **LF2-d — cadastro assistido e tipos** | LB-009 (alçadas opcionais, D89), LB-020 (tipos documentais) | LB-020: **pedir aprovação** | Condomínio sem alçada: política nega pedido de ação com motivo; gate **LG2** (E2E completo do síndico novo) |
 
-## Próximo incremento recomendado (após LG1)
-
-**LF2-a — primeiro valor sem migração:** LB-021 (teste de injeção), LB-002 (marcos derivados), LB-010 (prontidão C1–C3), LB-006 (cartão de primeiro valor) e LB-004 (rota de leitura).
-- Arquivos: `api/app/launch/{__init__,journey,readiness,first_value}.py`, `api/app/routers/launch.py`, `api/app/main.py` (registrar rota), `api/tests/test_launch_*.py`, `web/components/condoos/FirstValueCard.tsx`, `web/app/(sindico)/condominio/[id]/resumo/page.tsx`, `web/lib/types.ts`.
-- Aceite: testes positivos/negativos de cada marco e capacidade; cartão de primeiro valor sem número fora de `extracted`; isolamento; `make lint` e `make test` verdes; E2E do F01 com contrato do corpus.
-- Evidência: saída de testes, E2E, atualização deste arquivo, `docs/roadmap-status.md`, `docs/traceability.md` e `docs/decisions.md`.
+Arquivos do LF2-a: `api/app/launch/{__init__,journey,readiness,steps,state}.py`, `api/app/routers/launch.py`, `api/app/main.py`, `api/app/auth/rbac.py` (permissão de escrita da jornada), `api/app/db/models.py` (+ `RLS_TABLES`), `api/app/db/migrations/versions/0018_launch_state.py`, `api/tests/test_launch_*.py`, teste SEC-02 em `api/tests/`.
 
 ## Ritual de cada incremento
 
