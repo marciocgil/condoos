@@ -4,6 +4,24 @@ Agente auditor de despesas de condomínios. Ele lê as despesas do mês, confere
 
 Especificação completa: o prompt do MVP (seções 0–15) e o PDF "CondoOS — Arquitetura do Agente Auditor (MVP)". Decisões tomadas: `docs/decisions.md`. Regras de auditoria: `docs/rules.md`. Telas de referência: `docs/mockups.md`. **Visual: `CondoOS_Design_System_v1.0` (tema escuro), auditoria e componentes em `docs/ui-audit.md`.** Acurácia da extração: `docs/extraction_accuracy.md`.
 
+## Planejamento estratégico (`docs/condoos-planning/`, v1.0 de 06/11/2026)
+
+Referência estratégica e funcional da evolução do produto (de auditor de despesas para assessor do síndico: Core, Advisor, Optimize, Operate, Procurement). **São referências, não ordens:** nunca executar todas as fases, pacotes ou prompts de uma vez.
+
+- `02_Contexto_Produto/…Especificacao_Mestra_v1.0.md`: requisitos CAP-01..12, FR-001..065, fluxos FL-01..12, personas, autonomia (§9), dados (§11), NFR (§16), backlog (§20), testes (§21), instruções para IA (§25).
+- `01_Plano_Diretor/…Plano_Diretor…v1.0.docx`: marcos M0–M5, pacotes WP-00..24 e dependências, fatias VS-01..06, gates G0–G5, testes SEC/DOC/FIN/OPT/OPS/AI, DoR/DoD. Ler com `pandoc -t plain --wrap=none <arquivo>`.
+- `03_Prompts/Individuais/`: `00_LEIA_PRIMEIRO.md` (ordem e disciplina), `01`–`10` (uma etapa cada) e `11_EXECUTAR_PROXIMA_FATIA.md` (ritual de cada ciclo). O pacote consolidado repete o mesmo conteúdo.
+
+Como usar:
+
+1. **Ler antes de planejar.** Antes de propor mudança de produto, localizar os FR/CAP/WP/VS afetados nesses documentos e inspecionar o código real. Não alegar leitura, teste ou execução que não ocorreu.
+2. **Uma fatia vertical por vez**, só com dependências e gate anterior satisfeitos (ordem do Plano Diretor §4 e §9). Escopo excluído explícito; P2/P3 só depois de P0 coberto.
+3. **Preservar o que existe.** Arquitetura atual (FastAPI + Next.js, RLS, fila de jobs, cliente LLM único), Design System v1.0 (`web/app/globals.css`, `components/ui`, `components/condoos`, `docs/ui-audit.md`) e todas as regras deste arquivo continuam valendo. Mudança estrutural só com decisão registrada.
+4. **Conflitos não se resolvem em silêncio.** Precedência do pacote: requisitos aprovados > decisões aceitas > código real (estado) > plano > sugestão de IA. Se o planejamento divergir deste arquivo, de `docs/decisions.md` ou do produto atual (ex.: público inicial, papel da administradora, revisão interna do Optimize), registrar a divergência e perguntar ao Marcio.
+5. **Nomes sem colisão.** "Marco 1–6" abaixo são os marcos do MVP auditor (concluídos); os marcos do planejamento são M0–M5. Decisões do projeto seguem em `docs/decisions.md` (D72 em diante); as decisões abertas do Plano Diretor são citadas como "Plano D-01..D-12".
+6. **Registrar entre sessões.** Ao fim de cada fatia: `docs/roadmap-status.md` (estado por requisito: `nao_iniciado` … `validado`, só com evidência) e `docs/traceability.md` (FR ↔ código ↔ teste), além de `docs/decisions.md`. Os demais documentos vivos do Plano Diretor §12.3 são criados pelo prompt 01, quando for rodado, não antes.
+7. **Limites do produto continuam:** nenhuma ação externa, pagamento, contratação, multa ou envio sem política e aprovação humana; recomendação do Optimize só sai após revisão interna; dados de piloto reais só com autorização.
+
 ## Regras de trabalho
 
 - Trabalhar marco a marco. Ao fim de cada marco: testes passando, `docker compose up` funcionando, commit, resumo e atualização deste arquivo.
