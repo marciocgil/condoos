@@ -19,6 +19,8 @@
 
 Código: `api/app/launch/` (`journey`, `readiness`, `first_value`, `steps`, `state`), `api/app/routers/launch.py`, `web/components/condoos/JourneyCard.tsx`, `FirstValueCard.tsx`.
 
+**Última rodada E2E completa na stack local sem Docker (07/11/2026, depois da D95):** 30 passaram, 33 pulados por projeto (celular/desktop), 3 falharam: `correction.spec.ts` e `opportunities.spec.ts` esperam a navegação depois de salvar em 5 s e, no `next dev`, a página de destino compila na primeira visita (a operação foi gravada no banco); `backlog.spec.ts:50` (filtro rápido da fila de assuntos) passou ao repetir. Nenhuma falha ligada ao Launch. O `make e2e` no docker (build de produção) continua sendo a prova dos gates.
+
 ## Nomes (sem colisão, D88)
 
 Marcos do Launch **LM1–LM5** · fases **LF0–LF8** · gates **LG0–LG8** · backlog **LB-xxx** · ADRs **ADR-L01..** · divergências **DL-01..** · perguntas **Q-L01..**. Os marcos do Plano Diretor seguem M0–M5/G0–G5; os do MVP, "Marco 1–6".
