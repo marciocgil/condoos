@@ -22,8 +22,16 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.chat.search import INDEXED_TYPES
 from app.db.enums import DocumentType, ExtractionStatus
-from app.db.models import BankTransaction, Contract, Document, DocumentChunk, Expense
+from app.db.models import (
+    BankTransaction,
+    Condominium,
+    Contract,
+    Document,
+    DocumentChunk,
+    Expense,
+)
 from app.llm.client import resolve_mode
+from app.policy import active_pause, approval_limit
 
 State = Literal["nao_configurado", "analise_parcial", "supervisionada"]
 STATE_LABEL: dict[str, str] = {
@@ -244,8 +252,30 @@ async def billing_capability(
     return r
 
 
+async def actions_capability(session: AsyncSession, condo_id: uuid.UUID) -> Readiness:
+    """C7 — actions with the síndico's approval (D83): need the approval limit in force and
+    no kill switch on actions. Never "autorizada": every action waits for a person."""
+    r = Readiness("C7", "Ações com sua aprovação", "nao_configurado")
+    condo = await session.get(Condominium, condo_id)
+    limit = approval_limit(condo) if condo is not None else None
+    paused = await active_pause(session, condo_id, "action.dispatch") is not None
+    r.facts = {"alcada_configurada": limit is not None, "acoes_pausadas": paused}
+    if limit is None:
+        r.missing = [
+            "Alçada do síndico não configurada: a regra de alçada não avalia e nenhuma ação "
+            "com custo pode ser aprovada. Peça à administradora ou à equipe CondoOS."
+        ]
+        return r
+    r.state = "supervisionada"
+    if paused:
+        r.state = "analise_parcial"
+        r.missing.append("As ações estão pausadas neste condomínio.")
+    return r
+
+
 async def readiness(session: AsyncSession, condo_id: uuid.UUID) -> list[Readiness]:
     c1 = await documents_capability(session, condo_id)
     c2 = await contracts_capability(session, condo_id)
     c3 = await billing_capability(session, condo_id, c2)
-    return [c1, c2, c3]
+    c7 = await actions_capability(session, condo_id)
+    return [c1, c2, c3, c7]

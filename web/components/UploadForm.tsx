@@ -8,6 +8,16 @@ import type { UploadResult } from "@/lib/types";
 
 // The first-value card follows at most this many new documents of one upload (LB-007).
 const MAX_CARDS = 3;
+/** What to do about a refused file (LB-022): the API says why, this says how to fix it. */
+function remedy(error: string): string {
+  if (error.startsWith("Arquivo vazio"))
+    return "Escolha o arquivo de novo; ele chegou sem conteúdo.";
+  if (error.startsWith("Arquivo maior"))
+    return "Envie só as páginas necessárias ou uma versão comprimida do PDF.";
+  if (error.includes("não aceito")) return "Envie em PDF, foto (JPG, PNG), XML, OFX, CSV ou CNAB.";
+  return "Tente de novo com o arquivo original.";
+}
+
 const ACCEPT = ".pdf,.xml,.ofx,.csv,.ret,.txt,image/jpeg,image/png,image/webp";
 
 export function UploadForm({ condominiumId }: { condominiumId: string }) {
@@ -77,7 +87,14 @@ export function UploadForm({ condominiumId }: { condominiumId: string }) {
               key={`${r.filename}-${i}`}
               className="flex items-start justify-between gap-3 px-4 py-3"
             >
-              <span className="break-all">{r.filename}</span>
+              <span className="min-w-0 break-all">
+                {r.filename}
+                {r.error && (
+                  <span className="mt-0.5 block text-[13px] break-normal text-fg-2">
+                    {remedy(r.error)}
+                  </span>
+                )}
+              </span>
               <span
                 className={`inline-flex shrink-0 items-center gap-1 ${r.error ? "text-danger" : "text-fg-2"}`}
               >
@@ -102,6 +119,7 @@ export function UploadForm({ condominiumId }: { condominiumId: string }) {
             key={r.document_id}
             condominiumId={condominiumId}
             documentId={r.document_id as string}
+            duplicate={r.duplicate}
           />
         ))}
     </div>

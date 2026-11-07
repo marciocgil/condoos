@@ -3,7 +3,7 @@ first-value card of a contract, next steps by goal, and the API with its permiss
 
 import random
 import uuid
-from datetime import date
+from datetime import date, timedelta
 from decimal import Decimal
 from typing import Any
 
@@ -15,6 +15,7 @@ from app.auth.mailer import MemoryMailer
 from app.core.br import generate_cnpj
 from app.core.money import brl
 from app.core.time import utcnow
+from app.db.enums import PolicyDecision
 from app.db.models import (
     AuditLog,
     BankTransaction,
@@ -30,8 +31,10 @@ from app.enrichment.suppliers import get_or_create_supplier
 from app.launch.first_value import first_value
 from app.launch.journey import milestones
 from app.launch.readiness import Readiness, readiness
+from app.launch.state import portfolio_row
 from app.launch.steps import next_steps
 from app.onboarding import onboard
+from app.policy import evaluate as policy_evaluate
 from tests.helpers import (
     ADMIN_CONDOOS,
     CONSELHEIRO_ACACIAS,
@@ -93,7 +96,8 @@ async def test_new_condominium_journey_from_facts(admin_engine: AsyncEngine) -> 
         ms = _by_key(await milestones(s, condo.id))
         assert not any(m.done for m in ms.values())  # the síndico has not logged in yet
         ready = _by_key(await readiness(s, condo.id))
-        assert {r.state for r in ready.values()} == {"nao_configurado"}
+        assert {ready[k].state for k in ("C1", "C2", "C3")} == {"nao_configurado"}
+        assert ready["C7"].state == "supervisionada"  # registered with an approval limit
 
         # LM1: the síndico's first login accepts the access.
         await s.execute(
@@ -295,7 +299,7 @@ async def test_launch_api_permissions_and_isolation(
     assert body["can_manage"] is True
     assert [m["key"] for m in body["milestones"]] == ["LM1", "LM2", "LM3", "LM4", "LM5"]
     assert body["milestones"][0]["done"] is True  # she has just logged in
-    assert [r["key"] for r in body["readiness"]] == ["C1", "C2", "C3"]
+    assert [r["key"] for r in body["readiness"]] == ["C1", "C2", "C3", "C7"]
     assert len(body["next_steps"]) <= 3
 
     r = await client.put(f"{base}/goal", json={"goal": "economizar"})
@@ -359,3 +363,88 @@ async def test_first_value_route_is_scoped_and_recorded_once(
             )
         ).all()
     assert len(shown) == 1
+
+
+# --------------------------------------------------------------------------- LF2-b (D90)
+
+
+async def test_condominium_without_limits_waits_for_them(
+    client: httpx.AsyncClient, mailer: MemoryMailer, admin_engine: AsyncEngine
+) -> None:
+    """LB-009: limits are optional at registration; without them actions with a cost are
+    refused by the policy and C7 says what is missing."""
+    await login(client, mailer, ADMIN_CONDOOS)
+    r = await client.post(
+        "/portfolio/condominiums",
+        json={
+            "condominium": {
+                "name": "Residencial Sem Alçada (fictício)",
+                "slug": f"sem-alcada-{uuid.uuid4().hex[:6]}",
+                "cnpj": generate_cnpj(random.Random()),
+                "units": 24,
+                "address": "Rua Fictícia, 20 — Cidade Modelo/SP",
+            },
+            "board": [
+                {"name": "Síndica Sem Alçada", "position": "sindico", "term_start": "2026-01-01"}
+            ],
+        },
+    )
+    assert r.status_code == 201, r.text
+    cid = uuid.UUID(r.json()["id"])
+    async with sessionmaker_for(admin_engine)() as s:
+        condo = await s.get(Condominium, cid)
+        assert condo is not None and condo.approval_limits == {}
+        c7 = _by_key(await readiness(s, cid))["C7"]
+        assert c7.state == "nao_configurado" and "alçada" in c7.missing[0].lower()
+        paid = await policy_evaluate(
+            s, condo, action_type="fornecedor.cobrar", cost_cap=Decimal("500.00")
+        )
+        assert paid.decision == PolicyDecision.REQUIRE_REVIEW
+        free = await policy_evaluate(
+            s, condo, action_type="orcamento.solicitar", cost_cap=Decimal("0")
+        )
+        assert free.decision == PolicyDecision.REQUIRE_APPROVAL
+
+    acacias = await condo_id(admin_engine, "jardim-das-acacias")
+    async with sessionmaker_for(admin_engine)() as s:
+        assert _by_key(await readiness(s, acacias))["C7"].state in (
+            "supervisionada",
+            "analise_parcial",  # a test may have paused actions
+        )
+
+
+async def test_portfolio_launch_and_time_to_first_value(
+    client: httpx.AsyncClient, mailer: MemoryMailer, admin_engine: AsyncEngine
+) -> None:
+    """LB-012 and LB-090: the team sees each implementation and the time from the síndico's
+    first login to the first reading shown; the síndica does not see the portfolio."""
+    async with sessionmaker_for(admin_engine)() as s, s.begin():
+        condo = await _new_condo(s)
+        login_at = utcnow() - timedelta(hours=3)
+        await s.execute(
+            update(Membership)
+            .where(Membership.condominium_id == condo.id)
+            .values(accepted_at=login_at)
+        )
+        s.add(
+            AuditLog(
+                action="launch.first_value_shown",
+                object_type="document",
+                object_id=uuid.uuid4(),
+                condominium_id=condo.id,
+                created_at=login_at + timedelta(hours=1, minutes=30),
+            )
+        )
+        today = date.today()
+        row = await portfolio_row(s, condo, today)
+    assert row["milestones_done"] == 1 and row["next_milestone"] == "Seu condomínio ganhou memória"
+    assert row["hours_to_first_value"] == 1.5
+    assert row["days_idle"] == 0 and row["capabilities_total"] == 4
+
+    await login(client, mailer, SINDICA_ACACIAS)
+    assert (await client.get("/portfolio/launch")).json() == []
+    await login(client, mailer, ADMIN_CONDOOS)
+    rows = (await client.get("/portfolio/launch")).json()
+    acacias = str(await condo_id(admin_engine, "jardim-das-acacias"))
+    assert acacias in {r["id"] for r in rows}
+    assert all(r["milestones_total"] == 5 for r in rows)

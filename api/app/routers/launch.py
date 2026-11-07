@@ -12,12 +12,20 @@ from typing import Annotated, Any, Literal
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 
-from app.auth.deps import require
+from app.auth.deps import CurrentPrincipal, require
 from app.auth.rbac import CondoAccess, Permission
 from app.core.time import local_today
 from app.db.models import Condominium, Document
 from app.db.session import DbSession
-from app.launch.state import first_value_seen, overview, postpone, set_dismissed, set_goal
+from app.launch.state import (
+    first_value_seen,
+    overview,
+    portfolio_row,
+    postpone,
+    set_dismissed,
+    set_goal,
+)
+from app.routers.portfolio import _manager_condos
 
 router = APIRouter(tags=["launch"])
 CanView = Annotated[CondoAccess, Depends(require(Permission.VIEW))]
@@ -88,3 +96,12 @@ async def get_first_value(
     if doc is None or doc.condominium_id != access.condominium_id:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Documento não encontrado.")
     return await first_value_seen(db, doc, access.user_id)
+
+
+@router.get("/portfolio/launch")
+async def portfolio_launch(db: DbSession, principal: CurrentPrincipal) -> list[dict[str, Any]]:
+    """Implementations across the portfolio (LB-012): only condominiums the person reviews."""
+    return [
+        await portfolio_row(db, c, local_today(c.timezone))
+        for c in await _manager_condos(db, principal)
+    ]

@@ -13,8 +13,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.audit import record_audit
 from app.core.time import utcnow
-from app.db.enums import CLOSED_CASE
-from app.db.models import AuditLog, CaseRecord, Condominium, Document
+from app.db.enums import CLOSED_CASE, Role
+from app.db.models import AuditLog, CaseRecord, Condominium, Document, Membership
 from app.db.models import LaunchState as LaunchStateRow
 from app.launch.first_value import first_value
 from app.launch.journey import done_for_you, milestones
@@ -117,6 +117,64 @@ async def overview(session: AsyncSession, condo: Condominium, today: date) -> di
         "readiness": [r.as_dict() for r in ready],
         "next_steps": next_steps(goal, ready, open_cases, row.postponed if row else {}, today),
         "done_for_you": await done_for_you(session, condo.id),
+    }
+
+
+async def portfolio_row(session: AsyncSession, condo: Condominium, today: date) -> dict[str, Any]:
+    """One condominium's implementation at a glance, for the CondoOS team and the management
+    (LB-012): milestones reached, the next one, capabilities working, and days without any
+    new document or journey event (a stalled implementation is visible, never inferred)."""
+    ms = await milestones(session, condo.id)
+    ready = await readiness(session, condo.id)
+    row = await get_state(session, condo.id)
+    last_doc = await session.scalar(
+        select(func.max(Document.created_at)).where(Document.condominium_id == condo.id)
+    )
+    last_event = await session.scalar(
+        select(func.max(AuditLog.created_at)).where(
+            AuditLog.condominium_id == condo.id, AuditLog.action.like("launch.%")
+        )
+    )
+    # Time to first value (LB-090): from the síndico's first login to the first finished
+    # reading shown in the app. Zero when the reading already existed at the first login.
+    first_login = await session.scalar(
+        select(func.min(Membership.accepted_at)).where(
+            Membership.condominium_id == condo.id, Membership.role == Role.SINDICO.value
+        )
+    )
+    first_value_at = await session.scalar(
+        select(func.min(AuditLog.created_at)).where(
+            AuditLog.condominium_id == condo.id, AuditLog.action == "launch.first_value_shown"
+        )
+    )
+    hours_to_value = (
+        round(max(0.0, (first_value_at - first_login).total_seconds() / 3600), 1)
+        if first_login and first_value_at
+        else None
+    )
+    postponed = await session.scalar(
+        select(func.count())
+        .select_from(AuditLog)
+        .where(AuditLog.condominium_id == condo.id, AuditLog.action == "launch.step_postponed")
+    )
+    moments = [m for m in (last_doc, last_event) if m is not None]
+    last = max(moments) if moments else None
+    nxt = next((m for m in ms if not m.done), None)
+    return {
+        "id": str(condo.id),
+        "name": condo.name,
+        "goal": row.goal if row else None,
+        "milestones_done": sum(1 for m in ms if m.done),
+        "milestones_total": len(ms),
+        "next_milestone": nxt.title if nxt else None,
+        "capabilities_working": sum(1 for r in ready if r.state == "supervisionada"),
+        "capabilities_total": len(ready),
+        "last_activity": last.isoformat() if last else None,
+        "days_idle": (today - last.date()).days if last else None,
+        "first_login_at": first_login.isoformat() if first_login else None,
+        "first_value_at": first_value_at.isoformat() if first_value_at else None,
+        "hours_to_first_value": hours_to_value,
+        "steps_postponed": int(postponed or 0),
     }
 
 

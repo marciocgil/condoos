@@ -1,6 +1,6 @@
 # Rastreabilidade — FR ↔ tarefa ↔ código ↔ teste ↔ entrega
 
-Data: 07/11/2026. Atualizar ao fim de cada fatia (CLAUDE.md, item 6). "Entrega" = marco do MVP auditor (Marco 1–6, 05/11/2026) ou decisão pós-piloto (D65–D71) em que o código entrou. Testes citados existem no repositório. Última execução local completa: 07/11/2026, 322 passaram (D89); E2E: 29 fluxos passaram contra a stack local (D85); `launch.spec.ts` (D89) passou numa stack local sem Docker.
+Data: 07/11/2026. Atualizar ao fim de cada fatia (CLAUDE.md, item 6). "Entrega" = marco do MVP auditor (Marco 1–6, 05/11/2026) ou decisão pós-piloto (D65–D71) em que o código entrou. Testes citados existem no repositório. Última execução local completa: 07/11/2026, 324 passaram (D90); E2E: 29 fluxos passaram contra a stack local (D85); `launch.spec.ts` (D89) passou numa stack local sem Docker.
 
 | FR | Tarefa(s) | Código | Teste(s) | Entrega |
 |---|---|---|---|---|
@@ -79,3 +79,9 @@ Data: 07/11/2026. Atualizar ao fim de cada fatia (CLAUDE.md, item 6). "Entrega" 
 | LB-010 prontidão C1–C3 | `launch/readiness.py` | `test_launch.py::test_new_condominium_journey_from_facts`, `::test_uncertain_contract_field_is_never_a_fact` | D89 |
 | LB-021 SEC-02 | `prompts/*.md` (regra de conteúdo não confiável) | `test_prompt_injection.py` | D89 |
 | LB-090 (parcial) | evento `launch.first_value_shown` (uma vez por documento), `launch.goal_selected`, `launch.step_postponed` em `audit_log` | `test_launch.py` | D89 |
+| LB-009 alçada opcional | `onboarding/__init__.py` (`approval_limits` opcional), `NewCondoForm.tsx`, `policy/__init__.py` (sem alçada, ação com custo → `require_review`) | `test_launch.py::test_condominium_without_limits_waits_for_them` | D90 |
+| C7 prontidão de ações | `launch/readiness.py::actions_capability` | `test_launch.py::test_condominium_without_limits_waits_for_them` | D90 |
+| LB-011 prontidão nas telas | `components/condoos/CapabilityReadiness.tsx`, Ajustes do síndico, Configurações | e2e `launch.spec.ts` (desktop) | D90 |
+| LB-012 implantações na Carteira | `launch/state.py::portfolio_row`, `GET /portfolio/launch`, Carteira | `test_launch.py::test_portfolio_launch_and_time_to_first_value`, e2e `launch.spec.ts` | D90 |
+| LB-090 tempo até o primeiro valor | `launch/state.py::portfolio_row` (`hours_to_first_value`, `steps_postponed`), Métricas | `test_launch.py::test_portfolio_launch_and_time_to_first_value`, e2e `launch.spec.ts` | D90 |
+| LB-022 bordas do envio | `ingestion/documents.py` (já existia), `UploadForm.tsx` (orientação), `FirstValueCard.tsx` (repetido) | `test_ingestion.py::test_upload_rejects_unsupported_files` | D90 |

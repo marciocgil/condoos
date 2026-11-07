@@ -50,3 +50,24 @@ test("síndica escolhe o objetivo, envia um contrato e vê a primeira leitura", 
     /Lido no documento|A confirmar|Não encontrado/,
   );
 });
+
+// LF2-b (D90): the CondoOS team follows implementations across the portfolio.
+test("admin CondoOS acompanha implantações, prontidão e tempo até o primeiro valor", async ({
+  page,
+}, info) => {
+  test.skip(info.project.name !== "admin-desktop", "fluxo do desktop");
+  await loginAs(page, "fabio.admin@condoos.example.com");
+  await page.goto("/admin/carteira");
+  const table = page.getByRole("table", { name: "Implantações em andamento" });
+  await expect(table).toContainText("Jardim das Acácias");
+  await expect(table.getByRole("columnheader", { name: "Próximo marco" })).toBeVisible();
+
+  await page.goto("/admin/configuracoes");
+  await expect(page.getByRole("heading", { name: "O que já funciona" })).toBeVisible();
+  await expect(page.getByTestId("readiness-C7")).toContainText("Ações com sua aprovação");
+
+  await page.goto("/admin/metricas");
+  await expect(page.getByRole("table", { name: "Implantação por condomínio" })).toContainText(
+    "Jardim das Acácias",
+  );
+});

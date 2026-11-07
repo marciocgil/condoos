@@ -64,7 +64,9 @@ class CondoIn(BaseModel):
     cnpj: str
     units: int = Field(gt=0)
     address: str = Field(min_length=5, max_length=300)
-    approval_limits: ApprovalLimits
+    # Optional (D89, LB-009): a condominium may start without limits. Until they are set,
+    # R12 does not evaluate and the policy refuses any action with a cost.
+    approval_limits: ApprovalLimits | None = None
     retention_years: int = Field(default=5, ge=5, le=30)  # fiscal documents: at least 5 years
 
     @field_validator("cnpj")
@@ -138,7 +140,7 @@ async def onboard(session: AsyncSession, spec: OnboardingIn) -> Condominium:
         cnpj=c.cnpj,
         units=c.units,
         address=c.address,
-        approval_limits=c.approval_limits.model_dump(),
+        approval_limits=c.approval_limits.model_dump() if c.approval_limits else {},
         rule_params={},
         expense_categories=DEFAULT_CATEGORIES,
         retention_years=c.retention_years,

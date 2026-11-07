@@ -1,4 +1,4 @@
-import { AlertTriangle, CheckCircle2, Inbox, Plus, Send, Wallet } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Clock, Inbox, Plus, Send, Wallet } from "lucide-react";
 import Link from "next/link";
 
 import { ReportActions } from "@/components/condoos/ReportActions";
@@ -11,7 +11,30 @@ import { DataTable } from "@/components/ui/DataTable";
 import { KpiCard } from "@/components/ui/KpiCard";
 import { apiGet } from "@/lib/api";
 import { competenceParam, formatBRLShort, formatMonth } from "@/lib/format";
-import type { Me, Portfolio, PortfolioRow, QueueItem } from "@/lib/types";
+import type { Me, Portfolio, PortfolioLaunchRow, PortfolioRow, QueueItem } from "@/lib/types";
+
+// A journey with no new document or step for this many days is shown as stalled.
+const STALLED_DAYS = 7;
+
+function IdleCell({ row }: { row: PortfolioLaunchRow }) {
+  if (row.days_idle === null)
+    return (
+      <Badge tone="neutral" icon={<Clock size={12} />}>
+        Sem atividade
+      </Badge>
+    );
+  if (row.days_idle >= STALLED_DAYS)
+    return (
+      <Badge tone="warning" icon={<AlertTriangle size={12} />}>
+        Parada há {row.days_idle} dias
+      </Badge>
+    );
+  return (
+    <Badge tone="success" icon={<CheckCircle2 size={12} />}>
+      {row.days_idle === 0 ? "Ativa hoje" : `Ativa há ${row.days_idle} dia(s)`}
+    </Badge>
+  );
+}
 
 function StatusCell({ row }: { row: PortfolioRow }) {
   if (row.status === "revisar")
@@ -34,11 +57,13 @@ function StatusCell({ row }: { row: PortfolioRow }) {
 }
 
 export default async function CarteiraPage() {
-  const [p, queue, me] = await Promise.all([
+  const [p, queue, me, launch] = await Promise.all([
     apiGet<Portfolio>("/portfolio"),
     apiGet<QueueItem[]>("/queue"),
     apiGet<Me>("/me"),
+    apiGet<PortfolioLaunchRow[]>("/portfolio/launch"),
   ]);
+  const implementing = launch.filter((r) => r.milestones_done < r.milestones_total);
   // The manager registers in its company; a CondoOS admin registers a condominium that
   // contracts directly, without a management company (D73).
   const isManager =
@@ -115,6 +140,37 @@ export default async function CarteiraPage() {
           ]}
         />
       </div>
+
+      {implementing.length > 0 && (
+        <section className="mt-8" aria-labelledby="implantacao-titulo">
+          <CardTitle>
+            <span id="implantacao-titulo">Implantações em andamento</span>
+          </CardTitle>
+          <DataTable<PortfolioLaunchRow>
+            caption="Implantações em andamento"
+            rows={implementing}
+            rowKey={(r) => r.id}
+            rowHref={(r) => `/admin/configuracoes?condominio=${r.id}`}
+            columns={[
+              { key: "name", header: "Condomínio", cell: (r) => r.name },
+              {
+                key: "milestones",
+                header: "Marcos",
+                cell: (r) => `${r.milestones_done} de ${r.milestones_total}`,
+                align: "right",
+              },
+              { key: "next", header: "Próximo marco", cell: (r) => r.next_milestone ?? "—" },
+              {
+                key: "capabilities",
+                header: "Funções ativas",
+                cell: (r) => `${r.capabilities_working} de ${r.capabilities_total}`,
+                align: "right",
+              },
+              { key: "idle", header: "Atividade", cell: (r) => <IdleCell row={r} /> },
+            ]}
+          />
+        </section>
+      )}
 
       <section className="mt-8" aria-labelledby="fila-titulo">
         <CardTitle

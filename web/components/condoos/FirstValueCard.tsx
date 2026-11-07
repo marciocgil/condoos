@@ -27,9 +27,11 @@ const FIELD: Record<
 export function FirstValueCard({
   condominiumId,
   documentId,
+  duplicate = false,
 }: {
   condominiumId: string;
   documentId: string;
+  duplicate?: boolean;
 }) {
   const [card, setCard] = useState<FirstValue | null>(null);
   const [gaveUp, setGaveUp] = useState(false);
@@ -79,6 +81,11 @@ export function FirstValueCard({
   return (
     <Card aria-live="polite" data-testid="first-value">
       <p className="text-[13px] break-all text-fg-2">{card.filename}</p>
+      {duplicate && (
+        <p className="mt-1 text-[13px] text-fg-2">
+          Este arquivo já tinha sido recebido. Esta é a leitura guardada, sem novo processamento.
+        </p>
+      )}
       <p className="mt-1 flex items-start gap-2 text-sm font-medium">
         {card.state === "falhou" ? (
           <XCircle size={16} aria-hidden className="mt-0.5 shrink-0 text-danger" />

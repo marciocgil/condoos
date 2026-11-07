@@ -18,7 +18,7 @@ import { DataTable } from "@/components/ui/DataTable";
 import { KpiCard } from "@/components/ui/KpiCard";
 import { apiGet } from "@/lib/api";
 import { formatBRL, formatMonth } from "@/lib/format";
-import type { MetricSummary, Metrics, Portfolio } from "@/lib/types";
+import type { MetricSummary, Metrics, Portfolio, PortfolioLaunchRow } from "@/lib/types";
 
 const PERIODS = [3, 6, 12] as const;
 
@@ -86,6 +86,9 @@ export default async function MetricasPage({
   const selected = condos.some((c) => c.id === sp.condominio) ? sp.condominio! : null;
   const m = await apiGet<Metrics>(
     `/portfolio/metrics?months=${months}${selected ? `&condominium_id=${selected}` : ""}`,
+  );
+  const launch = (await apiGet<PortfolioLaunchRow[]>("/portfolio/launch")).filter(
+    (r) => !selected || r.id === selected,
   );
   const t = m.totals;
   const span =
@@ -207,6 +210,54 @@ export default async function MetricasPage({
           rowKey={(r) => r.id}
           columns={[{ key: "name", header: "Condomínio", cell: (r) => r.name }, ...COLUMNS]}
         />
+      </section>
+
+      <section className="mt-8" aria-labelledby="implantacao">
+        <CardTitle>
+          <span id="implantacao">Implantação (Launch)</span>
+        </CardTitle>
+        <DataTable<PortfolioLaunchRow>
+          caption="Implantação por condomínio"
+          rows={launch}
+          rowKey={(r) => r.id}
+          columns={[
+            { key: "name", header: "Condomínio", cell: (r) => r.name },
+            {
+              key: "ttv",
+              header: "Até o primeiro valor",
+              cell: (r) =>
+                r.hours_to_first_value === null
+                  ? r.first_login_at
+                    ? "Ainda não"
+                    : "Síndico não entrou"
+                  : `${r.hours_to_first_value.toLocaleString("pt-BR")} h`,
+              align: "right",
+            },
+            {
+              key: "milestones",
+              header: "Marcos",
+              cell: (r) => `${r.milestones_done} de ${r.milestones_total}`,
+              align: "right",
+            },
+            {
+              key: "capabilities",
+              header: "Funções ativas",
+              cell: (r) => `${r.capabilities_working} de ${r.capabilities_total}`,
+              align: "right",
+            },
+            {
+              key: "postponed",
+              header: "Passos adiados",
+              cell: (r) => r.steps_postponed,
+              align: "right",
+            },
+          ]}
+        />
+        <p className="mt-3 text-xs text-fg-2">
+          Até o primeiro valor: do primeiro acesso do síndico à primeira leitura de documento
+          mostrada no app (zero quando a leitura já existia). Meta candidata: na mesma sessão, com
+          um documento elegível. Horas da equipe na implantação ficam no diário do piloto.
+        </p>
       </section>
 
       <section className="mt-8" aria-labelledby="por-mes">

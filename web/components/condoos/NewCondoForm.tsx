@@ -46,7 +46,10 @@ export function NewCondoForm() {
         cnpj: c.cnpj,
         units: Number(c.units),
         address: c.address,
-        approval_limits: { default: c.limit, by_category: c.obras ? { obras: c.obras } : {} },
+        // Optional (D89): without a limit, actions with a cost wait until it is configured.
+        approval_limits: c.limit
+          ? { default: c.limit, by_category: c.obras ? { obras: c.obras } : {} }
+          : null,
       },
       board: [
         { name: s.name, position: "sindico", term_start: s.term_start, email: s.email || null },
@@ -58,8 +61,7 @@ export function NewCondoForm() {
     router.refresh();
   }
 
-  const ready =
-    c.name && c.slug && c.cnpj && c.units && c.address && c.limit && s.name && s.term_start;
+  const ready = c.name && c.slug && c.cnpj && c.units && c.address && s.name && s.term_start;
   return (
     <div className="grid max-w-3xl gap-6">
       <Card>
@@ -130,7 +132,11 @@ export function NewCondoForm() {
                 onChange={(e) => setC({ ...c, units: e.target.value })}
               />
             </Field>
-            <Field id="n-limit" label="Alçada do síndico (R$)" required>
+            <Field
+              id="n-limit"
+              label="Alçada do síndico (R$)"
+              hint="Pode ficar para depois: sem alçada, nenhuma ação com custo é aprovada."
+            >
               <input
                 id="n-limit"
                 inputMode="decimal"
@@ -143,6 +149,7 @@ export function NewCondoForm() {
             <Field id="n-obras" label="Alçada de obras (R$)">
               <input
                 id="n-obras"
+                disabled={!c.limit}
                 inputMode="decimal"
                 className={controlClass}
                 value={c.obras}

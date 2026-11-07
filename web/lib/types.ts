@@ -799,3 +799,20 @@ export interface FirstValue {
   limits?: string[];
   next_step?: { key: string; label: string; why: string };
 }
+
+export interface PortfolioLaunchRow {
+  id: string;
+  name: string;
+  goal: LaunchGoal | null;
+  milestones_done: number;
+  milestones_total: number;
+  next_milestone: string | null;
+  capabilities_working: number;
+  capabilities_total: number;
+  last_activity: string | null;
+  days_idle: number | null;
+  first_login_at: string | null;
+  first_value_at: string | null;
+  hours_to_first_value: number | null;
+  steps_postponed: number;
+}

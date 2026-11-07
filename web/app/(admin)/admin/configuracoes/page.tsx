@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { BoardCard, MembersCard, ProfileCard } from "@/components/condoos/RegistryCards";
+import { CapabilityReadinessCard } from "@/components/condoos/CapabilityReadiness";
 import { AutomationPausesCard } from "@/components/condoos/AutomationPausesCard";
 import { ReviewPolicyCard } from "@/components/condoos/ReviewPolicyCard";
 import { SettingsForm } from "@/components/condoos/SettingsForm";
@@ -9,7 +10,14 @@ import { PageHeader } from "@/components/layout/PageHeader";
 import { cx } from "@/components/ui/cx";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { apiGet } from "@/lib/api";
-import type { AutomationPauses, Me, ReviewPolicy, Settings, StaffAssignment } from "@/lib/types";
+import type {
+  AutomationPauses,
+  Launch,
+  Me,
+  ReviewPolicy,
+  Settings,
+  StaffAssignment,
+} from "@/lib/types";
 
 export default async function ConfiguracoesPage({
   searchParams,
@@ -30,10 +38,11 @@ export default async function ConfiguracoesPage({
     );
   }
   const current = condos.find((c) => c.id === condominio) ?? condos[0]!;
-  const [settings, policy, pauses] = await Promise.all([
+  const [settings, policy, pauses, launch] = await Promise.all([
     apiGet<Settings>(`/condominiums/${current.id}/settings`),
     apiGet<ReviewPolicy>(`/condominiums/${current.id}/review-policy`),
     apiGet<AutomationPauses>(`/condominiums/${current.id}/automation-pauses`),
+    apiGet<Launch>(`/condominiums/${current.id}/launch`),
   ]);
   const staff = current.permissions.includes("manage_platform")
     ? await apiGet<StaffAssignment[]>(`/condominiums/${current.id}/assignments`)
@@ -64,6 +73,7 @@ export default async function ConfiguracoesPage({
       <div className="grid gap-6 xl:grid-cols-[1fr_360px]">
         <SettingsForm key={current.id} condominiumId={current.id} settings={settings} />
         <div className="space-y-6">
+          <CapabilityReadinessCard key={`c-${current.id}`} items={launch.readiness} />
           <ProfileCard
             key={`p-${current.id}`}
             condominiumId={current.id}

@@ -1,15 +1,15 @@
 "use client";
 
-import { CheckCircle2, Circle, CircleDashed, CircleDot, Clock, X } from "lucide-react";
+import { CheckCircle2, Circle, Clock, X } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
-import { Badge, type BadgeTone } from "@/components/ui/Badge";
+import { CapabilityReadinessList } from "@/components/condoos/CapabilityReadiness";
 import { Button, buttonClass } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { send } from "@/lib/client";
-import type { Launch, LaunchGoal, ReadinessState } from "@/lib/types";
+import type { Launch, LaunchGoal } from "@/lib/types";
 
 const GOALS: { key: LaunchGoal; label: string }[] = [
   { key: "economizar", label: "Economizar dinheiro" },
@@ -17,12 +17,6 @@ const GOALS: { key: LaunchGoal; label: string }[] = [
   { key: "fornecedores", label: "Controlar fornecedores" },
   { key: "panorama", label: "Ver um panorama" },
 ];
-
-const READINESS: Record<ReadinessState, { tone: BadgeTone; icon: React.ReactNode }> = {
-  nao_configurado: { tone: "neutral", icon: <CircleDashed size={12} /> },
-  analise_parcial: { tone: "warning", icon: <CircleDot size={12} /> },
-  supervisionada: { tone: "success", icon: <CheckCircle2 size={12} /> },
-};
 
 /** Launch journey card (LB-005, D89) on the síndico's "Hoje": what was done, the next steps
  * (one primary), the milestones and what each capability needs. Milestones are facts from
@@ -164,25 +158,9 @@ export function JourneyCard({ condominiumId, launch }: { condominiumId: string; 
             </li>
           ))}
         </ol>
-        <ul className="mt-4 space-y-3" aria-label="Prontidão por função">
-          {launch.readiness.map((r) => (
-            <li key={r.key}>
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="text-sm font-medium">{r.title}</span>
-                <Badge tone={READINESS[r.state].tone} icon={READINESS[r.state].icon}>
-                  {r.state_label}
-                </Badge>
-              </div>
-              {r.missing.length > 0 && (
-                <ul className="mt-1 list-disc pl-5 text-[13px] text-fg-2">
-                  {r.missing.map((m) => (
-                    <li key={m}>{m}</li>
-                  ))}
-                </ul>
-              )}
-            </li>
-          ))}
-        </ul>
+        <div className="mt-4">
+          <CapabilityReadinessList items={launch.readiness} />
+        </div>
         <p className="mt-3 text-[12px] text-muted">
           Marcos mostram o caminho; o que cada função pode fazer depende só dos dados acima, e toda
           ação continua precisando da sua aprovação.

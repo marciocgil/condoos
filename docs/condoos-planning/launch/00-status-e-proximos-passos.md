@@ -8,10 +8,12 @@
 |---|---|---|
 | LF0 Diagnóstico | ✅ concluída (gate LG0 verificado) | `01-diagnostico-as-is.md` |
 | LF1 Blueprint | ✅ aprovada pelo Marcio (gate LG1, D89) | `02`–`06` deste diretório |
-| LF2 Primeiro valor | **em_desenvolvimento** — LF2-a entregue (D89) | ver abaixo |
+| LF2 Primeiro valor | **em_desenvolvimento** — LF2-a (D89) e LF2-b (D90) entregues; falta LB-020 e o gate LG2 | ver abaixo |
 | LF3–LF8 | nao_iniciado | `05-backlog.md` |
 
 **LF2-a entregue (D89):** LB-001 (`launch_state`, migração 0018), LB-002 (marcos por fatos), LB-003 (próximos passos), LB-004 (rotas), LB-005 (cartão de jornada no Hoje), LB-006/007 (cartão de primeiro valor no envio), LB-008 ("o que já fiz por você"), LB-010 (prontidão C1–C3), LB-021 (SEC-02), LB-090 parcial (eventos `launch.*`). Verificação: 322 testes do backend, lint backend e frontend, migração ida e volta, E2E `launch.spec.ts` passando numa stack local sem Docker (API e worker num processo, armazenamento em memória, `next dev`, substituto do Mailpit). Na suíte E2E inteira nessa stack, só `correction.spec.ts` falhou, e falha igual sem as mudanças desta fatia (efeito da stack local); **rodar `make e2e` na stack do docker** para confirmar.
+
+**LF2-b entregue (D90):** LB-009 (alçada opcional no cadastro), C7 na prontidão, LB-011 (prontidão em Ajustes e Configurações), LB-012 (implantações na Carteira, `GET /portfolio/launch`), LB-022 (orientação nas bordas do envio), LB-090 (tempo até o primeiro valor em Métricas). Verificação: 324 testes do backend, lint, E2E `launch.spec.ts` (2 fluxos), `registry.spec.ts` e `backlog.spec.ts` passando na stack local sem Docker.
 
 Código: `api/app/launch/` (`journey`, `readiness`, `first_value`, `steps`, `state`), `api/app/routers/launch.py`, `web/components/condoos/JourneyCard.tsx`, `FirstValueCard.tsx`.
 
@@ -41,9 +43,11 @@ Q-L01 assistida pelo Admin · Q-L02 síndico envia o link/texto · Q-L03 LF2 ant
 | Q-L03 | Ordem: Launch LF2 antes da VS-06 (Operate controlado, aguardando decisão)? | Sequência | LF2 primeiro: não depende de piloto real e alimenta a VS-06 |
 | Q-L04 | Aprovar migração 0018 (`launch_state`, ADR-L01) e a mudança de API de LB-009 (alçadas opcionais no cadastro)? | LF2 | Sem aprovação, LF2 começa pelas partes sem migração (LB-021, LB-002, LB-010, LB-006) |
 
-## Próximo incremento recomendado (LF2-b)
+## Próximo incremento recomendado
 
-LB-009 (alçadas opcionais no cadastro; política nega ação sem alçada, aprovado em Q-L04), LB-011 (prontidão em Ajustes e Configurações), LB-012 (implantações em andamento na Carteira da equipe CondoOS), LB-022 (bordas do upload no cartão: vazio, grande, duplicado), LB-090 (tempo até primeiro valor em Métricas). Depois, LB-020 (tipos documentais, migração do CHECK) e o gate LG2 com `make e2e` na stack do docker.
+1. **Gate LG2:** rodar `make e2e` na stack do docker (inclui `launch.spec.ts`) — precisa do Marcio ou de um ambiente com Docker.
+2. **LB-020 — tipos documentais** (apólice, balancete, regimento, laudo, plano de manutenção, aditivo): exige migração do CHECK `ck_document_doc_type_valid` (0019) e mudança na classificação; **pedir aprovação da migração antes**.
+3. Depois de LG2, a LF3 (conflito de dados `data_issue`, Central de Validação, reconciliação bidirecional), que também tem migração a aprovar (ADR-L05).
 
 ## Ritual de cada incremento
 
