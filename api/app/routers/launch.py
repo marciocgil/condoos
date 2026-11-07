@@ -9,11 +9,12 @@ import uuid
 from datetime import date
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
 
 from app.auth.deps import require
 from app.auth.rbac import CondoAccess, Permission
+from app.core.time import local_today
 from app.db.models import Condominium
 from app.db.session import DbSession
 from app.launch import (
@@ -25,10 +26,14 @@ from app.launch import (
     set_dismissed,
     set_goal,
 )
+from app.launch.coverage import reconcile
 
 router = APIRouter(prefix="/condominiums/{condominium_id}/launch", tags=["launch"])
 CanView = Annotated[CondoAccess, Depends(require(Permission.VIEW))]
 CanManage = Annotated[CondoAccess, Depends(require(Permission.MANAGE_LAUNCH))]
+# The reconciliation is a follow-up for the management company and the CondoOS team, like the
+# month's pending items (D70): the board sees coverage in its briefing and report instead.
+CanFollowUp = Annotated[CondoAccess, Depends(require(Permission.VIEW_PENDING_FINDINGS))]
 
 
 class GoalIn(BaseModel):
@@ -111,3 +116,16 @@ async def post_first_value_shown(
     if card is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Documento não encontrado.")
     return {"recorded": await first_value_shown(db, condo, access, card)}
+
+
+@router.get("/reconciliation")
+async def get_reconciliation(
+    condominium_id: uuid.UUID,
+    access: CanFollowUp,
+    db: DbSession,
+    months: Annotated[int, Query(ge=1, le=12)] = 6,
+) -> dict[str, Any]:
+    """Two-way reconciliation (LB-031, D94): per month, contracts with and without an
+    invoice and the queue; and suppliers charged without a contract in two or more months."""
+    condo = await _condo(db, access)
+    return (await reconcile(db, condo, months, local_today(condo.timezone))).as_dict()

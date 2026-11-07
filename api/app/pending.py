@@ -102,7 +102,8 @@ async def month_pending(
     session: AsyncSession, condominium_id: uuid.UUID, month: date, today: date
 ) -> MonthPending:
     condo = await session.get(Condominium, condominium_id)
-    assert condo is not None
+    if condo is None:  # not visible under this transaction's RLS scope: nothing to show
+        return MonthPending(month=month, contracts=[], one_off=[])
     contracts = list(
         await session.scalars(select(Contract).where(Contract.condominium_id == condominium_id))
     )

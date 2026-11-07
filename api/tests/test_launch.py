@@ -46,6 +46,7 @@ from app.db.models import (
 from app.db.session import sessionmaker_for, set_tenant_scope
 from app.extraction.pipeline import process_document
 from app.launch import overview
+from app.launch.coverage import MonthCoverage, last_settled_month, reconcile
 from app.launch.first_value import build as build_first_value
 from app.launch.journey import milestones
 from app.launch.metrics import implementation
@@ -53,6 +54,7 @@ from app.launch.readiness import readiness
 from app.launch.steps import CATALOGUE, choose
 from app.main import create_app
 from app.onboarding import OnboardingIn, onboard
+from app.reports.data import build_month_report
 from app.routers import launch as launch_router
 from tests.helpers import (
     ADMIN_CONDOOS,
@@ -174,7 +176,13 @@ async def _contract(
 
 
 async def _invoice(
-    admin_engine: AsyncEngine, cid: uuid.UUID, contract: uuid.UUID, month: date, competence: bool
+    admin_engine: AsyncEngine,
+    cid: uuid.UUID,
+    contract: uuid.UUID | None,
+    month: date,
+    competence: bool,
+    invoice_number: str | None = None,
+    category: str = "portaria",
 ) -> None:
     sid = await _supplier(admin_engine)
     async with sessionmaker_for(admin_engine)() as s, s.begin():
@@ -186,8 +194,9 @@ async def _invoice(
                 competence=month,
                 issue_date=month,
                 amount=Decimal("4000.00"),
-                category="portaria",
+                category=category,
                 description="Portaria do mês",
+                invoice_number=invoice_number,
             )
         )
         if competence:
@@ -230,7 +239,10 @@ async def test_new_condominium_has_only_lm1_after_the_first_access(
         "C1": "nao_configurado",
         "C2": "nao_configurado",
         "C3": "nao_configurado",
+        "C4": "nao_configurado",
         "C7": "supervisionada",  # limit set at onboarding, síndica logged in
+        "C8": "nao_configurado",
+        "C9": "nao_configurado",
     }
     assert view["steps"][0]["key"] == "enviar_contrato" and view["steps"][0]["primary"]
 
@@ -321,6 +333,7 @@ def test_no_route_marks_a_milestone() -> None:
         ("POST", f"{base}/dismiss"),
         ("GET", f"{base}/first-value/{{document_id}}"),
         ("POST", f"{base}/first-value/{{document_id}}/shown"),
+        ("GET", f"{base}/reconciliation"),
     }
 
 
@@ -370,6 +383,22 @@ async def test_contract_without_invoice_then_with_invoice(admin_engine: AsyncEng
     assert _cap(view, "C2")["state"] == "supervisionada"
     assert _cap(view, "C3")["state"] == "supervisionada"
     assert view["steps"] == []  # no goal: only contract steps, and none is missing
+
+    # C4 stands on C3 and still needs a CondoOS reviewer (D81).
+    c4 = _cap(view, "C4")
+    assert [r["key"] for r in c4["requirements"] if not r["met"]] == ["revisor_atribuido"]
+    async with sessionmaker_for(admin_engine)() as s, s.begin():
+        reviewer = await s.scalar(select(AppUser.id).where(AppUser.email == REVISORA))
+        assert reviewer is not None
+        s.add(
+            CondoAssignment(
+                condominium_id=condo.id,
+                user_id=reviewer,
+                platform_role=PlatformRole.CONDOOS_REVIEWER.value,
+                reason="Teste da C4",
+            )
+        )
+    assert _cap(await _view(admin_engine, condo.id), "C4")["state"] == "supervisionada"
 
 
 async def test_documents_capability_depends_on_the_assistant(
@@ -744,7 +773,10 @@ async def test_implementation_metrics_come_from_records(admin_engine: AsyncEngin
         "C1": "nao_configurado",  # the only document still waits for review
         "C2": "analise_parcial",
         "C3": "nao_configurado",
+        "C4": "nao_configurado",
         "C7": "supervisionada",
+        "C8": "nao_configurado",
+        "C9": "nao_configurado",
     }
     assert email not in str(row)  # ids and counts only
 
@@ -759,7 +791,7 @@ async def test_implementations_are_for_the_condoos_team_only(
             "Condomínio Residencial Jardim das Acácias",
             "Condomínio Edifício Mirante do Vale",
         }
-        assert all(set(r["readiness"]) == {"C1", "C2", "C3", "C7"} for r in rows)
+        assert all(set(r["readiness"]) == {"C1", "C2", "C3", "C4", "C7", "C8", "C9"} for r in rows)
     for email in (GERENTE, SINDICA_ACACIAS):  # management company and board: not theirs
         async with _client() as c:
             await login(c, mailer, email)
@@ -814,3 +846,125 @@ async def test_condominium_without_limit_gets_no_action_until_it_is_set(
         body["idempotency_key"] = f"launch-{uuid.uuid4()}"
         r = await c.post(f"/condominiums/{condo.id}/actions", json=body)
         assert r.status_code == 201, r.text
+
+
+# --------------------------------------------------------------------------- LF3-a (D94)
+
+
+def test_coverage_label_never_says_complete() -> None:
+    month = date(2026, 10, 1)
+    covered = MonthCoverage(month, 3, 3, 0, 0, 0)
+    assert covered.covered
+    assert covered.label == (
+        "Cobertura de outubro/2026: os 3 contratos com nota prevista têm nota, "
+        "e a fila do mês está vazia."
+    )
+    partial = MonthCoverage(month, 3, 1, 1, 1, 2)
+    assert not partial.covered
+    assert partial.label == (
+        "Cobertura parcial de outubro/2026: 1 de 3 contratos com nota; "
+        "1 ainda no prazo de emissão; 2 itens na fila."
+    )
+    queue_only = MonthCoverage(month, 0, 0, 0, 0, 1)  # nothing expected, but the queue is open
+    assert not queue_only.covered and "parcial" in queue_only.label
+    for c in (covered, partial, queue_only):
+        assert "complet" not in c.label.lower()
+
+
+async def test_reconciliation_in_both_directions(admin_engine: AsyncEngine) -> None:
+    condo, _ = await _new_condo(admin_engine)
+    did = await _contract_doc(admin_engine, condo.id)
+    kid = await _contract(admin_engine, condo.id, did)
+    oct_, sep = date(2026, 10, 1), date(2026, 9, 1)
+    await _invoice(admin_engine, condo.id, kid, oct_, competence=True, invoice_number="123")
+    # Charged without a contract: "obras" in two months (listed), "energia" is a utility
+    # (never listed), "jardinagem" only once (not recurring).
+    await _invoice(admin_engine, condo.id, None, sep, competence=False, category="obras")
+    await _invoice(admin_engine, condo.id, None, oct_, competence=False, category="obras")
+    for m in (sep, oct_):
+        await _invoice(admin_engine, condo.id, None, m, competence=False, category="energia")
+    await _invoice(admin_engine, condo.id, None, oct_, competence=False, category="jardinagem")
+
+    async with sessionmaker_for(admin_engine)() as s:
+        stored = await s.get(Condominium, condo.id)
+        assert stored is not None
+        rec = await reconcile(s, stored, 3, date(2026, 11, 5))
+    by_month = {m.month: m for m in rec.months}
+    assert by_month[oct_].covered  # its contract has the invoice, the queue is empty
+    assert by_month[sep].missing == 1 and "0 de 1" in by_month[sep].label
+    assert by_month[date(2026, 11, 1)].waiting == 1  # still within the issue window
+    assert len(rec.recurring_without_contract) == 1
+    only = rec.recurring_without_contract[0]
+    assert only["months"] == ["2026-09-01", "2026-10-01"]
+    assert "sem contrato em 2 meses" in only["label"]
+
+
+async def test_expected_documents_capability(admin_engine: AsyncEngine) -> None:
+    condo, _ = await _new_condo(admin_engine)
+    month = last_settled_month(local_today(condo.timezone))
+    assert _cap(await _view(admin_engine, condo.id), "C8")["state"] == "nao_configurado"
+    did = await _contract_doc(admin_engine, condo.id)  # an upload: the input channel
+    kid = await _contract(admin_engine, condo.id, did)
+    c8 = _cap(await _view(admin_engine, condo.id), "C8")
+    assert c8["state"] == "analise_parcial"
+    assert [r["key"] for r in c8["requirements"] if not r["met"]] == ["notas_do_mes_recebidas"]
+    await _invoice(admin_engine, condo.id, kid, month, competence=False, invoice_number="9")
+    c8 = _cap(await _view(admin_engine, condo.id), "C8")
+    assert c8["state"] == "supervisionada" and c8["coverage"]["contratos_com_fatura"] == 1
+
+
+async def test_closing_capability(admin_engine: AsyncEngine) -> None:
+    condo, _ = await _new_condo(admin_engine)
+    assert _cap(await _view(admin_engine, condo.id), "C9")["state"] == "nao_configurado"
+    async with sessionmaker_for(admin_engine)() as s, s.begin():
+        s.add(Competence(condominium_id=condo.id, month=date(2026, 10, 1)))
+    did = await _contract_doc(admin_engine, condo.id, needs_review=True)  # month unknown
+    c9 = _cap(await _view(admin_engine, condo.id), "C9")
+    assert c9["state"] == "analise_parcial"  # the management company's manager may close
+    assert [r["key"] for r in c9["requirements"] if not r["met"]] == ["fila_do_mes_vazia"]
+    async with sessionmaker_for(admin_engine)() as s, s.begin():
+        doc = await s.get(Document, did)
+        assert doc is not None
+        doc.needs_review = False
+    assert _cap(await _view(admin_engine, condo.id), "C9")["state"] == "supervisionada"
+
+
+async def test_savings_capability_needs_working_charges(admin_engine: AsyncEngine) -> None:
+    condo, _ = await _new_condo(admin_engine)  # no contract: C3 is not working
+    c4 = _cap(await _view(admin_engine, condo.id), "C4")
+    assert c4["state"] == "nao_configurado"
+    assert [r["key"] for r in c4["requirements"] if not r["met"]] == [
+        "confronto_funcionando",
+        "revisor_atribuido",
+    ]
+
+
+async def test_reconciliation_route_is_for_the_follow_up_roles(
+    mailer: MemoryMailer, admin_engine: AsyncEngine
+) -> None:
+    acacias = await condo_id(admin_engine, ACACIAS)
+    url = f"/condominiums/{acacias}/launch/reconciliation?months=3"
+    async with _client() as c:
+        await login(c, mailer, GERENTE)
+        r = await c.get(url)
+        assert r.status_code == 200, r.text
+        assert len(r.json()["months"]) == 3
+        assert all("complet" not in m["label"].lower() for m in r.json()["months"])
+    async with _client() as c:
+        await login(c, mailer, SINDICA_ACACIAS)
+        assert (await c.get(url)).status_code == 403
+
+
+async def test_report_says_its_coverage(admin_engine: AsyncEngine) -> None:
+    acacias = await condo_id(admin_engine, ACACIAS)
+    async with sessionmaker_for(admin_engine)() as s:
+        month = await s.scalar(
+            select(Competence.month)
+            .where(Competence.condominium_id == acacias)
+            .order_by(Competence.month.desc())
+            .limit(1)
+        )
+        assert month is not None
+        report = await build_month_report(s, acacias, month)
+    assert report.coverage_label.startswith("Cobertura")
+    assert "complet" not in report.coverage_label.lower()

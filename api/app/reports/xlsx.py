@@ -48,6 +48,8 @@ def _format(ws: Worksheet, money_cols: list[int], date_cols: list[int]) -> None:
 def month_report_xlsx(r: MonthReport) -> bytes:
     wb = Workbook()
     title = f"{r.condominium} — competência {r.month:%m/%Y}" + (" (prévia)" if r.preview else "")
+    if r.coverage_label:
+        title += f" · {r.coverage_label}"
 
     ws = wb.active
     assert ws is not None

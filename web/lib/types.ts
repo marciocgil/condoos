@@ -834,3 +834,24 @@ export interface LaunchImplementation {
   llm_cost_per_document_usd: string | null;
   readiness: Record<string, ReadinessState>;
 }
+
+export interface MonthCoverage {
+  month: string;
+  contracts_expected: number;
+  invoiced: number;
+  waiting: number;
+  missing: number;
+  queue: number;
+  covered: boolean;
+  label: string;
+}
+
+export interface Reconciliation {
+  months: MonthCoverage[];
+  recurring_without_contract: {
+    supplier_id: string;
+    supplier: string;
+    months: string[];
+    label: string;
+  }[];
+}

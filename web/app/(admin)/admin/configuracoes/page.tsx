@@ -90,6 +90,12 @@ export default async function ConfiguracoesPage({
               sem_campo_a_confirmar: queue,
               contratos_com_documento: send,
               faturas_casadas: send,
+              canal_de_entrada: send,
+              notas_do_mes_recebidas: {
+                href: `/admin/pendencias?condominio=${current.id}`,
+                label: "Ver as pendências",
+              },
+              fila_do_mes_vazia: queue,
               alcada_configurada: {
                 href: `/admin/configuracoes?condominio=${current.id}#limit-default`,
                 label: "Configurar a alçada",

@@ -25,6 +25,8 @@ export default async function AjustesPage({ params }: { params: Promise<{ id: st
           contrato_recebido: send,
           contratos_com_documento: send,
           faturas_casadas: send,
+          canal_de_entrada: send,
+          notas_do_mes_recebidas: send,
         }}
       />
       <ReviewPolicyCard condominiumId={id} policy={policy} />

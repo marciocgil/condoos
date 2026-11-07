@@ -3,6 +3,7 @@ import Link from "next/link";
 
 import { CondoFilter } from "@/components/condoos/CondoFilter";
 import { OneOffApproval } from "@/components/condoos/OneOffApproval";
+import { ReconciliationCard } from "@/components/condoos/ReconciliationCard";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Badge, type BadgeTone } from "@/components/ui/Badge";
 import { buttonClass } from "@/components/ui/Button";
@@ -12,7 +13,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { KpiCard } from "@/components/ui/KpiCard";
 import { apiGet } from "@/lib/api";
 import { competenceParam, formatBRL, formatDate, formatMonth } from "@/lib/format";
-import type { PendingCockpit, PendingContract, Portfolio } from "@/lib/types";
+import type { PendingCockpit, PendingContract, Portfolio, Reconciliation } from "@/lib/types";
 
 const BILLING: Record<
   PendingContract["status"],
@@ -40,6 +41,16 @@ export default async function PendenciasPage({
   if (selected) params.set("condominium_id", selected);
   const data = await apiGet<PendingCockpit>(`/portfolio/pending?${params.toString()}`);
   const month = competenceParam(data.month);
+  // Coverage of the last 6 months per condominium (LB-031, D94).
+  const coverage = await Promise.all(
+    data.condominiums
+      .filter((c) => !selected || c.id === selected)
+      .map(async (c) => ({
+        id: c.id,
+        name: c.name,
+        data: await apiGet<Reconciliation>(`/condominiums/${c.id}/launch/reconciliation?months=6`),
+      })),
+  );
   const all = data.condominiums;
   const noInvoice = all
     .flatMap((c) => c.contracts)
@@ -234,6 +245,11 @@ export default async function PendenciasPage({
           </Card>
         ))}
       </div>
+      <section className="mt-8 grid gap-6 xl:grid-cols-2" aria-label="Cobertura por mês">
+        {coverage.map((c) => (
+          <ReconciliationCard key={c.id} name={c.name} data={c.data} />
+        ))}
+      </section>
     </>
   );
 }

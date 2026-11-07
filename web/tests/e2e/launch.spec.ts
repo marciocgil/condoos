@@ -119,6 +119,10 @@ test("síndica vê em Ajustes o que o CondoOS já consegue fazer", async ({ page
     "Perguntas sobre documentos",
     "Leitura de contrato",
     "Confronto de cobranças",
+    "Recomendação de economia",
+    "Ações com sua aprovação",
+    "Documentos esperados",
+    "Fechamento do mês",
   ])
     await expect(card.getByText(name, { exact: true })).toBeVisible();
   // Without an API key the assistant is unavailable: said in text, never hidden.
@@ -137,4 +141,22 @@ test("equipe CondoOS acompanha as implantações; gerente não vê", async ({ pa
   await loginAs(page, "diego.gerente@atlantida.example.com");
   await expect(page.getByRole("heading", { name: "Carteira" })).toBeVisible();
   await expect(page.getByRole("region", { name: "Implantações em andamento" })).toHaveCount(0);
+});
+
+// LB-031 and LB-037 (LF3-a, D94): coverage month by month, never "completo".
+test("gerente vê a cobertura dos últimos meses nas pendências", async ({ page }) => {
+  test.skip(test.info().project.name !== "admin-desktop", "fluxo do desktop");
+  await loginAs(page, "diego.gerente@atlantida.example.com");
+  await page.getByRole("link", { name: "Pendências" }).first().click();
+  const cards = page.getByTestId("reconciliation");
+  await expect(cards.first()).toBeVisible();
+  await expect(cards.first().getByText(/Cobertura dos últimos 6 meses/)).toBeVisible();
+  await expect(
+    cards
+      .first()
+      .getByText(/^Cobertura( parcial)? de /)
+      .first(),
+  ).toBeVisible();
+  for (const text of await cards.allInnerTexts())
+    expect(text.toLowerCase()).not.toContain("complet");
 });

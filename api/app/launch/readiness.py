@@ -20,8 +20,17 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.chat.search import INDEXED_TYPES
 from app.config import get_settings
 from app.core.time import local_today, month_start, utcnow
-from app.db.enums import AdjustmentIndex, DocumentType, ExtractionStatus, Role
+from app.db.enums import (
+    AdjustmentIndex,
+    DocumentOrigin,
+    DocumentType,
+    ExtractionStatus,
+    PlatformRole,
+    Role,
+)
 from app.db.models import (
+    Competence,
+    CondoAssignment,
     Condominium,
     Contract,
     Document,
@@ -30,6 +39,7 @@ from app.db.models import (
     IndexValue,
     Membership,
 )
+from app.launch import coverage as cov
 from app.launch.journey import month_coverage
 from app.llm.client import resolve_mode
 from app.policy import active_pause, approval_limit
@@ -331,10 +341,167 @@ async def c7_actions(session: AsyncSession, condo: Condominium) -> Readiness:
     )
 
 
+async def _active_reviewer(session: AsyncSession, condominium_id: uuid.UUID) -> bool:
+    now = utcnow()
+    return (
+        await session.scalar(
+            select(CondoAssignment.id).where(
+                CondoAssignment.condominium_id == condominium_id,
+                CondoAssignment.platform_role == PlatformRole.CONDOOS_REVIEWER.value,
+                CondoAssignment.revoked_at.is_(None),
+                or_(CondoAssignment.valid_until.is_(None), CondoAssignment.valid_until > now),
+            )
+        )
+        is not None
+    )
+
+
+async def c4_savings(session: AsyncSession, condo: Condominium, c3: Readiness) -> Readiness:
+    """Savings recommendations (D81): only on top of a working comparison of charges, and
+    only with a CondoOS reviewer to review each one before the condominium sees it."""
+    reviewer = await _active_reviewer(session, condo.id)
+    return Readiness(
+        "C4",
+        "Recomendação de economia",
+        [
+            Requirement(
+                "confronto_funcionando",
+                "Confronto de cobranças funcionando",
+                c3.state == SUPERVISIONADA,
+                "" if c3.state == SUPERVISIONADA else "Falta concluir o confronto de cobranças.",
+                entry=True,
+            ),
+            Requirement(
+                "revisor_atribuido",
+                "Revisor CondoOS atribuído",
+                reviewer,
+                "" if reviewer else "Sem revisor, nenhuma recomendação chega ao condomínio.",
+            ),
+        ],
+    )
+
+
+async def c8_expected_documents(session: AsyncSession, condo: Condominium) -> Readiness:
+    """Expected documents (D70): contracts with periodic billing, a known input channel and,
+    for the latest month whose issue window has ended, every expected invoice received.
+    Invoices still within the window are "aguardando", never missing."""
+    today = local_today(condo.timezone)
+    billed = [
+        c
+        for c in (
+            await session.scalars(select(Contract).where(Contract.condominium_id == condo.id))
+        ).all()
+        if c.billing_frequency_months > 0 and (c.end_date or today) >= today
+    ]
+    channel = await session.scalar(
+        select(Document.id)
+        .where(
+            Document.condominium_id == condo.id,
+            Document.origin.in_([DocumentOrigin.UPLOAD.value, DocumentOrigin.EMAIL.value]),
+        )
+        .limit(1)
+    )
+    month = cov.last_settled_month(today)
+    coverage = await cov.month_coverage(session, condo.id, month, today)
+    received = coverage.missing == 0
+    return Readiness(
+        "C8",
+        "Documentos esperados",
+        [
+            Requirement(
+                "contrato_com_cobranca",
+                "Contrato vigente com cobrança periódica",
+                bool(billed),
+                "" if billed else "Nenhum contrato vigente com cobrança periódica.",
+                entry=True,
+            ),
+            Requirement(
+                "canal_de_entrada",
+                "Canal de entrada com documento recebido",
+                channel is not None,
+                "" if channel else "Nenhum documento enviado ou recebido por e-mail ainda.",
+            ),
+            Requirement(
+                "notas_do_mes_recebidas",
+                f"Notas de {cov.month_name(month)} recebidas",
+                received,
+                (
+                    ""
+                    if received
+                    else f"{coverage.invoiced} de {coverage.contracts_expected} contratos com nota"
+                ),
+            ),
+        ],
+        {
+            "mes": f"{month:%Y-%m}",
+            "contratos_com_fatura": coverage.invoiced,
+            "contratos_esperados": coverage.contracts_expected,
+        },
+    )
+
+
+async def c9_closing(session: AsyncSession, condo: Condominium) -> Readiness:
+    """Closing the month (spec §7): the month's queue empty and someone who may close it
+    (the management company's manager or a CondoOS reviewer, D77)."""
+    latest = await session.scalar(
+        select(Competence)
+        .where(Competence.condominium_id == condo.id)
+        .order_by(Competence.month.desc())
+        .limit(1)
+    )
+    from app.reports.data import pending_for_month  # reports imports the launch package
+
+    queue = (
+        sum((await pending_for_month(session, condo.id, latest.month)).values()) if latest else 0
+    )
+    manager = None
+    if condo.management_company_id is not None:
+        now = utcnow()
+        manager = await session.scalar(
+            select(Membership.id).where(
+                Membership.management_company_id == condo.management_company_id,
+                Membership.role == Role.GERENTE.value,
+                Membership.revoked_at.is_(None),
+                or_(Membership.expires_at.is_(None), Membership.expires_at > now),
+            )
+        )
+    closer = manager is not None or await _active_reviewer(session, condo.id)
+    name = cov.month_name(latest.month) if latest else ""
+    return Readiness(
+        "C9",
+        "Fechamento do mês",
+        [
+            Requirement(
+                "mes_conferido",
+                "Mês já conferido pelas regras",
+                latest is not None,
+                "" if latest else "Nenhum mês conferido ainda.",
+                entry=True,
+            ),
+            Requirement(
+                "fila_do_mes_vazia",
+                f"Fila de {name} vazia" if latest else "Fila do mês vazia",
+                latest is not None and queue == 0,
+                f"{queue} {'item' if queue == 1 else 'itens'} na fila" if queue else "",
+            ),
+            Requirement(
+                "quem_fecha",
+                "Quem fecha o mês atribuído",
+                closer,
+                "" if closer else "Atribua um revisor CondoOS ou o gerente da administradora.",
+            ),
+        ],
+        {"mes": f"{latest.month:%Y-%m}"} if latest else {},
+    )
+
+
 async def readiness(session: AsyncSession, condo: Condominium) -> list[Readiness]:
-    """C1-C3 and C7 (LF2). The other capabilities enter in later Launch phases."""
+    """C1-C4 and C7-C9. C5 and C6 (delegation and messages) enter with LF4."""
     c1 = await c1_documents(session, condo)
     c2 = await c2_contracts(session, condo)
     c3 = await c3_charges(session, condo, c2)
+    c4 = await c4_savings(session, condo, c3)
     c7 = await c7_actions(session, condo)
-    return [c1, c2, c3, c7]
+    c8 = await c8_expected_documents(session, condo)
+    c9 = await c9_closing(session, condo)
+    return [c1, c2, c3, c4, c7, c8, c9]

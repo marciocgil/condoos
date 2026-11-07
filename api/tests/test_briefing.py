@@ -286,7 +286,9 @@ async def test_stale_data_is_reported(mailer: MemoryMailer, admin_engine: AsyncE
         await login(ana, mailer, SINDICA_ACACIAS)
         b = (await ana.post(f"/condominiums/{acacias}/briefing/refresh")).json()
     titles = {i["title"] for i in _section(b, "dados")}
-    assert titles == {"Documentos", "Extrato bancário"}
+    assert titles == {"Documentos", "Extrato bancário", "Cobertura do mês"}  # LB-037
+    coverage = next(i for i in _section(b, "dados") if i["title"] == "Cobertura do mês")
+    assert "completo" not in coverage["detail"].lower()
     if uploads is None:
         assert "documentos" in {p["source"] for p in b["partial_sources"]}
 

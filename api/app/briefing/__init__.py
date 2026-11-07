@@ -624,6 +624,21 @@ class Builder:
                 tone="warning" if last_bank is None or last_bank < limit_dt.date() else "neutral",
             )
         )
+        # Coverage of the latest month whose invoice window ended (LB-037, D94): partial is
+        # said with the numbers, never "completo". Not a stale source: no partial warning.
+        from app.launch.coverage import last_settled_month, month_coverage
+
+        coverage = await month_coverage(
+            self.s, self.cid, last_settled_month(self.today), self.today
+        )
+        out.append(
+            _item(
+                "data",
+                "Cobertura do mês",
+                coverage.label,
+                tone="neutral" if coverage.covered else "warning",
+            )
+        )
         return out
 
     # ------------------------------------------------------------------ assembly

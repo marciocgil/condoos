@@ -165,6 +165,8 @@ def month_report_pdf(r: MonthReport) -> bytes:
             SMALL,
         )
     )
+    if r.coverage_label:
+        story.append(Paragraph(_esc(r.coverage_label), SMALL))
     story.append(Spacer(1, 8))
     story.append(Paragraph(title, H2))
     kpis = [

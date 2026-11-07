@@ -15,7 +15,7 @@ from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.br import format_cnpj
-from app.core.time import add_months, utcnow
+from app.core.time import add_months, local_today, utcnow
 from app.db.enums import NOT_AT_RISK, UNDER_REVIEW, VISIBLE_TO_BOARD
 from app.db.models import (
     AppUser,
@@ -31,6 +31,7 @@ from app.db.models import (
     MatchIssue,
     Supplier,
 )
+from app.launch.coverage import month_coverage
 from app.matching.categories import category_label
 
 FOOTER = "Relatório gerado com apoio de IA. Achados são indícios para verificação, não conclusões."
@@ -154,6 +155,8 @@ class MonthReport:
     expenses_total: Decimal = Decimal("0")
     preview: bool = False
     top: list[FindingRow] = field(default_factory=list)
+    # LB-037 (D94): how much of the month the report covers, in words; never "completo".
+    coverage_label: str = ""
 
 
 def month_of(value: Any) -> date | None:
@@ -375,6 +378,9 @@ async def build_month_report(
         expenses_total=sum((e.amount for e in expenses), Decimal("0")),
         preview=status != "fechada",
         top=finding_rows[:5],
+        coverage_label=(
+            await month_coverage(session, condominium_id, month, local_today(condo.timezone))
+        ).label,
     )
 
 

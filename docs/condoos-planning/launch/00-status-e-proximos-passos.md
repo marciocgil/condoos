@@ -9,7 +9,8 @@
 | LF0 Diagnóstico | ✅ concluída (gate LG0 verificado) | `01-diagnostico-as-is.md` |
 | LF1 Blueprint | ✅ aprovado pelo Marcio (gate LG1, D89) | `02`–`06` deste diretório |
 | LF2 Primeiro valor | **pronto_para_validar**: LF2-a..d entregues (D90–D93); gate **LG2** atendido no código e no E2E local, aguarda validação do Marcio | `05-backlog.md`, D90–D93, `web/tests/e2e/launch.spec.ts` |
-| LF3–LF8 | nao_iniciado | `05-backlog.md` |
+| LF3 Dados e reconciliação | **em_desenvolvimento**: LF3-a entregue (D94, sem migração); LF3-b aguarda aprovação da migração 0020 (`data_issue`) | `05-backlog.md`, D94, ADR-L05 em `03-arquitetura-e-dados.md` |
+| LF4–LF8 | nao_iniciado | `05-backlog.md` |
 
 Código do Launch: `api/app/launch/`, `api/app/routers/launch.py`, migração 0018; testes `api/tests/test_launch.py` e `api/tests/test_prompt_injection.py` (D90).
 
@@ -52,7 +53,7 @@ LF2-a entregue em 07/11/2026 (D90; escolhas registradas lá, entre elas LM1 sem 
 
 **Gate LG2 (critérios do `05-backlog.md`) × evidência:** síndico novo de condomínio criado pelo Admin escolhe "Economizar", envia o contrato do corpus e vê a leitura com trechos e limites e o próximo passo (`launch.spec.ts`); campo incerto sempre rotulado (`test_first_value_never_shows_a_doubtful_field_as_fact`); isolamento (`test_other_condominium_is_404_and_recorded`, `test_launch_state_is_isolated_by_rls`, 404 do primeiro valor de outro condomínio); nenhum cadastro monolítico (alçada opcional, D93). Pendente: validação humana do Marcio e leitura com a IA real (B4: sem chave, o contrato do corpus sai parcial).
 
-**LF3 — dados e reconciliação** (próxima fatia do Launch): começa por ADR-L05, que pede a migração `data_issue` (conflito entre documentos, documento esperado ausente, dado vencido, duplicidade suspeita). **Pedir aprovação antes de escrever.**
+**LF3 — dados e reconciliação.** LF3-a entregue em 07/11/2026 (D94): cobertura por mês sem nunca dizer "completo" no relatório, no briefing e nas pendências (LB-037), reconciliação nos dois sentidos (LB-031) e prontidão C4, C8 e C9 (LB-034). **LF3-b** depende da migração 0020 (`data_issue`, desenho em ADR-L05): LB-030 (conflito contrato × aditivo com versão prevalente), LB-035 (política nega ação sobre contrato com conflito aberto) e LB-036 (classes "inferido" e "conflitante" na proveniência). Ficam para LF3-c: LB-032 (Central de Validação) e LB-033 (envio em lote). **Pedir aprovação da 0020 antes de escrever.**
 
 ## Ritual de cada incremento
 
