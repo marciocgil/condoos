@@ -56,9 +56,9 @@ Data: 07/11/2026 (revisado com D73–D77). Prioridade e ordem seguem `docs/produ
 **CB-017 — Separação validar × aprovar** · P · D77 · ✅ entregue (D79)
 - Aceite: teste garante que `review_*` não concede `approve_in_condo` e vice-versa, para todo papel; a interface mostra só as ações permitidas.
 
-**CB-018 — Tela de atribuição da equipe CondoOS** · M · D77 · *novo, sobra do incremento 2*
+**CB-018 — Tela de atribuição da equipe CondoOS** · M · D77 · ✅ entregue (D84)
 - Aceite: o Admin lista, atribui (com motivo e prazo opcional) e remove pessoas da equipe CondoOS em Configurações, usando a API existente; status com texto e ícone.
-**CB-019 — Política de revisão na tela do síndico** · P · D74 · *novo, sobra do incremento 2*
+**CB-019 — Política de revisão na tela do síndico** · P · D74 · ✅ entregue (D84; página "Ajustes")
 - Aceite: o síndico vê quem revisa os achados e liga/desliga a revisão pela administradora no celular, usando a API existente.
 
 ## Épico EP-03 — Assuntos e tarefas (VS-01) · WP-04, WP-07 · P0 · *ADR-P01 aceita (D75); migração 0013 aguarda aprovação*
@@ -69,7 +69,7 @@ Data: 07/11/2026 (revisado com D73–D77). Prioridade e ordem seguem `docs/produ
 - Aceite: tarefa com responsável, prazo, estado, vínculo; mudança de prazo exige motivo (§7.7).
 **CB-022 — Máquina de estados e conclusão com evidência** · M · FR-024, US-007, OPS-02, WF-04 · ✅ entregue (D80)
 - Aceite: transições da §8.2; `resolvido` exige critério do tipo (evidência anexada quando exigida); "concluído pelo fornecedor" não resolve; reabertura preserva histórico.
-**CB-023 — Fila de pendências de assuntos** · M · FR-025 · ◐ parcial (D80: falta filtro de categoria/criticidade na tela)
+**CB-023 — Fila de pendências de assuntos** · M · FR-025 · ✅ entregue (D80, D84)
 - Aceite: filtros por pessoa, categoria, prazo, criticidade; assunto sem dono/prazo aparece como antipadrão (§8.4).
 **CB-024 — Vínculos N:N e assunto a partir de achado** · M · FR-014, FR-027 (parcial) · ✅ entregue (D80)
 - Aceite: ação no detalhe do achado cria assunto ligado ou vincula a um existente; um achado pode estar em mais de um assunto (motivo obrigatório); vínculo com oportunidade, documento, contrato, fornecedor, despesa e outro assunto; desvincular preserva histórico; o achado não muda de status.
@@ -80,7 +80,7 @@ Data: 07/11/2026 (revisado com D73–D77). Prioridade e ordem seguem `docs/produ
 **CB-025 — Telas Assuntos e Assunto 360° (mínimo)** · G · FR-023, FR-025 · DS v1.0 · ✅ entregue (D80; vínculo pela tela só a partir do achado → CB-028)
 - Aceite: lista e detalhe com `DataTable`, `Timeline`, `SidePanel`; status sempre com texto e ícone; mobile (síndico) e desktop (administradora); Playwright do fluxo VS-01.
 
-**CB-028 — Vincular registros pela tela do assunto** · M · FR-027 · *novo, sobra da VS-01*
+**CB-028 — Vincular registros pela tela do assunto** · M · FR-027 · ✅ entregue (D84)
 - Aceite: no Assunto 360°, buscar e vincular contrato, documento, fornecedor, despesa e outro assunto (a API já faz), com motivo quando o registro estiver em outro assunto aberto.
 
 ## Épico EP-04 — Informação confiável (G2) · WP-05 · P0
@@ -112,13 +112,13 @@ Data: 07/11/2026 (revisado com D73–D77). Prioridade e ordem seguem `docs/produ
 - Aceite: `opportunity` com tipo, risco, prontidão e status; reúne N achados ou nasce sem achado; economia **potencial** gravada em `savings_record` por função de cálculo versionada (`method_code`), com baseline, premissas, evidências, confiança, custos e riscos; reproduzível em teste; escopos não comparáveis marcados.
 **CB-062 — Fila de revisão interna** (ADR-P09, D74) · G · FR-046, US-011, OPT-01 · ✅ entregue (D81)
 - Aceite: oportunidade invisível ao corpo diretivo (API e tela) até `aprovada_para_cliente`; só `condoos_reviewer` revisa; vê fontes, cálculo e incerteza; aprovar/ajustar/devolver/rejeitar com motivo (`opportunity_review`, só inclusão); aprovação grava "estimada validada" e o hash da versão; mudança material reabre a revisão.
-**CB-063 — Aprovação, contratação e economia realizada** · G · FR-050, US-012 · P1
+**CB-063 — Aprovação, contratação e economia realizada** · G · FR-050, US-012 · P1 · ✅ entregue (D81 aprovada; D84 contratada e realizada)
 - Aceite: síndico aprova dentro da alçada (registra "aprovada"); "contratada" exige documento do acordo; "realizada" exige faturas posteriores conferidas contra o baseline e custo de mudança descontado; nada disso move dinheiro nem envia mensagem.
 **CB-064 — Estágios de economia na interface** · M · D76 · ✅ entregue (D81)
 - Aceite: cada estágio com rótulo, ícone e texto próprios (potencial identificada, estimada validada, aprovada para execução, contratada/negociada, realizada e comprovada); nenhum total soma estágios; "realizada" só com evidência; teste de tela e de API.
 
 ## Épico EP-08 — Piloto e medição · WP-15 · T7
-**CB-070 — Instrumentação do baseline** · M · §17, `docs/pilot-protocol.md`
+**CB-070 — Instrumentação do baseline** · M · §17, `docs/pilot-protocol.md` · ✅ entregue (D84; horas poupadas seguem no diário, fora do produto)
 - Aceite: métricas do protocolo calculáveis por condomínio e período, sem dado pessoal.
 
 ## Itens P1+ (não detalhados até o gate anterior)

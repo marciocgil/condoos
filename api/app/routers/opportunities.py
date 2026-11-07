@@ -7,15 +7,21 @@ from datetime import date, datetime
 from decimal import Decimal
 from typing import Annotated, Literal
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 
 from app.auth.deps import CurrentPrincipal, access_for, require
 from app.auth.rbac import CondoAccess, Permission
 from app.cases import user_names
+from app.config import get_settings
 from app.core.time import local_today
-from app.db.enums import VISIBLE_TO_BOARD, OpportunityReviewAction, SavingsStage
+from app.db.enums import (
+    VISIBLE_TO_BOARD,
+    DocumentOrigin,
+    OpportunityReviewAction,
+    SavingsStage,
+)
 from app.db.models import (
     Condominium,
     Finding,
@@ -26,13 +32,17 @@ from app.db.models import (
     Supplier,
 )
 from app.db.session import DbSession
+from app.ingestion.documents import ingest_file
 from app.opportunities import (
     OpportunityError,
     adjust,
     allowed_actions,
     create_from_finding,
     decide,
+    follow_up_actions,
     is_reviewer,
+    measure_realized,
+    record_contracted,
     visible,
 )
 
@@ -111,6 +121,8 @@ class OpportunityDetailOut(OpportunityRowOut):
     stages: list[StageOut]
     history: list[dict[str, str | None]]
     allowed_actions: list[str]
+    # Recording the agreement and measuring the result (CB-063); never moves money.
+    follow_up_actions: list[str]
     can_adjust: bool
 
 
@@ -257,26 +269,46 @@ async def _detail(db: DbSession, access: CondoAccess, opp: Opportunity) -> Oppor
             )
             for s in stages
         ],
-        history=[
-            {
-                "at": r.created_at.isoformat(),
-                "who": names.get(r.user_id, "—"),
-                "action": r.action,
-                "from_status": r.from_status,
-                "to_status": r.to_status,
-                "comment": r.comment,
-            }
-            # The board sees its own decisions and that a review happened, not internal notes.
-            for r in reviews
-            if access.can(Permission.VIEW_OPPORTUNITY_DRAFT)
-            or r.action
-            in (
-                OpportunityReviewAction.APROVAR.value,
-                OpportunityReviewAction.CONDOMINIO_APROVAR.value,
-                OpportunityReviewAction.CONDOMINIO_RECUSAR.value,
-            )
-        ],
+        history=sorted(
+            [
+                {
+                    "at": s.created_at.isoformat(),
+                    "who": (
+                        names.get(s.recorded_by_user_id, "—")
+                        if s.recorded_by_user_id
+                        else "Sistema"
+                    ),
+                    "action": s.stage,
+                    "from_status": None,
+                    "to_status": None,
+                    "comment": None,
+                }
+                for s in stages
+                if s.stage in (SavingsStage.CONTRATADA.value, SavingsStage.REALIZADA.value)
+            ]
+            + [
+                {
+                    "at": r.created_at.isoformat(),
+                    "who": names.get(r.user_id, "—"),
+                    "action": r.action,
+                    "from_status": r.from_status,
+                    "to_status": r.to_status,
+                    "comment": r.comment,
+                }
+                # The board sees its own decisions and that a review happened, not internal notes.
+                for r in reviews
+                if access.can(Permission.VIEW_OPPORTUNITY_DRAFT)
+                or r.action
+                in (
+                    OpportunityReviewAction.APROVAR.value,
+                    OpportunityReviewAction.CONDOMINIO_APROVAR.value,
+                    OpportunityReviewAction.CONDOMINIO_RECUSAR.value,
+                )
+            ],
+            key=lambda h: h["at"] or "",
+        ),
         allowed_actions=allowed_actions(access, opp),
+        follow_up_actions=follow_up_actions(access, opp),
         can_adjust=OpportunityReviewAction.AJUSTAR.value in allowed_actions(access, opp),
     )
 
@@ -392,3 +424,59 @@ async def opportunities_of_finding(
         for o in rows
         if visible(access, o)
     ]
+
+
+@router.post("/condominiums/{condominium_id}/opportunities/{opportunity_id}/contracted")
+async def record_contracted_route(
+    condominium_id: uuid.UUID,
+    opportunity_id: uuid.UUID,
+    access: CanView,
+    db: DbSession,
+    file: Annotated[UploadFile, File()],
+    agreed_amount: Annotated[Decimal, Form(ge=0, max_digits=14, decimal_places=2)],
+    one_time_cost: Annotated[Decimal, Form(ge=0, max_digits=14, decimal_places=2)] = Decimal("0"),
+    comment: Annotated[str | None, Form(max_length=1000)] = None,
+) -> OpportunityDetailOut:
+    """ "Contratada" with the agreement document (stored, not sent to extraction)."""
+    opp = await _get(db, access, opportunity_id)
+    if "registrar_contratacao" not in follow_up_actions(access, opp):
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Esta ação não está disponível.")
+    limit = get_settings().max_upload_mb * 1024 * 1024
+    outcome = await ingest_file(
+        db,
+        condominium_id=access.condominium_id,
+        filename=file.filename or "acordo",
+        data=await file.read(limit + 1),
+        origin=DocumentOrigin.UPLOAD,
+        actor_user_id=access.user_id,
+        process=False,
+    )
+    if outcome.document_id is None:
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_CONTENT, outcome.error or "Arquivo inválido."
+        )
+    try:
+        await record_contracted(
+            db,
+            access,
+            opp,
+            document_id=outcome.document_id,
+            agreed_amount=agreed_amount,
+            one_time_cost=one_time_cost,
+            comment=comment,
+        )
+    except OpportunityError as exc:
+        raise _error(exc) from exc
+    return await _detail(db, access, opp)
+
+
+@router.post("/condominiums/{condominium_id}/opportunities/{opportunity_id}/measurement")
+async def measure_route(
+    condominium_id: uuid.UUID, opportunity_id: uuid.UUID, access: CanView, db: DbSession
+) -> OpportunityDetailOut:
+    opp = await _get(db, access, opportunity_id)
+    try:
+        await measure_realized(db, access, opp)
+    except OpportunityError as exc:
+        raise _error(exc) from exc
+    return await _detail(db, access, opp)

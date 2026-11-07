@@ -139,3 +139,60 @@ async def test_portfolio_views_filter_by_condominium(
     assert sups and all(s["condominiums"] == ["Condomínio Edifício Mirante do Vale"] for s in sups)
     other = uuid.uuid4()
     assert (await client.get(f"/portfolio/suppliers?condominium_id={other}")).json() == []
+
+
+async def test_pilot_baseline_indicators(admin_engine: AsyncEngine) -> None:
+    """CB-070: counts from the product's own records, per condominium and month."""
+    from app.core.time import utcnow
+    from app.db.models import AuditLog, Membership, UserSession
+
+    now = utcnow()
+    month = date(now.year, now.month, 1)
+    async with sessionmaker_for(admin_engine)() as s, s.begin():
+        condo = await onboard(s, _spec())
+        other = uuid.uuid4()
+        user = AppUser(id=uuid.uuid4(), name="Síndica", email=f"{uuid.uuid4().hex}@m.example.com")
+        s.add(user)
+        await s.flush()
+        s.add(Membership(id=uuid.uuid4(), user_id=user.id, condominium_id=condo.id, role="sindico"))
+        for _ in range(2):
+            s.add(
+                UserSession(
+                    id=uuid.uuid4(),
+                    user_id=user.id,
+                    token_hash=uuid.uuid4().hex + uuid.uuid4().hex,
+                    expires_at=now + timedelta(days=1),
+                )
+            )
+        s.add(
+            AuditLog(
+                action="security.access_denied",
+                object_type="condominium",
+                actor_user_id=user.id,
+                details={"requested_condominium_id": str(condo.id)},
+            )
+        )
+        s.add(  # aimed at another condominium: not counted here
+            AuditLog(
+                action="security.access_denied",
+                object_type="condominium",
+                details={"requested_condominium_id": str(other)},
+            )
+        )
+        s.add(
+            AuditLog(
+                action="action.denied_by_policy",
+                object_type="condominium",
+                object_id=condo.id,
+                condominium_id=condo.id,
+                details={"action_type": "pagamento.aprovar"},
+            )
+        )
+    async with sessionmaker_for(admin_engine)() as s:
+        out = await compute(s, [condo.id], month, month)
+    b = out[condo.id][month].summary()
+    assert b["cross_tenant_attempts"] == 1
+    assert b["denied_by_policy"] == 1
+    assert b["board_sessions"] == 2
+    assert b["savings_validated_annual"] == "0.00"
+    assert b["savings_realized_annual"] == "0.00"

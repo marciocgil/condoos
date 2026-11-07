@@ -1,6 +1,7 @@
 "use client";
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useRef } from "react";
 
 import { controlClass } from "@/components/ui/Field";
 import { CASE_CATEGORY_LABEL, CASE_SEVERITY_LABEL } from "@/lib/labels";
@@ -17,11 +18,17 @@ export function CaseFilters({ owners }: { owners: { id: string; name: string }[]
   const router = useRouter();
   const pathname = usePathname();
   const params = useSearchParams();
+  // The URL updates after the navigation; two quick changes must not lose the first one.
+  const latest = useRef<string | null>(null);
+  useEffect(() => {
+    latest.current = null; // the URL caught up (or another view link was followed)
+  }, [params]);
 
   function set(key: string, value: string) {
-    const next = new URLSearchParams(params.toString());
+    const next = new URLSearchParams(latest.current ?? params.toString());
     if (value) next.set(key, value);
     else next.delete(key);
+    latest.current = next.toString();
     router.push(`${pathname}?${next.toString()}`);
   }
 

@@ -480,3 +480,26 @@ O CondoOS não move dinheiro: a agenda não tem ação de pagar nem de agendar p
   - card "Pausar automações" em Configurações.
   - A tela de aprovação mostra o que a §7.5 pede: o que será autorizado, por quê, o que acontece depois do clique, custo e teto, quem executa, fontes, riscos, alçada e vigência.
 - **Fora do escopo:** autenticação reforçada (§7.5 item 10; depende de MFA, excluído), "Escalar" e delegação, aprovação pelo conselho, conectores de envio, política configurável pelo condomínio (CB-012).
+
+## Sobras do backlog (CB-018, CB-019, CB-023, CB-028, CB-063, CB-070)
+
+**D84 — Itens do backlog sem mudança de estrutura** (07/11/2026; pedido do Marcio: "Faça os itens de backlog"). Nenhuma migração nova.
+- **CB-018, equipe CondoOS em Configurações.** O Admin CondoOS atribuído ao condomínio lista, atribui (motivo e prazo opcional) e remove pessoas da equipe pela API existente. A pessoa precisa já ter o papel na plataforma. O status aparece como texto e ícone ("Ativa" ou "Encerrada").
+- **CB-019, "Ajustes" no celular do síndico.** Novo link no topo da tela, com quem revisa os achados (liga e desliga a revisão pela administradora) e a pausa de automações. A pausa saiu da tela Aprovações e foi para cá.
+- **CB-023, filtros da fila de assuntos.** Pessoa, categoria, criticidade e prazo (atrasados, próximos 7 dias, sem prazo) no celular e no desktop. A API ganhou `?prazo=`. Os filtros ficam na URL.
+  - Defeito achado pelo E2E: escolher dois filtros em seguida perdia o primeiro, porque a URL ainda não tinha sido atualizada. Corrigido.
+- **CB-028, vincular pela tela do assunto.** "Vincular registro" busca contratos, documentos, fornecedores, despesas, achados e outros assuntos (nova rota só de leitura `.../link-candidates`).
+  - Respeita a visibilidade: o corpo diretivo não vê achados em revisão; outro condomínio responde 404.
+  - Marca o registro que já está em outro assunto aberto e pede o motivo antes de vincular, como a API exige.
+- **CB-063, economia contratada e realizada** (sem mover dinheiro nem enviar nada):
+  - **contratada:** registrada pelo síndico ou pela revisora CondoOS depois da aprovação do condomínio, com o documento do acordo (guardado sem ir para a extração) e o novo valor mensal. A economia é o baseline menos o valor acordado (método `acordo_v1`), com o custo da mudança; a oportunidade passa a "em execução";
+  - **realizada:** medida só pela revisora CondoOS, a partir das faturas com nota emitidas depois do acordo (até 12), comparadas com o baseline (método `medicao_faturas_v1`). A confiança é média com menos de 3 faturas; sem fatura, nada é registrado. Passa a "resultado medido";
+  - cada estágio é uma linha nova em `savings_record`, nunca somada aos outros. Como `opportunity_review` só aceita as ações já listadas na migração 0014, o histórico desses dois passos vem de `savings_record` e `audit_log`.
+- **CB-070, base do piloto.** As métricas internas ganharam indicadores do protocolo §4, só com contagens:
+  - despesas por competência;
+  - achados contestados ou ignorados (só um sinal de falso positivo);
+  - divergências confirmadas em R$ (não é economia);
+  - tentativas de acesso entre condomínios e ações negadas pela política (meta: zero);
+  - sessões do corpo diretivo;
+  - economia anual por estágio, estimada validada e realizada, sempre separadas.
+  - Horas poupadas e falso positivo real continuam fora do produto (diário e revisão amostral).

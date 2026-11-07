@@ -36,6 +36,8 @@ from app.db.enums import (
 from app.db.models import (
     Condominium,
     Contract,
+    Document,
+    Expense,
     Finding,
     Opportunity,
     OpportunityFinding,
@@ -495,3 +497,170 @@ async def adjust(
         opp.status = S.EM_REVISAO_INTERNA.value
     await _review_row(session, access, opp, A.AJUSTAR, text, previous, e.version_hash())
     await session.flush()
+
+
+# --------------------------------------------------------------------------- after approval (CB-063)
+
+CONTRACT_METHOD = "acordo_v1"
+MEASURE_METHOD = "medicao_faturas_v1"
+
+
+def follow_up_actions(access: CondoAccess, opp: Opportunity) -> list[str]:
+    """Recording the agreement and measuring the result. Neither moves money nor sends
+    anything: they record what people did outside the system, with evidence."""
+    status = OpportunityStatus(opp.status)
+    out: list[str] = []
+    if status == S.APROVADA_PELO_CONDOMINIO and (
+        access.can(Permission.APPROVE_IN_CONDO) or is_reviewer(access, opp)
+    ):
+        out.append("registrar_contratacao")
+    if status in (S.EM_EXECUCAO, S.IMPLEMENTADA, S.RESULTADO_MEDIDO) and is_reviewer(access, opp):
+        out.append("medir_resultado")
+    return out
+
+
+async def record_contracted(
+    session: AsyncSession,
+    access: CondoAccess,
+    opp: Opportunity,
+    *,
+    document_id: uuid.UUID,
+    agreed_amount: Decimal,
+    one_time_cost: Decimal,
+    comment: str | None,
+) -> SavingsRecord:
+    """ "Contratada" (D76): the new agreed monthly value, proven by the agreement document.
+    Saving per month = baseline − agreed value (method ``acordo_v1``)."""
+    if "registrar_contratacao" not in follow_up_actions(access, opp):
+        if OpportunityStatus(opp.status) != S.APROVADA_PELO_CONDOMINIO:
+            raise OpportunityError("Registre a contratação depois da aprovação do condomínio.", 409)
+        raise OpportunityError("Seu papel não registra a contratação.", 403)
+    doc = await session.scalar(
+        select(Document).where(
+            Document.id == document_id, Document.condominium_id == opp.condominium_id
+        )
+    )
+    if doc is None:
+        raise OpportunityError("Documento do acordo não encontrado.", 404)
+    approved = await latest(session, opp, SavingsStage.APROVADA)
+    if approved is None:
+        raise OpportunityError("A oportunidade não tem economia aprovada.", 409)
+    agreed = Decimal(agreed_amount).quantize(CENT)
+    cost = Decimal(one_time_cost).quantize(CENT)
+    if agreed < 0 or cost < 0:
+        raise OpportunityError("Valores não podem ser negativos.")
+    base = estimate_of(approved)
+    saving = (base.baseline_amount - agreed).quantize(CENT)
+    if saving <= 0:
+        raise OpportunityError(
+            "O valor acordado não é menor que o baseline: não há economia contratada a registrar."
+        )
+    e = Estimate(
+        amount=saving,
+        periodicity="mensal",
+        one_time_cost=cost,
+        baseline_start=base.baseline_start,
+        baseline_end=base.baseline_end,
+        baseline_amount=base.baseline_amount,
+        assumptions=[
+            f"Valor mensal acordado: R$ {agreed:.2f} (documento {doc.original_filename}).",
+            f"Baseline: R$ {base.baseline_amount:.2f} por mês, o mesmo da estimativa aprovada.",
+            "A economia contratada ainda não foi observada nas faturas.",
+            *([f"Observação: {comment.strip()}"] if comment and comment.strip() else []),
+        ],
+        evidence=[
+            {"type": "document", "id": str(doc.id), "role": "acordo"},
+            {"type": "savings_record", "id": str(approved.id), "stage": "aprovada"},
+        ],
+        confidence="alta",
+        quality_risks="Depende de o fornecedor faturar pelo valor acordado.",
+        method_code=CONTRACT_METHOD,
+    )
+    row = _record(opp, SavingsStage.CONTRATADA, e, access.user_id, supersedes=approved.id)
+    session.add(row)
+    previous = opp.status
+    opp.status = S.EM_EXECUCAO.value
+    await record_audit(
+        session,
+        action="opportunity.contratada",
+        object_type="opportunity",
+        object_id=opp.id,
+        actor_user_id=access.user_id,
+        condominium_id=opp.condominium_id,
+        details={"from": previous, "to": opp.status, "document_id": str(doc.id)},
+    )
+    await session.flush()
+    return row
+
+
+async def measure_realized(
+    session: AsyncSession, access: CondoAccess, opp: Opportunity
+) -> SavingsRecord:
+    """ "Realizada e comprovada" (D76): only from invoices issued after the agreement, each with
+    its fiscal document, compared with the baseline by code (``medicao_faturas_v1``). The
+    change cost is discounted in the net value. A new measurement is a new row."""
+    if "medir_resultado" not in follow_up_actions(access, opp):
+        raise OpportunityError("Só a revisão CondoOS mede o resultado, depois da contratação.", 403)
+    contracted = await latest(session, opp, SavingsStage.CONTRATADA)
+    if contracted is None:
+        raise OpportunityError("Registre a contratação antes de medir o resultado.", 409)
+    since = contracted.created_at.date()
+    stmt = select(Expense).where(
+        Expense.condominium_id == opp.condominium_id,
+        Expense.issue_date >= since,
+        Expense.document_id.is_not(None),
+    )
+    if opp.contract_id is not None:
+        stmt = stmt.where(Expense.contract_id == opp.contract_id)
+    elif opp.supplier_id is not None:
+        stmt = stmt.where(Expense.supplier_id == opp.supplier_id)
+    else:
+        raise OpportunityError("A oportunidade não tem contrato nem fornecedor para medir.")
+    invoices = list(await session.scalars(stmt.order_by(Expense.competence).limit(12)))
+    if not invoices:
+        raise OpportunityError(
+            "Ainda não há faturas com nota emitidas depois do acordo: nada a medir.", 409
+        )
+    base = estimate_of(contracted)
+    reductions = [(base.baseline_amount - x.amount).quantize(CENT) for x in invoices]
+    monthly = (sum(reductions, Decimal("0")) / len(reductions)).quantize(CENT)
+    months = ", ".join(f"{x.competence:%m/%Y}" for x in invoices)
+    e = Estimate(
+        amount=monthly,
+        periodicity="mensal",
+        one_time_cost=base.one_time_cost,
+        baseline_start=base.baseline_start,
+        baseline_end=base.baseline_end,
+        baseline_amount=base.baseline_amount,
+        assumptions=[
+            f"Média de {len(invoices)} fatura(s) com nota emitidas depois do acordo ({months}).",
+            f"Redução por fatura = baseline de R$ {base.baseline_amount:.2f} menos o valor faturado.",
+            "Anualizado ×12 a partir da média observada; o custo da mudança é descontado.",
+        ],
+        evidence=[
+            {"type": "savings_record", "id": str(contracted.id), "stage": "contratada"},
+            *[{"type": "expense", "id": str(x.id)} for x in invoices],
+        ],
+        confidence="alta" if len(invoices) >= 3 else "media",
+        quality_risks=(
+            ""
+            if monthly > 0
+            else "As faturas posteriores não mostram redução em relação ao baseline."
+        ),
+        method_code=MEASURE_METHOD,
+    )
+    row = _record(opp, SavingsStage.REALIZADA, e, access.user_id, supersedes=contracted.id)
+    session.add(row)
+    previous = opp.status
+    opp.status = S.RESULTADO_MEDIDO.value
+    await record_audit(
+        session,
+        action="opportunity.realizada",
+        object_type="opportunity",
+        object_id=opp.id,
+        actor_user_id=access.user_id,
+        condominium_id=opp.condominium_id,
+        details={"from": previous, "to": opp.status, "invoices": len(invoices)},
+    )
+    await session.flush()
+    return row

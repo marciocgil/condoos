@@ -9,6 +9,16 @@
 - Síndico review time = from the moment the board could see the finding (created, or
   validated by the manager for serious ones) to the board's first decision; median in hours.
 - LLM cost = sum of ``llm_calls.cost_usd`` of the condominium. Month = call date.
+
+Pilot protocol baseline (CB-070, ``docs/pilot-protocol.md`` §4), counts only, no personal data:
+- Expenses per month (by competence) and findings contested or ignored by the board (proxy of
+  false positives; the real rate needs a human sample).
+- Divergences confirmed (R$): amount at risk of confirmed findings. Not realised savings.
+- Cross-tenant attempts (``security.access_denied`` aimed at the condominium) and actions
+  denied by the policy (``action.denied_by_policy``). Target: zero and visible.
+- Board sessions: sessions opened in the month by people on the condominium's board.
+- Savings per stage (D76): annualised value of the latest row per opportunity, separately
+  for "estimada validada" and "realizada"; never added across stages.
 """
 
 import statistics
@@ -22,8 +32,20 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.time import add_months
-from app.db.enums import DocumentOrigin, DocumentType, ExtractionStatus
-from app.db.models import Decision, Document, Finding, LlmCall
+from app.db.enums import DocumentOrigin, DocumentType, ExtractionStatus, Role, SavingsStage
+from app.db.models import (
+    AuditLog,
+    Decision,
+    Document,
+    Expense,
+    Finding,
+    LlmCall,
+    Membership,
+    SavingsRecord,
+    UserSession,
+)
+
+BOARD_ROLES = {Role.SINDICO.value, Role.SUBSINDICO.value, Role.CONSELHEIRO.value}
 
 BOARD_ACTIONS = {"confirmar", "contestar", "ignorar"}
 EXTRACTED_TYPES = {
@@ -45,6 +67,14 @@ class Bucket:
     review_hours: list[float] = field(default_factory=list)
     llm_cost_usd: Decimal = Decimal("0")
     llm_calls: int = 0
+    expenses: int = 0
+    findings_disputed: int = 0
+    confirmed_at_risk: Decimal = Decimal("0")
+    cross_tenant_attempts: int = 0
+    denied_by_policy: int = 0
+    board_sessions: int = 0
+    savings_validated_annual: Decimal = Decimal("0")
+    savings_realized_annual: Decimal = Decimal("0")
 
     def add(self, other: "Bucket") -> None:
         self.findings_reviewed += other.findings_reviewed
@@ -54,6 +84,14 @@ class Bucket:
         self.review_hours += other.review_hours
         self.llm_cost_usd += other.llm_cost_usd
         self.llm_calls += other.llm_calls
+        self.expenses += other.expenses
+        self.findings_disputed += other.findings_disputed
+        self.confirmed_at_risk += other.confirmed_at_risk
+        self.cross_tenant_attempts += other.cross_tenant_attempts
+        self.denied_by_policy += other.denied_by_policy
+        self.board_sessions += other.board_sessions
+        self.savings_validated_annual += other.savings_validated_annual
+        self.savings_realized_annual += other.savings_realized_annual
 
     def summary(self) -> dict[str, object]:
         return {
@@ -75,6 +113,19 @@ class Bucket:
             ),
             "llm_cost_usd": f"{self.llm_cost_usd:.4f}",
             "llm_calls": self.llm_calls,
+            "expenses": self.expenses,
+            "findings_disputed": self.findings_disputed,
+            "disputed_rate": (
+                round(self.findings_disputed / self.findings_reviewed, 4)
+                if self.findings_reviewed
+                else None
+            ),
+            "confirmed_at_risk": f"{self.confirmed_at_risk:.2f}",
+            "cross_tenant_attempts": self.cross_tenant_attempts,
+            "denied_by_policy": self.denied_by_policy,
+            "board_sessions": self.board_sessions,
+            "savings_validated_annual": f"{self.savings_validated_annual:.2f}",
+            "savings_realized_annual": f"{self.savings_realized_annual:.2f}",
         }
 
 
@@ -115,6 +166,9 @@ async def compute(
         if board:
             bucket.findings_reviewed += 1
             bucket.findings_confirmed += board[-1].action == "confirmar"
+            bucket.findings_disputed += board[-1].action in ("contestar", "ignorar")
+            if board[-1].action == "confirmar":
+                bucket.confirmed_at_risk += f.amount_at_risk
             validated = next((d.decided_at for d in decisions[fid] if d.action == "validar"), None)
             visible_since = validated or f.created_at
             hours = (board[0].decided_at - visible_since).total_seconds() / 3600
@@ -150,4 +204,74 @@ async def compute(
         bucket = out[call.condominium_id][month]
         bucket.llm_cost_usd += call.cost_usd
         bucket.llm_calls += 1
+
+    for e in await session.scalars(
+        select(Expense).where(
+            Expense.condominium_id.in_(condominium_ids),
+            Expense.competence >= first,
+            Expense.competence < end,
+        )
+    ):
+        out[e.condominium_id][e.competence].expenses += 1
+
+    wanted = {str(c) for c in condominium_ids}
+    for log in await session.scalars(
+        select(AuditLog).where(
+            AuditLog.action.in_(["security.access_denied", "action.denied_by_policy"]),
+            AuditLog.created_at >= received_from,
+        )
+    ):
+        month = _month(log.created_at)
+        if month > last:
+            continue
+        if log.action == "action.denied_by_policy":
+            if log.condominium_id in out:
+                out[log.condominium_id][month].denied_by_policy += 1
+        else:
+            target = str((log.details or {}).get("requested_condominium_id", ""))
+            if target in wanted:
+                out[uuid.UUID(target)][month].cross_tenant_attempts += 1
+
+    members: dict[uuid.UUID, set[uuid.UUID]] = defaultdict(set)
+    for m in await session.scalars(
+        select(Membership).where(
+            Membership.condominium_id.in_(condominium_ids), Membership.role.in_(BOARD_ROLES)
+        )
+    ):
+        if m.condominium_id is not None:
+            members[m.user_id].add(m.condominium_id)
+    if members:
+        for s in await session.scalars(
+            select(UserSession).where(
+                UserSession.user_id.in_(list(members)), UserSession.created_at >= received_from
+            )
+        ):
+            month = _month(s.created_at)
+            if month > last:
+                continue
+            for cid in members[s.user_id]:
+                out[cid][month].board_sessions += 1
+
+    latest: dict[tuple[uuid.UUID, str], SavingsRecord] = {}
+    for r in await session.scalars(
+        select(SavingsRecord)
+        .where(
+            SavingsRecord.condominium_id.in_(condominium_ids),
+            SavingsRecord.stage.in_(
+                [SavingsStage.ESTIMADA_VALIDADA.value, SavingsStage.REALIZADA.value]
+            ),
+            SavingsRecord.created_at >= received_from,
+        )
+        .order_by(SavingsRecord.created_at)
+    ):
+        latest[(r.opportunity_id, r.stage)] = r  # the latest row per opportunity and stage
+    for (_, stage), r in latest.items():
+        month = _month(r.created_at)
+        if month > last:
+            continue
+        bucket = out[r.condominium_id][month]
+        if stage == SavingsStage.ESTIMADA_VALIDADA.value:
+            bucket.savings_validated_annual += r.annualized_amount
+        else:
+            bucket.savings_realized_annual += r.annualized_amount
     return out

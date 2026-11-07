@@ -20,6 +20,7 @@ import {
 } from "@/lib/labels";
 import type { OpportunityDetail } from "@/lib/types";
 
+import { OpportunityFollowUp } from "./OpportunityFollowUp";
 import { OpportunityStatusBadge } from "./OpportunityStatusBadge";
 import { SavingsStages } from "./SavingsStages";
 
@@ -220,6 +221,12 @@ export function OpportunityDetailView({
           )}
         </section>
       )}
+
+      <OpportunityFollowUp
+        condominiumId={o.condominium_id}
+        opportunityId={o.id}
+        actions={o.follow_up_actions}
+      />
 
       {newCaseHref && (
         <Link href={newCaseHref} className={buttonClass("secondary", "sm")}>

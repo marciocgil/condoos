@@ -347,6 +347,15 @@ export interface MetricSummary {
   review_hours_median: number | null;
   llm_cost_usd: string;
   llm_calls: number;
+  expenses: number;
+  findings_disputed: number;
+  disputed_rate: number | null;
+  confirmed_at_risk: string;
+  cross_tenant_attempts: number;
+  denied_by_policy: number;
+  board_sessions: number;
+  savings_validated_annual: string;
+  savings_realized_annual: string;
 }
 
 export interface Metrics {
@@ -583,6 +592,7 @@ export interface OpportunityDetail extends OpportunityRow {
     comment: string | null;
   }[];
   allowed_actions: string[];
+  follow_up_actions: string[];
   can_adjust: boolean;
 }
 

@@ -42,9 +42,9 @@ Data: 07/11/2026 (FR-046 revisto após D74). Fonte dos requisitos: Especificaç�
 | FR-022 | P0 | WP-07 | real | `case_task` com responsável (ou nome), prazo, estado, evidência exigida (D80) | — | `test_cases.py` | pronto_para_validar |
 | FR-023 | P0 | WP-07 | real | `case_event` só inclusão, com autor, momento e motivo; linha do tempo no Assunto 360° (D80) | — | `test_cases.py`, `test_isolation.py::test_append_only_tables`, e2e `cases.spec.ts` | pronto_para_validar |
 | FR-024 | P0 | WP-07 | real | Máquina de estados §8.2; resolver exige tarefas fechadas e evidência quando pedida (D80) | — | `test_cases.py` | pronto_para_validar |
-| FR-025 | P0 | WP-07 | parcial | Fila de assuntos (abertos, meus, encerrados), ordenada por alerta e prazo; API filtra por pessoa, categoria e criticidade (D80) | Filtros de categoria/criticidade na tela | `test_cases.py` | em_desenvolvimento |
+| FR-025 | P0 | WP-07 | real (D84) | Fila de assuntos com filtros por pessoa, categoria, criticidade e prazo, na tela e na API; alerta de assunto sem dono ou atrasado (D80) | Notificação fora do app | `test_cases.py`, `test_case_queue.py`, e2e `backlog.spec.ts` | pronto_para_validar |
 | FR-026 | P0 | WP-07/19 | parcial | Agenda mostra "em atraso" (D71) | Alerta registrado com envio e status | `test_agenda.py` | em_analise |
-| FR-027 | P1 | WP-07 | parcial | Assunto 360° com vínculos clicáveis e "citado por" (D80) | Vincular contrato, documento, fornecedor e despesa pela tela | `test_cases.py`, e2e `cases.spec.ts` | em_desenvolvimento |
+| FR-027 | P1 | WP-07 | real (D84) | Assunto 360° com vínculos clicáveis, "citado por" e vínculo pela tela (contrato, documento, fornecedor, despesa, achado, assunto) | Visão 360° do fornecedor e do contrato | `test_cases.py`, `test_case_queue.py`, e2e `backlog.spec.ts` | pronto_para_validar |
 | FR-028 | P1 | WP-07 | parcial | Duplicidade oferecida antes de criar; vínculo entre assuntos reversível com histórico (D80) | Agrupamento explícito de relatos | `test_cases.py` | em_analise |
 | FR-029 | P1 | WP-19 | inexistente | Jobs idempotentes (base) | Workflow condicionado à política | `test_jobs.py` (base) | nao_iniciado |
 | FR-030 | P1 | WP-19 | inexistente | — | Escalonamento | — | nao_iniciado |
@@ -77,7 +77,7 @@ Data: 07/11/2026 (FR-046 revisto após D74). Fonte dos requisitos: Especificaç�
 | FR-047 | P1 | WP-22 | inexistente | (R11 compara com histórico, não com orçamento) | Orçamento × realizado | — | nao_iniciado |
 | FR-048 | P1 | WP-22 | real | Casamento despesa ↔ extrato com `match_issue` (D41) | — | `test_matching.py` (9) | pronto_para_validar |
 | FR-049 | P1 | WP-22 | inexistente | — | Caixa por cenários | — | nao_iniciado |
-| FR-050 | P1 | WP-15 | inexistente | — | Economia realizada com baseline | — | nao_iniciado |
+| FR-050 | P1 | WP-15 | parcial (D84) | Contratada com documento do acordo; realizada medida pelas faturas posteriores contra o baseline, com custo da mudança | Sazonalidade e ajuste de escopo na medição | `test_opportunity_followup.py`, e2e `opportunities.spec.ts` | pronto_para_validar |
 
 ## 6. Operate, Procurement e governança
 
@@ -111,7 +111,7 @@ Data: 07/11/2026 (FR-046 revisto após D74). Fonte dos requisitos: Especificaç�
 | Operate etc. (051–065) | 15 | 0 | 1 | 14 |
 | **Total** | **65** | **17** | **20** | **28** |
 
-P0 (29 FRs): 17 real, 12 parcial, 0 inexistente (FR-007 e FR-034 entraram com a VS-05, D83). FR-021 e FR-022 entraram com a VS-01 (D80). FR-045 (oportunidade) e FR-046 (revisão interna) são parciais, mas centrais ao Optimize, e FR-046 foi decidido em D74 (revisão proporcional ao risco).
+P0 (29 FRs): 18 real, 11 parcial, 0 inexistente (FR-007 e FR-034 entraram com a VS-05, D83; FR-025 com D84). FR-021 e FR-022 entraram com a VS-01 (D80). FR-045 (oportunidade) e FR-046 (revisão interna) são parciais, mas centrais ao Optimize, e FR-046 foi decidido em D74 (revisão proporcional ao risco).
 
 ## 8. Cobertura por CAP
 

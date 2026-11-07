@@ -215,6 +215,8 @@ export const OPPORTUNITY_ACTION_VERB: Record<string, string> = {
   reabrir_revisao: "reabriu a revisão",
   condominio_aprovar: "aprovou pelo condomínio",
   condominio_recusar: "recusou pelo condomínio",
+  contratada: "registrou a contratação, com o documento do acordo",
+  realizada: "mediu a economia nas faturas posteriores",
 };
 
 export const OPPORTUNITY_NEEDS_COMMENT = new Set([

@@ -61,5 +61,22 @@ test("revisora aprova a oportunidade do reajuste e a síndica decide", async ({ 
   await expect(sindica.getByText("Aprovada pelo condomínio", { exact: true })).toBeVisible();
   await expect(sindica.getByText("Economia aprovada para execução")).toBeVisible();
   await expect(sindica.getByRole("link", { name: "Abrir assunto para acompanhar" })).toBeVisible();
+
+  // CB-063: the síndica records the agreement with its document; nothing is paid or sent.
+  const oppId = sindica.url().split("/").pop()!;
+  const detail = (await (
+    await sindica.request.get(`/api/condominiums/${condo.id}/opportunities/${oppId}`)
+  ).json()) as { stages: { stage: string; baseline_amount: string }[] };
+  const baseline = Number(detail.stages[0]!.baseline_amount);
+  await sindica.getByRole("button", { name: "Registrar contratação" }).click();
+  await sindica.getByLabel("Documento do acordo").setInputFiles({
+    name: "aditivo-reajuste.pdf",
+    mimeType: "application/pdf",
+    buffer: Buffer.from(`%PDF-1.4\n% aditivo ${Date.now()}\n%%EOF\n`),
+  });
+  await sindica.getByLabel("Novo valor mensal (R$)").fill(String(baseline - 100));
+  await sindica.getByRole("button", { name: "Confirmar contratação" }).click();
+  await expect(sindica.getByText("Em execução", { exact: true }).first()).toBeVisible();
+  await expect(sindica.getByText(/registrou a contratação/)).toBeVisible();
   await ctx.close();
 });
