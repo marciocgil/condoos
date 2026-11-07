@@ -26,6 +26,8 @@ class Step:
     unlocks: str
     # Which existing screen does it: "enviar" (upload), "contratos", "assuntos".
     screen: str
+    # The button's text; it says what the person does there (pt-BR).
+    action_label: str
 
 
 CATALOGUE: dict[str, Step] = {
@@ -38,13 +40,16 @@ CATALOGUE: dict[str, Step] = {
             "onde tirou cada um.",
             "Leitura de contrato",
             "enviar",
+            "Enviar o contrato",
         ),
         Step(
             "confirmar_contrato",
-            "Confirme os campos do contrato que ficaram em dúvida",
-            "Campo com dúvida nunca vira fato: só depois de confirmado entra nas conferências.",
+            "Um revisor vai confirmar os campos do contrato que ficaram em dúvida",
+            "Campo com dúvida nunca vira fato: só depois de confirmado entra nas conferências. "
+            "Você não precisa fazer nada agora.",
             "Leitura de contrato e confronto de cobranças",
             "contratos",
+            "Ver os contratos",
         ),
         Step(
             "enviar_documento_contrato",
@@ -52,6 +57,7 @@ CATALOGUE: dict[str, Step] = {
             "Sem o documento, não há trecho para mostrar de onde vem cada valor.",
             "Leitura de contrato com evidência",
             "enviar",
+            "Enviar documentos",
         ),
         Step(
             "enviar_faturas",
@@ -59,6 +65,7 @@ CATALOGUE: dict[str, Step] = {
             "Com a nota do mês, o CondoOS compara o que foi cobrado com o que o contrato prevê.",
             "Confronto de cobranças",
             "enviar",
+            "Enviar as notas",
         ),
         Step(
             "enviar_convencao",
@@ -66,6 +73,7 @@ CATALOGUE: dict[str, Step] = {
             "Com a convenção, dá para perguntar sobre regras e alçadas com a citação do trecho.",
             "Perguntas sobre documentos",
             "enviar",
+            "Enviar a convenção",
         ),
         Step(
             "enviar_ata",
@@ -73,6 +81,7 @@ CATALOGUE: dict[str, Step] = {
             "A ata mostra o que foi decidido e o que ficou pendente, com o trecho.",
             "Perguntas sobre documentos",
             "enviar",
+            "Enviar a ata",
         ),
         Step(
             "criar_assunto",
@@ -80,6 +89,7 @@ CATALOGUE: dict[str, Step] = {
             "Um assunto tem responsável, prazo e próxima ação, e não se perde.",
             "Acompanhamento de pendências",
             "assuntos",
+            "Criar o assunto",
         ),
     )
 }

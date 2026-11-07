@@ -49,7 +49,7 @@ Data: 07/11/2026. Atualizar ao fim de cada fatia (CLAUDE.md, item 6). "Entrega" 
 | Caso | Situação | Onde |
 |---|---|---|
 | SEC-01 (tenant A × B) | Coberto; tentativa registrada como evento de segurança (D78) | `test_isolation.py`, `test_access_revocation.py` |
-| SEC-02/AI (PDF adversarial) | Coberto (D90): contrato em PDF com instrução para a IA passa pela extração real, pela busca do chat e pela política; nada é aprovado nem gravado. Aviso no texto dos prompts pendente de chave (B4) | `test_prompt_injection.py` (LB-021) |
+| SEC-02/AI (PDF adversarial) | Coberto (D90): contrato em PDF com instrução para a IA passa pela extração real, pela busca do chat e pela política; nada é aprovado nem gravado. Aviso de conteúdo não confiável nos prompts (D91) | `test_prompt_injection.py` (LB-021) |
 | SEC-02 Plano (busca entre tenants) | Coberto | `test_isolation.py`, RLS em `document_chunk` |
 | SEC-04/05 (valor/expiração da aprovação) | Coberto (D83): aprovação de outra versão é recusada; custo acima do teto e aprovação vencida devolvem para nova aprovação | `test_actions.py` |
 | SEC-08 Plano (kill switch) | Coberto (D83) | `test_actions.py`, e2e `actions.spec.ts` |
@@ -74,5 +74,9 @@ Data: 07/11/2026. Atualizar ao fim de cada fatia (CLAUDE.md, item 6). "Entrega" 
 | LB-010 prontidão C1–C3 | `launch/readiness.py` | `test_launch.py::test_contract_with_field_to_confirm_is_partial`, `::test_contract_without_invoice_then_with_invoice`, `::test_documents_capability_depends_on_the_assistant` | D90 |
 | LB-003 próximo passo | `launch/steps.py` | `test_launch.py::test_steps_follow_the_goal_and_skip_what_was_put_off` | D90 |
 | LB-004 rota de leitura | `routers/launch.py` (`GET /condominiums/{id}/launch`) | `test_launch.py` (API) | D90 |
-| LB-021 SEC-02 | — (prova do comportamento existente) | `test_prompt_injection.py` | D90 |
+| LB-021 SEC-02 | prompts com a seção "Segurança" (`app/prompts/*.md`) | `test_prompt_injection.py` (2) | D90, D91 |
+| LB-006 primeiro valor | `launch/first_value.py`, `routers/launch.py` (`/first-value`), `components/condoos/FirstValueCard.tsx` | `test_launch.py::test_first_value_*`, e2e `launch.spec.ts` | D91 |
+| LB-007 envio com retorno | `components/condoos/FirstContractUpload.tsx` | e2e `launch.spec.ts` | D91 |
+| LB-005 cartão da jornada | `components/condoos/JourneyCard.tsx`, `app/(sindico)/condominio/[id]/resumo/page.tsx` | e2e `launch.spec.ts` | D91 |
+| LB-008 o que já fiz | `launch/__init__.py::done_for_you` | `test_launch.py::test_done_for_you_counts_facts_only` | D91 |
 

@@ -736,3 +736,80 @@ export interface ProvenanceItem {
   status?: string;
   confirmed_by?: string;
 }
+
+// --------------------------------------------------------------------------- Launch (D90, D91)
+
+export type LaunchGoal = "economizar" | "pendencias" | "fornecedores" | "panorama";
+export type ReadinessState = "nao_configurado" | "analise_parcial" | "supervisionada";
+
+export interface LaunchMilestone {
+  key: string;
+  name: string;
+  done: boolean;
+  fact: { type: string; id: string } | null;
+  when: string | null;
+  missing: string[];
+  details: Record<string, string | number>;
+}
+
+export interface LaunchRequirement {
+  key: string;
+  label: string;
+  met: boolean;
+  detail: string;
+  entry: boolean;
+}
+
+export interface LaunchReadiness {
+  capability: string;
+  name: string;
+  state: ReadinessState;
+  state_label: string;
+  requirements: LaunchRequirement[];
+  coverage: Record<string, string | number>;
+}
+
+export interface LaunchStep {
+  key: string;
+  title: string;
+  why: string;
+  unlocks: string;
+  screen: "enviar" | "contratos" | "assuntos";
+  action_label: string;
+  primary: boolean;
+}
+
+export interface Launch {
+  goal: LaunchGoal | null;
+  goal_answered: boolean;
+  dismissed: boolean;
+  postponed: Record<string, string>;
+  milestones: LaunchMilestone[];
+  readiness: LaunchReadiness[];
+  steps: LaunchStep[];
+  done_for_you: { key: string; count: number; label: string }[];
+}
+
+export type FirstValueStatus = "lendo" | "lido" | "lido_parcial" | "nao_contrato" | "falhou";
+
+export interface FirstValueField {
+  name: string;
+  label: string;
+  kind: string;
+  state: "lido" | "a_confirmar" | "nao_encontrado";
+  value: string | number | string[] | null;
+  source: string | null;
+  page: number | null;
+  excerpt: string | null;
+}
+
+export interface FirstValue {
+  document_id: string;
+  filename: string;
+  status: FirstValueStatus;
+  message: string;
+  doc_type: string;
+  fields: FirstValueField[];
+  limits: string[];
+  next_step: { key: string; title: string } | null;
+}

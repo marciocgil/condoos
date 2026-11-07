@@ -41,6 +41,7 @@ from app.db.models import (
 )
 from app.db.session import sessionmaker_for, set_tenant_scope
 from app.launch import overview
+from app.launch.first_value import build as build_first_value
 from app.launch.journey import milestones
 from app.launch.readiness import readiness
 from app.launch.steps import CATALOGUE, choose
@@ -305,6 +306,8 @@ def test_no_route_marks_a_milestone() -> None:
         ("PUT", f"{base}/goal"),
         ("POST", f"{base}/postpone"),
         ("POST", f"{base}/dismiss"),
+        ("GET", f"{base}/first-value/{{document_id}}"),
+        ("POST", f"{base}/first-value/{{document_id}}/shown"),
     }
 
 
@@ -505,3 +508,104 @@ async def test_launch_state_is_isolated_by_rls(
         assert await milestones(s, condo) is not None  # reads nothing of the other tenant
         view = await overview(s, condo)
         assert view["goal"] is None
+
+
+# --------------------------------------------------------------------------- first value (LF2-b)
+
+NOTICE_TEXT = "CONTRATO DE PORTARIA. A rescisão exige aviso prévio de 30 (trinta) dias por escrito."
+
+
+def _doc(**over: Any) -> Document:
+    base: dict[str, Any] = {
+        "id": uuid.uuid4(),
+        "condominium_id": uuid.uuid4(),
+        "doc_type": "contrato",
+        "original_filename": "contrato.pdf",
+        "extraction_status": "done",
+        "extracted": {},
+        "field_confidence": {},
+        "field_provenance": {},
+        "text_content": NOTICE_TEXT,
+        "reviewed_at": None,
+    }
+    base.update(over)
+    return Document(**base)
+
+
+FULL = {
+    "razao_social_contratada": "Portaria Modelo Ltda",
+    "cnpj_contratada": "11222333000181",
+    "cnpj_contratante": "11444777000161",
+    "objeto": "Portaria 24 horas",
+    "itens_escopo": ["portaria"],
+    "valor_mensal": "12480.00",
+    "indice_reajuste": "IPCA",
+    "data_inicio": "2025-01-01",
+}
+
+
+def test_first_value_shows_only_what_was_read() -> None:
+    conf = {k: 0.97 for k in FULL}
+    prov = {"valor_mensal": {"source": "texto", "page": 1, "excerpt": "R$ 12.480,00 mensais"}}
+    card = build_first_value(_doc(extracted=FULL, field_confidence=conf, field_provenance=prov))
+    assert card.status == "lido" and card.next_step and card.next_step["key"] == "enviar_faturas"
+    by = {f.name: f for f in card.fields}
+    assert by["valor_mensal"].state == "lido"
+    assert by["valor_mensal"].excerpt == "R$ 12.480,00 mensais"
+    assert by["data_fim"].state == "nao_encontrado" and by["data_fim"].value is None
+    assert by["aviso_previo_dias"].value == 30 and by["aviso_previo_dias"].source == "regra"
+    assert card.limits  # what this reading does not cover is always said
+    # nothing outside ``extracted`` (and the clause rule over the same text) appears
+    for f in card.fields:
+        if f.value is not None:
+            assert f.value == (30 if f.name == "aviso_previo_dias" else FULL[f.name]), f.name
+
+
+def test_first_value_never_shows_a_doubtful_field_as_fact() -> None:
+    conf = {k: 0.97 for k in FULL} | {"valor_mensal": 0.6}
+    card = build_first_value(_doc(extracted=FULL, field_confidence=conf, needs_review=True))
+    assert card.status == "lido_parcial"
+    by = {f.name: f for f in card.fields}
+    assert by["valor_mensal"].state == "a_confirmar"
+    assert "valor mensal" in card.message
+    # once a person confirms the document, the same value is a fact
+    confirmed = build_first_value(_doc(extracted=FULL, field_confidence=conf, reviewed_at=utcnow()))
+    assert {f.name: f for f in confirmed.fields}["valor_mensal"].state == "lido"
+
+
+def test_first_value_for_other_documents_and_failures() -> None:
+    assert build_first_value(_doc(extraction_status="pending")).status == "lendo"
+    failed = build_first_value(_doc(extraction_status="failed"))
+    assert failed.status == "falhou" and "Não consegui ler" in failed.message
+    nf = build_first_value(_doc(doc_type="nfse"))
+    assert nf.status == "nao_contrato" and "nota fiscal" in nf.message and nf.fields == []
+
+
+async def test_first_value_route_records_the_event_once(
+    mailer: MemoryMailer, admin_engine: AsyncEngine
+) -> None:
+    condo, email = await _new_condo(admin_engine)
+    did = await _contract_doc(admin_engine, condo.id, needs_review=True)
+    base = f"/condominiums/{condo.id}/launch/first-value/{did}"
+    async with _client() as c:
+        await login(c, mailer, email)
+        r = await c.get(base)
+        assert r.status_code == 200, r.text
+        assert r.json()["status"] == "lido_parcial"
+        assert (await c.post(f"{base}/shown")).json() == {"recorded": True}
+        assert (await c.post(f"{base}/shown")).json() == {"recorded": False}
+        missing = f"/condominiums/{condo.id}/launch/first-value/{uuid.uuid4()}"
+        assert (await c.get(missing)).status_code == 404
+        view = (await c.get(f"/condominiums/{condo.id}/launch")).json()
+    assert view["done_for_you"] == []  # the contract is still to confirm: nothing read yet
+    async with _client() as c:  # another condominium's document is not found
+        await login(c, mailer, SINDICA_MIRANTE)
+        assert (await c.get(base)).status_code == 404
+
+
+async def test_done_for_you_counts_facts_only(admin_engine: AsyncEngine) -> None:
+    acacias = await condo_id(admin_engine, ACACIAS)
+    items = {i["key"]: i for i in (await _view(admin_engine, acacias))["done_for_you"]}
+    assert items["documentos_lidos"]["count"] > 0
+    assert items["contratos_organizados"]["label"].endswith("contratos organizados")
+    assert all(i["count"] > 0 for i in items.values())
