@@ -21,7 +21,7 @@ class ApprovalLimit(Rule):
     default_params: ClassVar[dict[str, Any]] = {"exempt_categories": ["energia", "agua", "gas"]}
 
     async def evaluate(self, ctx: RuleContext) -> list[FindingDraft]:
-        limits = ctx.condominium.approval_limits or {}
+        limits = ctx.limits
         exempt = set(self.params(ctx)["exempt_categories"])
         by_category = limits.get("by_category", {})
         out: list[FindingDraft] = []
@@ -51,6 +51,12 @@ class ApprovalLimit(Rule):
                         "valor": str(e.amount),
                         "alcada": str(limit),
                         "categoria": e.category,
+                        # Which settings version decided it (CB-012); None before 0017.
+                        **(
+                            {"versao_alcadas": str(ctx.settings_version)}
+                            if ctx.settings_version is not None
+                            else {}
+                        ),
                     },
                     supplier_id=e.supplier_id,
                 )

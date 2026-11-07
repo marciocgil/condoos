@@ -205,6 +205,8 @@ async def test_rls_blocks_writes_into_another_condominium(
         "DELETE FROM opportunity_review",
         "UPDATE action_decision SET comment = 'x'",
         "DELETE FROM action_decision",
+        "UPDATE condominium_settings_version SET reason = 'x'",
+        "DELETE FROM condominium_settings_version",
     ],
 )
 async def test_append_only_tables(app_engine: AsyncEngine, statement: str) -> None:

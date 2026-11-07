@@ -9,13 +9,14 @@ severity "alta" starts as ``aguardando_validacao`` (manager validates first); "m
 import uuid
 from collections import defaultdict
 from dataclasses import dataclass, field
-from datetime import date
+from datetime import date, timedelta
 from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.condo_settings import settings_at
 from app.core.audit import record_audit
 from app.core.jobs import enqueue
 from app.db.enums import FindingStatus
@@ -134,9 +135,14 @@ async def build_context(
         select(ContractAmendment).where(ContractAmendment.condominium_id == condominium_id)
     ):
         amendments[m.contract_id].append(m)
+    month_end = (competence.replace(day=28) + timedelta(days=4)).replace(day=1) - timedelta(days=1)
+    limits, params, settings_version = await settings_at(session, condo, month_end)
     return RuleContext(
         session=llm_session if llm_session is not None else session,
         condominium=condo,
+        approval_limits=limits,
+        rule_params=params,
+        settings_version=settings_version,
         competence=competence,
         reference_date=reference_date,
         expenses=expenses,

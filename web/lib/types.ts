@@ -198,6 +198,14 @@ export interface PortfolioContract {
 
 export interface Settings {
   approval_limits: { default?: string; by_category?: Record<string, string> };
+  history: {
+    version: number;
+    valid_from: string;
+    changed_by: string | null;
+    reason: string | null;
+    approval_limits: { default?: string; by_category?: Record<string, string> };
+    rule_params: Record<string, Record<string, unknown>>;
+  }[];
   expense_categories: string[];
   rules: {
     code: string;

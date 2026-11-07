@@ -27,6 +27,9 @@ from sqlalchemy import (
     UniqueConstraint,
     func,
 )
+from sqlalchemy import (
+    text as sql_text,
+)
 from sqlalchemy.dialects.postgresql import JSONB, TSVECTOR, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -286,6 +289,13 @@ class Contract(IdTimestampMixin, Base):
     source_document_id: Mapped[uuid.UUID | None] = _uuid_fk(
         "document.id", nullable=True, ondelete="SET NULL"
     )
+    # Termination terms read from the contract text, each with its excerpt (CB-060, D85).
+    notice_days: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    auto_renewal: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    termination_penalty: Mapped[str | None] = mapped_column(String(300), nullable=True)
+    clause_evidence: Mapped[dict[str, Any]] = mapped_column(
+        Json, default=dict, server_default=sql_text("'{}'")
+    )
 
 
 class ContractAmendment(IdTimestampMixin, Base):
@@ -317,6 +327,12 @@ class Document(IdTimestampMixin, Base):
         _enum_check("origin", DocumentOrigin),
         _enum_check("extraction_status", ExtractionStatus),
         UniqueConstraint("condominium_id", "sha256"),
+        Index(
+            "ix_document_supersedes_id",
+            "supersedes_id",
+            unique=True,
+            postgresql_where=sql_text("supersedes_id IS NOT NULL"),
+        ),
     )
 
     condominium_id: Mapped[uuid.UUID] = _uuid_fk("condominium.id")
@@ -331,6 +347,15 @@ class Document(IdTimestampMixin, Base):
     )
     extracted: Mapped[dict[str, Any]] = mapped_column(Json, default=dict)
     field_confidence: Mapped[dict[str, float]] = mapped_column(Json, default=dict)
+    # Per field: {"source": "xml|texto|ia|pessoa", "page": 1, "excerpt": "...", ...} (D85).
+    field_provenance: Mapped[dict[str, Any]] = mapped_column(
+        Json, default=dict, server_default=sql_text("'{}'")
+    )
+    # A new file of the same logical document (D85); the previous one is kept.
+    version: Mapped[int] = mapped_column(Integer, default=1, server_default="1")
+    supersedes_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("document.id", ondelete="SET NULL"), nullable=True
+    )
     needs_review: Mapped[bool] = mapped_column(Boolean, default=False)
     # Why the document is in the exception queue (pt-BR, shown to the analyst).
     review_reasons: Mapped[list[str]] = mapped_column(Json, default=list)
@@ -981,6 +1006,24 @@ class AutomationPause(IdTimestampMixin, Base):
     )
 
 
+class CondominiumSettingsVersion(IdTimestampMixin, Base):
+    """Approval limits and rule parameters as they were from ``valid_from`` on (CB-012, D85).
+    Append only: a change is a new version; rules use the one in force on the audited month."""
+
+    __tablename__ = "condominium_settings_version"
+    __table_args__ = (UniqueConstraint("condominium_id", "version"),)
+
+    condominium_id: Mapped[uuid.UUID] = _uuid_fk("condominium.id")
+    version: Mapped[int] = mapped_column(Integer)
+    approval_limits: Mapped[dict[str, Any]] = mapped_column(Json, default=dict)
+    rule_params: Mapped[dict[str, Any]] = mapped_column(Json, default=dict)
+    changed_by_user_id: Mapped[uuid.UUID | None] = _uuid_fk(
+        "app_user.id", nullable=True, ondelete="SET NULL"
+    )
+    reason: Mapped[str | None] = mapped_column(String(300), nullable=True)
+    valid_from: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
 # Tables protected by Row-Level Security, with the column holding the tenant id.
 RLS_TABLES: dict[str, str] = {
     "condominium": "id",
@@ -1015,6 +1058,7 @@ RLS_TABLES: dict[str, str] = {
     "action_decision": "condominium_id",
     "outbox_event": "condominium_id",
     "automation_pause": "condominium_id",
+    "condominium_settings_version": "condominium_id",
 }
 
 # Tables the application role may only read and insert into (never update or delete).
@@ -1026,4 +1070,5 @@ APPEND_ONLY_TABLES: tuple[str, ...] = (
     "savings_record",
     "opportunity_review",
     "action_decision",
+    "condominium_settings_version",
 )

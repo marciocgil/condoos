@@ -12,6 +12,8 @@ from sqlalchemy import or_, select
 
 from app.auth.deps import active_membership, require
 from app.auth.rbac import CondoAccess, Permission
+from app.cases import user_names
+from app.condo_settings import ensure_baseline, history, record_version
 from app.core.audit import record_audit
 from app.core.br import format_cnpj
 from app.core.time import utcnow
@@ -59,9 +61,20 @@ class ProfileOut(BaseModel):
     management_company_reviews: bool
 
 
+class SettingsVersionOut(BaseModel):
+    version: int
+    valid_from: datetime
+    changed_by: str | None
+    reason: str | None
+    approval_limits: dict[str, Any]
+    rule_params: dict[str, Any]
+
+
 class SettingsOut(BaseModel):
     profile: ProfileOut | None = None
     approval_limits: dict[str, Any]
+    # Versions of the limits and rule parameters, newest first (CB-012).
+    history: list[SettingsVersionOut] = []
     expense_categories: list[str]
     rules: list[RuleParamsOut]
     members: list[MemberOut]
@@ -72,6 +85,7 @@ class SettingsIn(BaseModel):
     approval_limits: dict[str, Any] | None = None
     rule_params: dict[str, dict[str, Any]] | None = None
     expense_categories: list[str] | None = None
+    reason: str | None = None  # why the limits or parameters changed (kept in the version)
 
 
 def _money(value: Any, label: str) -> str:
@@ -132,7 +146,20 @@ async def _out(db: DbSession, condo: Condominium) -> SettingsOut:
         .where(BoardMember.condominium_id == condo.id)
         .order_by(BoardMember.position)
     )
+    versions = await history(db, condo.id)
+    who = await user_names(db, {v.changed_by_user_id for v in versions if v.changed_by_user_id})
     return SettingsOut(
+        history=[
+            SettingsVersionOut(
+                version=v.version,
+                valid_from=v.valid_from,
+                changed_by=who.get(v.changed_by_user_id) if v.changed_by_user_id else None,
+                reason=v.reason,
+                approval_limits=dict(v.approval_limits),
+                rule_params=dict(v.rule_params),
+            )
+            for v in versions
+        ],
         profile=ProfileOut(
             name=condo.name,
             cnpj=format_cnpj(condo.cnpj),
@@ -196,6 +223,8 @@ async def update_settings(
     condo = await db.get(Condominium, access.condominium_id, with_for_update=True)
     assert condo is not None
     changed: list[str] = []
+    before = (dict(condo.approval_limits or {}), dict(condo.rule_params or {}))
+    await ensure_baseline(db, condo)
     if body.approval_limits is not None:
         limits: dict[str, Any] = {}
         if body.approval_limits.get("default") not in (None, ""):
@@ -256,6 +285,8 @@ async def update_settings(
             )
         condo.expense_categories = cats
         changed.append("expense_categories")
+    if (dict(condo.approval_limits or {}), dict(condo.rule_params or {})) != before:
+        await record_version(db, condo, actor_user_id=access.user_id, reason=body.reason)
     if changed:
         await record_audit(
             db,

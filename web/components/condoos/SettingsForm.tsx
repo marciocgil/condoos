@@ -6,6 +6,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { Card, CardTitle } from "@/components/ui/Card";
 import { Field, controlClass } from "@/components/ui/Field";
+import { formatBRL, formatDateTime } from "@/lib/format";
 import type { Settings } from "@/lib/types";
 
 const PARAM_LABEL: Record<string, string> = {
@@ -47,6 +48,7 @@ export function SettingsForm({
   const [categories, setCategories] = useState(settings.expense_categories.join(", "));
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
   const [saving, setSaving] = useState(false);
+  const [reason, setReason] = useState("");
 
   async function save() {
     setSaving(true);
@@ -76,14 +78,16 @@ export function SettingsForm({
           .split(",")
           .map((c) => c.trim())
           .filter(Boolean),
+        reason: reason.trim() || undefined,
       }),
     });
     setSaving(false);
     if (res.ok) {
       setMessage({
         ok: true,
-        text: "Configurações salvas. A alteração ficou registrada na auditoria.",
+        text: "Configurações salvas. Mudança de alçada ou parâmetro vira uma versão nova.",
       });
+      setReason("");
       router.refresh();
     } else {
       const body = (await res.json().catch(() => null)) as { detail?: string } | null;
@@ -167,6 +171,43 @@ export function SettingsForm({
             onChange={(e) => setCategories(e.target.value)}
           />
         </Field>
+      </Card>
+      <Card>
+        <CardTitle>Histórico das alçadas e parâmetros</CardTitle>
+        <Field
+          id="settings-reason"
+          label="Motivo da mudança"
+          hint="Fica na versão nova (ex.: ata da assembleia que mudou a alçada)."
+        >
+          <input
+            id="settings-reason"
+            className={controlClass}
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+          />
+        </Field>
+        {settings.history.length > 0 && (
+          <ul className="mt-3 divide-y divide-line text-sm" aria-label="Versões">
+            {settings.history.map((v) => (
+              <li key={v.version} className="py-2">
+                <span className="font-medium">Versão {v.version}</span>
+                <span className="text-fg-2">
+                  {" "}
+                  · desde {formatDateTime(v.valid_from)}
+                  {v.changed_by && ` · ${v.changed_by}`}
+                </span>
+                <span className="block text-xs text-muted">
+                  Alçada padrão:{" "}
+                  {v.approval_limits.default ? formatBRL(v.approval_limits.default) : "—"}
+                  {v.reason && ` · ${v.reason}`}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+        <p className="mt-2 text-xs text-muted">
+          As regras usam a versão vigente no mês auditado; meses antigos não mudam.
+        </p>
       </Card>
       <div className="flex items-center gap-4">
         <Button variant="primary" onClick={save} disabled={saving}>
