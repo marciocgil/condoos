@@ -160,9 +160,9 @@ make pilot         # aceite do Marco 6 (após reset + up) → docs/pilot/run.md
 
 ### Pendências conhecidas
 
-- **Meta de 90% sem revisão ainda não medida com o LLM**: sem chave, 12/30 (40%) com 0 erro automático. Medir com `LLM_MODE=record make accuracy` quando houver chave.
+- **Meta de 90% sem revisão ainda não medida com o LLM**: sem chave, 12/30 (40%) com 0 erro automático. Medir com `env -u ANTHROPIC_BASE_URL LLM_MODE=record make accuracy` quando houver chave. Tentativa de 07/11/2026: a variável `ANTHROPIC_API_KEY` está declarada no ambiente CondoOS, mas não chegou à sessão; o modo `record` sem chave não chama o modelo e repete o replay (bloqueio B4 em `docs/roadmap-status.md`).
 - Layouts CNAB não validados com arquivo real de banco (D28).
 - R04 e R07 (parte por IA) só são avaliadas de verdade com chave de API; hoje são testadas com respostas de modelo simuladas.
 - Sem chave de API, as explicações ficam no texto determinístico da regra (a reescrita por IA roda quando há chave).
-- **Avaliação do chat ao vivo não rodada**: sem chave de API, o chat responde 503 e só o gabarito da avaliação é testado. Rodar `make chat-eval` quando houver chave (aceite: ≥ 90%, zero vazamento).
+- **Avaliação do chat ao vivo não rodada**: sem chave de API, o chat responde 503 e só o gabarito da avaliação é testado. Rodar `env -u ANTHROPIC_BASE_URL make chat-eval` quando houver chave (aceite: ≥ 90%, zero vazamento). Em 07/11/2026 o teste foi pulado pelo mesmo motivo (B4).
 - O executável do Claude Code embutido no `claude-agent-sdk` segue termos comerciais da Anthropic (D54): revisar antes do piloto.
