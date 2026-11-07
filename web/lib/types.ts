@@ -68,6 +68,10 @@ export interface Contract {
   scope_items?: string[];
   original_monthly_value?: string | null;
   billing_frequency_months?: number;
+  notice_days?: number | null;
+  auto_renewal?: boolean | null;
+  termination_penalty?: string | null;
+  clause_evidence?: Record<string, { excerpt?: string } | undefined>;
 }
 
 export type Severity = "alta" | "media" | "baixa";
@@ -420,7 +424,8 @@ export interface DocumentItem {
   created_at: string;
 }
 
-export type AgendaKind = "vencimento" | "nf_prevista" | "reajuste" | "fim_contrato";
+export type AgendaKind =
+  "vencimento" | "nf_prevista" | "reajuste" | "aviso_previo" | "fim_contrato";
 
 export interface AgendaEvent {
   date: string;

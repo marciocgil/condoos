@@ -18,6 +18,7 @@ from app.chat.search import index_document
 from app.core.money import brl
 from app.db.enums import DocumentOrigin, DocumentType, ExtractionStatus
 from app.db.models import BoardMember, Condominium, Contract, Document, Supplier
+from app.extraction.clauses import apply_clauses
 from app.storage.base import get_storage
 
 logger = logging.getLogger(__name__)
@@ -210,6 +211,7 @@ async def seed_documents(session: AsyncSession) -> int:
                 contract_text(condo, contract, supplier),
             )
             links.append((contract, doc.id))
+            apply_clauses(contract, doc.text_content)  # notice period and penalty (CB-060)
             docs.append(doc)
     session.add_all(docs)
     await session.flush()

@@ -38,6 +38,7 @@ from app.db.models import (
     MatchIssue,
 )
 from app.enrichment.suppliers import get_or_create_supplier
+from app.extraction.clauses import apply_clauses
 from app.matching.categories import category_for
 from app.matching.text import overlap
 
@@ -362,6 +363,7 @@ async def register_contract(session: AsyncSession, doc: Document) -> Contract | 
     )
     if existing is not None:
         existing.source_document_id = existing.source_document_id or doc.id
+        apply_clauses(existing, doc.text_content)
         return existing
     index = str(v.get("indice_reajuste") or AdjustmentIndex.NENHUM.value)
     if index not in {i.value for i in AdjustmentIndex}:
@@ -389,6 +391,7 @@ async def register_contract(session: AsyncSession, doc: Document) -> Contract | 
         end_date=_d(v.get("data_fim")),
         source_document_id=doc.id,
     )
+    apply_clauses(contract, doc.text_content)  # notice period, renewal, penalty (CB-060)
     session.add(contract)
     await session.flush()
     if supplier.enriched_at is None:

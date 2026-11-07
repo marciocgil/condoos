@@ -77,6 +77,13 @@ export default async function ContratosPage({ params }: { params: Promise<{ id: 
                   <dt className="text-muted">Fim da vigência</dt>
                   <dd>{c.end_date ? formatDate(c.end_date) : "Indeterminado"}</dd>
                 </div>
+                <div>
+                  <dt className="text-muted">Aviso prévio</dt>
+                  <dd>
+                    {c.notice_days ? `${c.notice_days} dias` : "Não disponível"}
+                    {c.auto_renewal && " · renova sozinho"}
+                  </dd>
+                </div>
               </dl>
             </li>
           );

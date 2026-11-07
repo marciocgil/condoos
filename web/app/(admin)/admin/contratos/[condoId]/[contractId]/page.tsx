@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 
+import { ContractClauses } from "@/components/condoos/ContractClauses";
 import { ContractForm } from "@/components/condoos/ContractForm";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { apiGet } from "@/lib/api";
@@ -38,6 +39,9 @@ export default async function EditarContratoPage({
           billing_frequency_months: String(c.billing_frequency_months ?? 1),
         }}
       />
+      <div className="mt-6 max-w-2xl">
+        <ContractClauses contract={c} />
+      </div>
     </>
   );
 }
