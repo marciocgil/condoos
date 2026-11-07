@@ -121,6 +121,10 @@ async def test_routing_and_persistence_are_idempotent(seed_engine: AsyncEngine) 
         by_rule = {f.rule_code: f for f in rows}
         assert by_rule["R01"].status == "aguardando_validacao"  # alta → manager validates first
         assert by_rule["R12"].status == "publicado"  # média → published directly
+        # D74: the platform default policy (version 1) decided both, as before.
+        assert by_rule["R01"].review_requirement == "qualified_review"
+        assert by_rule["R12"].review_requirement == "none"
+        assert {f.review_policy_version for f in rows} == {1}
         by_rule["R12"].status = "confirmado"  # a person decided
         second = await evaluate(s, condo.id, OCT, REF)
         again = (await s.scalars(select(Finding).where(Finding.condominium_id == condo.id))).all()

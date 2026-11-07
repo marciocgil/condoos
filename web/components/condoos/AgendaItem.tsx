@@ -1,5 +1,6 @@
 import {
   AlertTriangle,
+  BellRing,
   CalendarClock,
   CalendarX,
   CheckCircle2,
@@ -19,6 +20,7 @@ export const KIND_LABEL: Record<AgendaKind, string> = {
   vencimento: "Vencimentos",
   nf_prevista: "NF dos contratos",
   reajuste: "Reajustes",
+  aviso_previo: "Aviso prévio",
   fim_contrato: "Fim de contrato",
 };
 
@@ -56,6 +58,16 @@ export function agendaStatus(e: AgendaEvent): Look {
       icon: <TrendingUp size={12} />,
     },
     "reajuste:conferir": { label: "Conferir reajuste", tone: "info", icon: <Search size={12} /> },
+    "aviso_previo:previsto": {
+      label: "Prazo do aviso prévio",
+      tone: "info",
+      icon: <BellRing size={12} />,
+    },
+    "aviso_previo:vencido": {
+      label: "Prazo do aviso passou",
+      tone: "warning",
+      icon: <BellRing size={12} />,
+    },
     "fim_contrato:vence": {
       label: "Contrato vence",
       tone: "warning",

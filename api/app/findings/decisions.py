@@ -2,8 +2,13 @@
 
 - Síndico (DECIDE_FINDING): confirmar, contestar (comment required), ignorar — only on
   findings the board can see.
-- Gerente (VALIDATE_FINDING): validar (aguardando_validacao → publicado) and descartar
-  (comment required) serious findings; reabrir a decided or discarded finding.
+- Reviewers (VALIDATE_FINDING): validar (→ publicado) and descartar (comment required) findings
+  under review; reabrir a decided or discarded finding. Since D74 the reviewer is the CondoOS
+  reviewer, or the management company's manager when the condominium allows it (the
+  permission itself is then removed in ``CondoAccess``). A finding whose requirement is
+  ``internal_review`` is reviewed by a CondoOS reviewer only.
+- solicitar_evidencia (REVIEW_FINDING, comment required): an inconclusive finding waits for
+  evidence (pendente_evidencia) instead of being validated or discarded.
 Every action becomes one row in ``decision`` (append-only) and one in ``audit_log``.
 """
 
@@ -14,7 +19,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.rbac import CondoAccess, Permission
 from app.core.audit import record_audit
-from app.db.enums import DecisionAction, FindingStatus
+from app.db.enums import DecisionAction, FindingStatus, ReviewRequirement, Role
 from app.db.models import Decision, Finding
 
 A, S = DecisionAction, FindingStatus
@@ -37,8 +42,17 @@ TRANSITIONS: dict[DecisionAction, Transition] = {
     A.IGNORAR: Transition(
         Permission.DECIDE_FINDING, frozenset({S.PUBLICADO, S.CONFIRMADO, S.CONTESTADO}), False
     ),
-    A.VALIDAR: Transition(Permission.VALIDATE_FINDING, frozenset({S.AGUARDANDO_VALIDACAO}), False),
-    A.DESCARTAR: Transition(Permission.VALIDATE_FINDING, frozenset({S.AGUARDANDO_VALIDACAO}), True),
+    A.VALIDAR: Transition(
+        Permission.VALIDATE_FINDING,
+        frozenset({S.AGUARDANDO_VALIDACAO, S.PENDENTE_EVIDENCIA}),
+        False,
+    ),
+    A.DESCARTAR: Transition(
+        Permission.VALIDATE_FINDING, frozenset({S.AGUARDANDO_VALIDACAO, S.PENDENTE_EVIDENCIA}), True
+    ),
+    A.SOLICITAR_EVIDENCIA: Transition(
+        Permission.REVIEW_FINDING, frozenset({S.AGUARDANDO_VALIDACAO}), True
+    ),
     A.REABRIR: Transition(
         Permission.VALIDATE_FINDING,
         frozenset({S.CONFIRMADO, S.CONTESTADO, S.IGNORADO, S.DESCARTADO}),
@@ -52,7 +66,19 @@ RESULT: dict[DecisionAction, FindingStatus] = {
     A.IGNORAR: S.IGNORADO,
     A.VALIDAR: S.PUBLICADO,
     A.DESCARTAR: S.DESCARTADO,
+    A.SOLICITAR_EVIDENCIA: S.PENDENTE_EVIDENCIA,
 }
+
+REVIEW_ACTIONS = frozenset({A.VALIDAR, A.DESCARTAR, A.SOLICITAR_EVIDENCIA, A.REABRIR})
+
+
+def _reviewer_allowed(access: CondoAccess, finding: Finding, action: DecisionAction) -> bool:
+    """``internal_review`` (economy recommendations) is CondoOS-only (D74)."""
+    if action not in REVIEW_ACTIONS:
+        return True
+    if finding.review_requirement == ReviewRequirement.INTERNAL_REVIEW.value:
+        return Role.CONDOOS_REVIEWER in access.roles
+    return True
 
 
 class DecisionError(ValueError):
@@ -68,7 +94,9 @@ def allowed_actions(access: CondoAccess, finding: Finding) -> list[DecisionActio
     return [
         action
         for action, t in TRANSITIONS.items()
-        if access.can(t.permission) and current in t.from_status
+        if access.can(t.permission)
+        and current in t.from_status
+        and _reviewer_allowed(access, finding, action)
     ]
 
 
@@ -85,7 +113,7 @@ async def decide(
     comment: str | None,
 ) -> Decision:
     t = TRANSITIONS[action]
-    if not access.can(t.permission):
+    if not access.can(t.permission) or not _reviewer_allowed(access, finding, action):
         raise DecisionError("Seu papel não permite esta ação.", 403)
     if FindingStatus(finding.status) not in t.from_status:
         raise DecisionError("Esta ação não está disponível para o achado neste momento.", 409)

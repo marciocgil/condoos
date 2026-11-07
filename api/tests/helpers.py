@@ -36,3 +36,5 @@ CONSELHEIRO_ACACIAS = "bruno.conselho@acacias.example.com"
 SINDICA_MIRANTE = "carla.sindica@mirante.example.com"
 GERENTE = "diego.gerente@atlantida.example.com"
 ANALISTA = "elisa.analista@atlantida.example.com"
+ADMIN_CONDOOS = "fabio.admin@condoos.example.com"  # CondoOS admin: both condominiums
+REVISORA = "gabriela.revisora@condoos.example.com"  # CondoOS reviewer: Mirante do Vale only

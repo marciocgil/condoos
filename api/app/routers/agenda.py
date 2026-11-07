@@ -14,6 +14,7 @@ from pydantic import BaseModel
 from app.agenda import KINDS, condominium_agenda
 from app.auth.deps import CurrentPrincipal, require
 from app.auth.rbac import CondoAccess, Permission
+from app.core.time import local_today
 from app.db.models import Condominium
 from app.db.session import DbSession
 from app.routers.portfolio import _manager_condos, _only
@@ -30,8 +31,10 @@ class AgendaOut(BaseModel):
     events: list[dict[str, Any]]
 
 
-def _window(start: date | None, end: date | None, default_days: int) -> tuple[date, date]:
-    start = start or date.today()
+def _window(
+    start: date | None, end: date | None, default_days: int, today: date
+) -> tuple[date, date]:
+    start = start or today
     end = end or start + timedelta(days=default_days)
     if end < start:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "O fim é anterior ao início.")
@@ -55,8 +58,11 @@ async def condominium_agenda_route(
     end: date | None = None,
     kind: Annotated[list[str] | None, Query()] = None,
 ) -> AgendaOut:
-    first, last = _window(start, end, 30)
-    events = await condominium_agenda(db, access.condominium_id, first, last, date.today())
+    condo = await db.get(Condominium, access.condominium_id)
+    assert condo is not None
+    today = local_today(condo.timezone)
+    first, last = _window(start, end, 30, today)
+    events = await condominium_agenda(db, access.condominium_id, first, last, today)
     wanted = _kinds(kind)
     return AgendaOut(
         start=first, end=last, events=[e.as_dict() for e in events if e.kind in wanted]
@@ -72,12 +78,12 @@ async def portfolio_agenda(
     condominium_id: uuid.UUID | None = None,
     kind: Annotated[list[str] | None, Query()] = None,
 ) -> AgendaOut:
-    first, last = _window(start, end, 30)
     condos: list[Condominium] = _only(await _manager_condos(db, principal), condominium_id)
+    first, last = _window(start, end, 30, local_today(condos[0].timezone if condos else None))
     wanted = _kinds(kind)
     out: list[dict[str, Any]] = []
     for c in condos:
-        for e in await condominium_agenda(db, c.id, first, last, date.today()):
+        for e in await condominium_agenda(db, c.id, first, last, local_today(c.timezone)):
             if e.kind in wanted:
                 out.append({**e.as_dict(), "condominium_id": str(c.id), "condominium": c.name})
     out.sort(key=lambda e: (e["date"], KINDS.index(e["kind"]), e["condominium"]))

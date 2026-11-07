@@ -1,12 +1,16 @@
-import { ChevronLeft, ShieldCheck, Sparkles } from "lucide-react";
+import { ChevronLeft, FolderPlus, ShieldCheck, Sparkles } from "lucide-react";
 import Link from "next/link";
 
+import { buttonClass } from "@/components/ui/Button";
 import { Timeline } from "@/components/ui/Timeline";
 import { formatBRL, formatDateTime, formatMonth } from "@/lib/format";
 import { ACTION_LABEL } from "@/lib/labels";
-import type { FindingDetail } from "@/lib/types";
+import type { CaseRef, FindingDetail } from "@/lib/types";
 
 import { ApprovalPanel } from "./ApprovalPanel";
+import { CaseStatusBadge } from "./CaseStatusBadge";
+import { GenerateOpportunity } from "./GenerateOpportunity";
+import { OpportunityStatusBadge } from "./OpportunityStatusBadge";
 import { CommentForm } from "./CommentForm";
 import { DecisionBar } from "./DecisionBar";
 import { EvidenceList } from "./EvidenceList";
@@ -19,11 +23,26 @@ export function FindingDetailView({
   condominiumId,
   backHref,
   backLabel,
+  cases = [],
+  casePath,
+  newCaseHref,
+  opportunities = [],
+  opportunityPath,
+  canGenerateOpportunity = false,
 }: {
   finding: FindingDetail;
   condominiumId: string;
   backHref: string;
   backLabel: string;
+  /** Cases linked to this finding (D75) and where to open them. */
+  cases?: CaseRef[];
+  casePath?: string;
+  /** Shown to those who manage cases. */
+  newCaseHref?: string;
+  /** Opportunities drawn from this finding (D81) the viewer may see. */
+  opportunities?: CaseRef[];
+  opportunityPath?: string;
+  canGenerateOpportunity?: boolean;
 }) {
   const supplierLine = f.supplier
     ? `${f.supplier.name} · CNPJ ${f.supplier.registration_status === "ATIVA" ? "ativo" : (f.supplier.registration_status ?? "sem consulta").toLowerCase()}`
@@ -110,6 +129,74 @@ export function FindingDetailView({
           <ShieldCheck size={16} className="text-success" aria-hidden /> Validado pela
           administradora
         </p>
+      )}
+      {f.validated_by_condoos && (
+        <p className="inline-flex items-center gap-2 text-[13px] text-fg-2">
+          <ShieldCheck size={16} className="text-success" aria-hidden /> Revisado pela equipe
+          CondoOS
+        </p>
+      )}
+
+      {(opportunities.length > 0 || canGenerateOpportunity) && (
+        <section aria-labelledby="finding-opps" className="space-y-2">
+          <div className="flex items-center justify-between gap-2">
+            <h2 id="finding-opps" className="text-base font-semibold">
+              Oportunidade de economia
+            </h2>
+            {canGenerateOpportunity &&
+              opportunities.every((o) =>
+                ["rejeitada", "recusada_pelo_condominio", "encerrada"].includes(o.status),
+              ) && (
+                <GenerateOpportunity
+                  condominiumId={condominiumId}
+                  findingId={f.id}
+                  detailPath={opportunityPath ?? ""}
+                />
+              )}
+          </div>
+          <ul className="space-y-1 text-sm">
+            {opportunities.map((o) => (
+              <li key={o.id} className="flex flex-wrap items-center gap-2">
+                <Link href={(opportunityPath ?? "").replace("{id}", o.id)} className="underline">
+                  {o.number} — {o.title}
+                </Link>
+                <OpportunityStatusBadge status={o.status} />
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {(cases.length > 0 || newCaseHref) && (
+        <section aria-labelledby="finding-cases" className="space-y-2">
+          <div className="flex items-center justify-between gap-2">
+            <h2 id="finding-cases" className="text-base font-semibold">
+              Assuntos
+            </h2>
+            {newCaseHref && (
+              <Link href={newCaseHref} className={buttonClass("secondary", "sm")}>
+                <FolderPlus size={14} aria-hidden /> Abrir assunto
+              </Link>
+            )}
+          </div>
+          {cases.length === 0 ? (
+            <p className="text-[13px] text-fg-2">
+              Nenhum assunto acompanha este achado. Abra um para definir responsável, prazo e
+              evidência de conclusão.
+            </p>
+          ) : (
+            <ul className="space-y-1 text-sm">
+              {cases.map((c) => (
+                <li key={c.id} className="flex flex-wrap items-center gap-2">
+                  <Link href={(casePath ?? "").replace("{id}", c.id)} className="underline">
+                    {c.number} — {c.title}
+                  </Link>
+                  <CaseStatusBadge status={c.status} />
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
       )}
 
       <section aria-labelledby="history">

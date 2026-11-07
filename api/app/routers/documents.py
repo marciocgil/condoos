@@ -8,13 +8,14 @@ from typing import Annotated, Any
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, status
 from fastapi.responses import RedirectResponse
 from pydantic import BaseModel
-from sqlalchemy import select
+from sqlalchemy import delete, select
 
 from app.auth.deps import require
 from app.auth.rbac import CondoAccess, Permission
 from app.config import get_settings
-from app.db.enums import DocumentOrigin
-from app.db.models import Document
+from app.core.audit import record_audit
+from app.db.enums import DocumentOrigin, DocumentType
+from app.db.models import Contract, Document, DocumentChunk
 from app.db.session import DbSession
 from app.ingestion.documents import ingest_file
 from app.storage.base import get_storage
@@ -42,12 +43,16 @@ class DocumentOut(BaseModel):
     extraction_status: str
     needs_review: bool
     created_at: datetime
+    version: int = 1
+    supersedes_id: uuid.UUID | None = None
 
 
 class DocumentDetailOut(DocumentOut):
     extracted: dict[str, Any]
     field_confidence: dict[str, float]
+    field_provenance: dict[str, Any] = {}
     file_url: str
+    superseded_by_id: uuid.UUID | None = None  # set when a newer version exists (CB-031)
 
 
 def _out(doc: Document) -> DocumentOut:
@@ -60,6 +65,8 @@ def _out(doc: Document) -> DocumentOut:
         extraction_status=doc.extraction_status,
         needs_review=doc.needs_review,
         created_at=doc.created_at,
+        version=doc.version,
+        supersedes_id=doc.supersedes_id,
     )
 
 
@@ -122,12 +129,76 @@ async def get_document(
     if doc is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Documento não encontrado.")
     url = await asyncio.to_thread(get_storage().presigned_url, doc.storage_key)
+    newer = await db.scalar(select(Document.id).where(Document.supersedes_id == doc.id))
     return DocumentDetailOut(
         **_out(doc).model_dump(),
         extracted=doc.extracted,
         field_confidence=doc.field_confidence,
+        field_provenance=doc.field_provenance or {},
         file_url=url,
+        superseded_by_id=newer,
     )
+
+
+@router.post("/{document_id}/versions", status_code=status.HTTP_201_CREATED)
+async def upload_new_version(
+    condominium_id: uuid.UUID,
+    document_id: uuid.UUID,
+    access: CanUpload,
+    db: DbSession,
+    file: UploadFile,
+) -> DocumentOut:
+    """A new file of the same logical document (CB-031): the previous one is kept, leaves the
+    search and stops being the source of its contract. Extraction runs on the new one."""
+    old = await db.scalar(
+        select(Document)
+        .where(Document.id == document_id, Document.condominium_id == access.condominium_id)
+        .with_for_update()
+    )
+    if old is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Documento não encontrado.")
+    if await db.scalar(select(Document.id).where(Document.supersedes_id == old.id)):
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "Este documento já tem uma versão mais nova; envie a partir dela.",
+        )
+    limit = get_settings().max_upload_mb * 1024 * 1024
+    outcome = await ingest_file(
+        db,
+        condominium_id=access.condominium_id,
+        filename=file.filename or old.original_filename,
+        data=await file.read(limit + 1),
+        origin=DocumentOrigin.UPLOAD,
+        actor_user_id=access.user_id,
+    )
+    if outcome.document_id is None:
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_CONTENT, outcome.error or "Arquivo inválido."
+        )
+    if outcome.duplicate:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT, "Esse arquivo já está no sistema: não é uma versão nova."
+        )
+    new = await db.get(Document, outcome.document_id)
+    assert new is not None
+    new.supersedes_id = old.id
+    new.version = old.version + 1
+    if new.doc_type == DocumentType.OUTRO.value:
+        new.doc_type = old.doc_type  # same logical document until extraction says otherwise
+    for contract in await db.scalars(select(Contract).where(Contract.source_document_id == old.id)):
+        contract.source_document_id = new.id
+    await db.execute(delete(DocumentChunk).where(DocumentChunk.document_id == old.id))
+    await record_audit(
+        db,
+        action="document.new_version",
+        object_type="document",
+        object_id=new.id,
+        actor_user_id=access.user_id,
+        condominium_id=access.condominium_id,
+        details={"supersedes_id": str(old.id), "version": new.version},
+    )
+    await db.flush()
+    return _out(new)
 
 
 @router.get("/{document_id}/file", response_class=RedirectResponse, status_code=307)

@@ -63,6 +63,16 @@ class RuleContext:
     index_table: dict[str, dict[date, Decimal]]
     not_evaluated: dict[str, str] = field(default_factory=dict)
     amendments: dict[uuid.UUID, list[ContractAmendment]] = field(default_factory=dict)
+    # Versioned settings in force on the audited month (CB-012). None = the condominium's.
+    approval_limits: dict[str, Any] | None = None
+    rule_params: dict[str, Any] | None = None
+    settings_version: int | None = None
+
+    @property
+    def limits(self) -> dict[str, Any]:
+        if self.approval_limits is not None:
+            return self.approval_limits
+        return self.condominium.approval_limits or {}
 
     @property
     def month_expenses(self) -> list[Expense]:
@@ -126,7 +136,8 @@ class Rule:
     ai_assisted: ClassVar[bool] = False
 
     def params(self, ctx: RuleContext) -> dict[str, Any]:
-        overrides = (ctx.condominium.rule_params or {}).get(self.code, {})
+        params = ctx.rule_params if ctx.rule_params is not None else ctx.condominium.rule_params
+        overrides = (params or {}).get(self.code, {})
         return {**self.default_params, **overrides}
 
     async def evaluate(self, ctx: RuleContext) -> list[FindingDraft]:

@@ -1,4 +1,13 @@
-import { Bot, Clock, FileCheck2, Target } from "lucide-react";
+import {
+  Bot,
+  Clock,
+  FileCheck2,
+  PiggyBank,
+  Receipt,
+  ShieldAlert,
+  Target,
+  Users,
+} from "lucide-react";
 import Link from "next/link";
 
 import { CondoFilter } from "@/components/condoos/CondoFilter";
@@ -8,7 +17,7 @@ import { cx } from "@/components/ui/cx";
 import { DataTable } from "@/components/ui/DataTable";
 import { KpiCard } from "@/components/ui/KpiCard";
 import { apiGet } from "@/lib/api";
-import { formatMonth } from "@/lib/format";
+import { formatBRL, formatMonth } from "@/lib/format";
 import type { MetricSummary, Metrics, Portfolio } from "@/lib/types";
 
 const PERIODS = [3, 6, 12] as const;
@@ -143,6 +152,49 @@ export default async function MetricasPage({
           context={`${t.llm_calls} chamadas · por condomínio na tabela`}
           icon={<Bot size={18} />}
         />
+      </section>
+
+      <section className="mt-8" aria-labelledby="base-piloto">
+        <CardTitle>
+          <span id="base-piloto">Base do piloto (protocolo §4)</span>
+        </CardTitle>
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+          <KpiCard
+            label="Despesas analisadas"
+            value={t.expenses.toLocaleString("pt-BR")}
+            context={`${pct(t.disputed_rate)} dos achados decididos foram contestados ou ignorados`}
+            icon={<Receipt size={18} />}
+          />
+          <KpiCard
+            label="Divergências confirmadas"
+            value={formatBRL(t.confirmed_at_risk)}
+            context="valor em risco dos achados confirmados; não é economia realizada"
+            icon={<Target size={18} />}
+          />
+          <KpiCard
+            label="Economia por estágio (por ano)"
+            value={formatBRL(t.savings_validated_annual)}
+            context={`estimada validada · realizada e comprovada: ${formatBRL(t.savings_realized_annual)} (nunca somadas)`}
+            icon={<PiggyBank size={18} />}
+          />
+          <KpiCard
+            label="Segurança e política"
+            value={`${t.cross_tenant_attempts + t.denied_by_policy}`}
+            context={`${t.cross_tenant_attempts} tentativas entre condomínios · ${t.denied_by_policy} ações negadas pela política (meta: zero)`}
+            icon={<ShieldAlert size={18} />}
+            tone={t.cross_tenant_attempts + t.denied_by_policy > 0 ? "attention" : "normal"}
+          />
+          <KpiCard
+            label="Sessões do corpo diretivo"
+            value={t.board_sessions.toLocaleString("pt-BR")}
+            context="entradas no período de síndico, subsíndico e conselho (uso recorrente)"
+            icon={<Users size={18} />}
+          />
+        </div>
+        <p className="mt-3 text-xs text-fg-2">
+          Horas poupadas e falso positivo real dependem do diário de tempo e da revisão amostral
+          (fora do produto). Contestados ou ignorados é só um sinal de falso positivo.
+        </p>
       </section>
 
       <section className="mt-8" aria-labelledby="por-condominio">

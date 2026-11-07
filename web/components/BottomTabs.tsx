@@ -1,14 +1,15 @@
 "use client";
 
-import { FileSignature, History, LayoutDashboard, ListChecks } from "lucide-react";
+import { FileSignature, FolderKanban, History, LayoutDashboard, ListChecks } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 import { cx } from "@/components/ui/cx";
 
 const TABS = [
-  { slug: "resumo", label: "Resumo", icon: LayoutDashboard },
+  { slug: "resumo", label: "Hoje", icon: LayoutDashboard },
   { slug: "achados", label: "Achados", icon: ListChecks },
+  { slug: "assuntos", label: "Assuntos", icon: FolderKanban },
   { slug: "contratos", label: "Contratos", icon: FileSignature },
   { slug: "historico", label: "Histórico", icon: History },
 ] as const;
@@ -20,7 +21,7 @@ export function BottomTabs({ condominiumId }: { condominiumId: string }) {
       aria-label="Navegação principal"
       className="fixed inset-x-0 bottom-0 z-20 border-t border-line bg-bg-2/95 pb-[env(safe-area-inset-bottom)] backdrop-blur"
     >
-      <ul className="mx-auto grid max-w-md grid-cols-4">
+      <ul className="mx-auto grid max-w-md grid-cols-5">
         {TABS.map((tab) => {
           const href = `/condominio/${condominiumId}/${tab.slug}`;
           const active = pathname.startsWith(href);

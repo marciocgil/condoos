@@ -1,0 +1,72 @@
+# Continuous integration (decision D78, gate G1).
+# Backend: lint, types and the full pytest suite against PostgreSQL 16 + pgvector.
+# Frontend: eslint, tsc and prettier. E2E (Playwright) needs the whole stack and stays local
+# (`make e2e`) for now. No LLM key: the suite runs in replay mode and never calls the API.
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      TEST_DATABASE_ADMIN_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/postgres
+    defaults:
+      run:
+        working-directory: api
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          cache-dependency-glob: api/uv.lock
+      - name: Install Python and dependencies (without the docling extra)
+        run: uv sync --frozen --python 3.12
+      - name: Lint and types
+        run: |
+          uv run ruff check app tests corpus scripts
+          uv run black --check app tests corpus scripts
+          uv run mypy app tests corpus scripts
+      - name: Tests (isolation, rules, planted cases, ...)
+        run: uv run pytest -q
+
+  frontend:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm run format:check

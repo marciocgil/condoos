@@ -1,4 +1,14 @@
-export type Role = "sindico" | "subsindico" | "conselheiro" | "gerente" | "analista";
+export type Role =
+  | "sindico"
+  | "subsindico"
+  | "conselheiro"
+  | "gerente"
+  | "analista"
+  | "zelador"
+  | "fornecedor"
+  | "morador"
+  | "condoos_admin"
+  | "condoos_reviewer";
 
 export interface CondoMembership {
   id: string;
@@ -15,6 +25,8 @@ export interface Me {
   email: string;
   condominiums: CondoMembership[];
   management_companies: { id: string; name: string; roles: Role[] }[];
+  /** CondoOS staff roles (D77): condoos_admin | condoos_reviewer. */
+  platform_roles: Role[];
 }
 
 export interface Condominium {
@@ -56,6 +68,11 @@ export interface Contract {
   scope_items?: string[];
   original_monthly_value?: string | null;
   billing_frequency_months?: number;
+  source_document_id?: string | null;
+  notice_days?: number | null;
+  auto_renewal?: boolean | null;
+  termination_penalty?: string | null;
+  clause_evidence?: Record<string, { excerpt?: string } | undefined>;
 }
 
 export type Severity = "alta" | "media" | "baixa";
@@ -66,7 +83,8 @@ export type FindingStatus =
   | "contestado"
   | "ignorado"
   | "descartado"
-  | "superado";
+  | "superado"
+  | "pendente_evidencia";
 
 export interface Finding {
   id: string;
@@ -108,6 +126,7 @@ export interface FindingDetail extends Finding {
   decisions: DecisionItem[];
   comments: { id: string; body: string; user_name: string; created_at: string }[];
   validated_by_management: boolean;
+  validated_by_condoos?: boolean;
   allowed_actions: string[];
   can_comment: boolean;
   approval_expense_id?: string | null;
@@ -146,6 +165,8 @@ export interface PortfolioRow {
   pending_validation: number;
   queue_items: number;
   status: "revisar" | "enviado" | "em_dia";
+  can_close: boolean; // the user may close this condominium's competences
+  has_competence: boolean; // a competence exists for the portfolio's latest month
 }
 
 export interface Portfolio {
@@ -184,6 +205,14 @@ export interface PortfolioContract {
 
 export interface Settings {
   approval_limits: { default?: string; by_category?: Record<string, string> };
+  history: {
+    version: number;
+    valid_from: string;
+    changed_by: string | null;
+    reason: string | null;
+    approval_limits: { default?: string; by_category?: Record<string, string> };
+    rule_params: Record<string, Record<string, unknown>>;
+  }[];
   expense_categories: string[];
   rules: {
     code: string;
@@ -191,7 +220,15 @@ export interface Settings {
     defaults: Record<string, unknown>;
     overrides: Record<string, unknown>;
   }[];
-  members: { id: string | null; name: string; email: string; role: string; scope: string }[];
+  members: {
+    id: string | null;
+    name: string;
+    email: string;
+    role: string;
+    scope: string; // condominio | administradora | condoos
+    status?: string; // convidado | ativo
+    expires_at?: string | null;
+  }[];
   board: {
     id: string | null;
     full_name: string;
@@ -200,7 +237,15 @@ export interface Settings {
     term_end: string | null;
     has_login: boolean;
   }[];
-  profile: { name: string; cnpj: string; units: number; address: string; retention_years: number };
+  profile: {
+    name: string;
+    cnpj: string;
+    units: number;
+    address: string;
+    retention_years: number;
+    timezone: string;
+    management_company_reviews: boolean;
+  };
 }
 
 export interface QueueItem {
@@ -248,6 +293,7 @@ export interface Review {
   fields_by_type: Record<string, FieldSpec[]>;
   values: Record<string, unknown>;
   confidence: Record<string, number>;
+  provenance?: Record<string, ProvenanceItem | undefined>;
   reasons: string[];
   threshold: number;
   file_url: string;
@@ -317,6 +363,15 @@ export interface MetricSummary {
   review_hours_median: number | null;
   llm_cost_usd: string;
   llm_calls: number;
+  expenses: number;
+  findings_disputed: number;
+  disputed_rate: number | null;
+  confirmed_at_risk: string;
+  cross_tenant_attempts: number;
+  denied_by_policy: number;
+  board_sessions: number;
+  savings_validated_annual: string;
+  savings_realized_annual: string;
 }
 
 export interface Metrics {
@@ -373,7 +428,8 @@ export interface DocumentItem {
   created_at: string;
 }
 
-export type AgendaKind = "vencimento" | "nf_prevista" | "reajuste" | "fim_contrato";
+export type AgendaKind =
+  "vencimento" | "nf_prevista" | "reajuste" | "aviso_previo" | "fim_contrato";
 
 export interface AgendaEvent {
   date: string;
@@ -393,4 +449,290 @@ export interface Agenda {
   start: string;
   end: string;
   events: AgendaEvent[];
+}
+
+/** Review policy of a condominium (D74). */
+export interface ReviewPolicy {
+  version: number;
+  condominium_specific: boolean;
+  rules: {
+    object: "finding" | "opportunity";
+    match?: { severity?: string[]; rule_code?: string[]; min_amount?: string };
+    requirement: "none" | "qualified_review" | "internal_review" | "pending_evidence";
+    reviewers?: string[];
+  }[];
+  has_management_company: boolean;
+  management_company_reviews: boolean;
+  can_configure: boolean;
+}
+
+// --------------------------------------------------------------------------- cases (D75, D80)
+
+export interface Person {
+  id: string;
+  name: string;
+}
+
+export interface CaseRow {
+  id: string;
+  condominium_id: string;
+  condominium_name: string;
+  number: string;
+  title: string;
+  category: string;
+  severity: string;
+  status: string;
+  origin: string;
+  owner: Person | null;
+  next_action: string | null;
+  next_action_due_at: string | null;
+  suspended_until: string | null;
+  open_tasks: number;
+  attention: string[];
+  created_at: string;
+}
+
+export interface CaseTask {
+  id: string;
+  title: string;
+  assignee: Person | null;
+  assignee_label: string | null;
+  due_at: string;
+  status: string;
+  blocked_reason: string | null;
+  requires_evidence: boolean;
+  overdue: boolean;
+  completed_at: string | null;
+  can_update: boolean;
+  allowed_moves: string[];
+}
+
+export interface CaseLink {
+  id: string;
+  target_type: string;
+  target_id: string;
+  label: string;
+  detail: string | null;
+  as_evidence: boolean;
+  reason: string | null;
+  linked_by: string;
+  linked_at: string;
+  unlinked_at: string | null;
+  active: boolean;
+}
+
+export interface CaseEvent {
+  id: string;
+  at: string;
+  who: string;
+  kind: string;
+  from_value: string | null;
+  to_value: string | null;
+  reason: string | null;
+  details: Record<string, unknown>;
+}
+
+export interface CaseDetail extends CaseRow {
+  description: string;
+  resolution_criterion: string;
+  requires_evidence: boolean;
+  suspension_reason: string | null;
+  created_by: string;
+  closed_at: string | null;
+  can_manage: boolean;
+  can_comment: boolean;
+  can_add_evidence: boolean;
+  allowed_transitions: string[];
+  tasks: CaseTask[];
+  links: CaseLink[];
+  cited_by: { id: string; number: string; title: string }[];
+  events: CaseEvent[];
+  people: Person[];
+}
+
+export interface CaseRef {
+  id: string;
+  number: string;
+  title: string;
+  status: string;
+}
+
+// --------------------------------------------------------------------------- opportunities (D76, D81)
+
+export interface OpportunityRow {
+  id: string;
+  condominium_id: string;
+  condominium_name: string;
+  number: string;
+  title: string;
+  opportunity_type: string;
+  status: string;
+  supplier_name: string | null;
+  presented: boolean;
+  headline_stage: string | null;
+  headline_annualized: string | null;
+  created_at: string;
+}
+
+export interface SavingsStage {
+  stage: string;
+  amount: string;
+  periodicity: string;
+  annualized_amount: string;
+  one_time_cost: string;
+  net_amount: string;
+  baseline_period_start: string;
+  baseline_period_end: string;
+  baseline_amount: string;
+  method_code: string;
+  assumptions: string[];
+  confidence: string;
+  quality_risks: string;
+  recorded_by: string;
+  recorded_at: string;
+}
+
+export interface OpportunityDetail extends OpportunityRow {
+  recommendation: string;
+  operational_impact: string;
+  legal_contractual_risk: string;
+  implementation_readiness: string;
+  review_requirement: string;
+  findings: { id: string; title: string; rule_code: string; status: string }[];
+  stages: SavingsStage[];
+  history: {
+    at: string;
+    who: string;
+    action: string;
+    from_status: string;
+    to_status: string;
+    comment: string | null;
+  }[];
+  allowed_actions: string[];
+  follow_up_actions: string[];
+  can_adjust: boolean;
+}
+
+// --------------------------------------------------------------------------- briefing (D82)
+
+export interface BriefingItem {
+  kind: string;
+  title: string;
+  detail: string;
+  ref: { type: string; id: string } | null;
+  when: string | null;
+  tone: "danger" | "warning" | "info" | "success" | "neutral";
+}
+
+export interface Briefing {
+  id: string;
+  condominium_id: string;
+  condominium_name: string;
+  local_date: string;
+  version: number;
+  timezone: string;
+  period_start: string;
+  period_end: string;
+  generated_at: string;
+  read_at: string | null;
+  headline: string;
+  sections: { key: string; title: string; count: number; items: BriefingItem[] }[];
+  partial_sources: { source: string; label: string; reason: string }[];
+}
+
+// --------------------------------------------------------------------------- actions (D83)
+
+export interface ActionRow {
+  id: string;
+  condominium_id: string;
+  condominium_name: string;
+  title: string;
+  action_type: string;
+  type_label: string;
+  status: string;
+  cost_cap: string;
+  case_id: string | null;
+  case_number: string | null;
+  requested_by: string;
+  created_at: string;
+  approval_expires_at: string | null;
+}
+
+export interface ActionPayload {
+  effect: string;
+  reason: string;
+  executor: string;
+  supplier_id?: string | null;
+  due_date?: string | null;
+  risks?: string;
+  evidence?: Record<string, string>[];
+}
+
+export interface ActionDetail extends ActionRow {
+  level: string;
+  payload: ActionPayload;
+  payload_hash: string;
+  supplier_name: string | null;
+  policy_decision: string;
+  policy_version: number;
+  policy_reason: string;
+  approval_limit: string | null;
+  approval_valid_days: number;
+  case_title: string | null;
+  opportunity_id: string | null;
+  approved_by: string | null;
+  executed_at: string | null;
+  executed_by: string | null;
+  execution_note: string | null;
+  history: {
+    at: string;
+    who: string;
+    kind: string;
+    from_status: string;
+    to_status: string;
+    comment: string | null;
+    payload_hash: string;
+  }[];
+  allowed_actions: string[];
+}
+
+export interface ActionTypes {
+  policy_version: number;
+  types: { code: string; label: string; level: string; zero_cost_only: boolean }[];
+}
+
+export interface AutomationPause {
+  id: string;
+  automation_type: string;
+  label: string;
+  reason: string;
+  paused_by: string;
+  paused_at: string;
+  resumed_at: string | null;
+  resumed_by: string | null;
+}
+
+export interface AutomationPauses {
+  can_pause: boolean;
+  types: { code: string; label: string }[];
+  active: AutomationPause[];
+  history: AutomationPause[];
+}
+
+export interface StaffAssignment {
+  id: string;
+  name: string;
+  email: string;
+  platform_role: string;
+  reason: string;
+  valid_until: string | null;
+  active: boolean;
+}
+
+export interface ProvenanceItem {
+  source: string;
+  page?: number;
+  excerpt?: string;
+  status?: string;
+  confirmed_by?: string;
 }

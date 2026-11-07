@@ -52,10 +52,13 @@ export function formatBRLShort(value: string | number): string {
   }).format(n);
 }
 
-/** ISO datetime -> "05/11/2026 14:32" in the user's local time. */
+/** ISO datetime -> "05/11/2026 14:32" in Brasília time. A fixed zone, not the runtime's:
+ * pages render on the server (UTC) and in the browser, and both must show the same hour
+ * (D80; an end-of-day deadline was shown as 02:59). Per-condominium zones are future work. */
 export function formatDateTime(iso: string): string {
   return new Intl.DateTimeFormat("pt-BR", {
     dateStyle: "short",
     timeStyle: "short",
+    timeZone: "America/Sao_Paulo",
   }).format(new Date(iso));
 }

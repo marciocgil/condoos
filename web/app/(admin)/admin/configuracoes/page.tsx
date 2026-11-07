@@ -1,12 +1,15 @@
 import Link from "next/link";
 
 import { BoardCard, MembersCard, ProfileCard } from "@/components/condoos/RegistryCards";
+import { AutomationPausesCard } from "@/components/condoos/AutomationPausesCard";
+import { ReviewPolicyCard } from "@/components/condoos/ReviewPolicyCard";
 import { SettingsForm } from "@/components/condoos/SettingsForm";
+import { StaffAssignmentsCard } from "@/components/condoos/StaffAssignmentsCard";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { cx } from "@/components/ui/cx";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { apiGet } from "@/lib/api";
-import type { Me, Settings } from "@/lib/types";
+import type { AutomationPauses, Me, ReviewPolicy, Settings, StaffAssignment } from "@/lib/types";
 
 export default async function ConfiguracoesPage({
   searchParams,
@@ -20,12 +23,21 @@ export default async function ConfiguracoesPage({
     return (
       <>
         <PageHeader title="Configurações" />
-        <EmptyState title="Sem permissão">Somente o gerente configura os condomínios.</EmptyState>
+        <EmptyState title="Sem permissão">
+          Somente o gerente ou a administração CondoOS configura os condomínios.
+        </EmptyState>
       </>
     );
   }
   const current = condos.find((c) => c.id === condominio) ?? condos[0]!;
-  const settings = await apiGet<Settings>(`/condominiums/${current.id}/settings`);
+  const [settings, policy, pauses] = await Promise.all([
+    apiGet<Settings>(`/condominiums/${current.id}/settings`),
+    apiGet<ReviewPolicy>(`/condominiums/${current.id}/review-policy`),
+    apiGet<AutomationPauses>(`/condominiums/${current.id}/automation-pauses`),
+  ]);
+  const staff = current.permissions.includes("manage_platform")
+    ? await apiGet<StaffAssignment[]>(`/condominiums/${current.id}/assignments`)
+    : null;
   return (
     <>
       <PageHeader
@@ -56,6 +68,19 @@ export default async function ConfiguracoesPage({
             key={`p-${current.id}`}
             condominiumId={current.id}
             profile={settings.profile}
+          />
+          <ReviewPolicyCard key={`r-${current.id}`} condominiumId={current.id} policy={policy} />
+          {staff && (
+            <StaffAssignmentsCard
+              key={`s-${current.id}`}
+              condominiumId={current.id}
+              assignments={staff}
+            />
+          )}
+          <AutomationPausesCard
+            key={`k-${current.id}`}
+            condominiumId={current.id}
+            pauses={pauses}
           />
           <BoardCard key={`b-${current.id}`} condominiumId={current.id} board={settings.board} />
           <MembersCard

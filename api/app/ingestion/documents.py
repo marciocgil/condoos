@@ -40,7 +40,11 @@ async def ingest_file(
     data: bytes,
     origin: DocumentOrigin,
     actor_user_id: uuid.UUID | None,
+    process: bool = True,
 ) -> IngestOutcome:
+    """Store a file as a document of the condominium. ``process=False`` (evidence attached to
+    a case, D80) keeps it out of extraction and of the exception queue: it is a photo or a
+    report that proves something, not a fiscal document to read."""
     safe_name = filename.replace("/", "_").replace("\\", "_")[:300] or "arquivo"
     limit = get_settings().max_upload_mb * 1024 * 1024
     if not data:
@@ -73,20 +77,24 @@ async def ingest_file(
         original_filename=safe_name,
         mime_type=mime,
         origin=origin.value,
-        extraction_status=ExtractionStatus.PENDING.value,
+        extraction_status=(
+            ExtractionStatus.PENDING.value if process else ExtractionStatus.DONE.value
+        ),
         extracted={},
         field_confidence={},
         needs_review=False,
+        classification_source=None if process else "evidencia",
     )
     session.add(doc)
     await session.flush()
-    await enqueue(
-        session,
-        PROCESS_JOB,
-        {"document_id": str(doc.id)},
-        condominium_id=condominium_id,
-        dedupe_key=f"doc:{doc.id}:process",
-    )
+    if process:
+        await enqueue(
+            session,
+            PROCESS_JOB,
+            {"document_id": str(doc.id)},
+            condominium_id=condominium_id,
+            dedupe_key=f"doc:{doc.id}:process",
+        )
     await record_audit(
         session,
         action="document.uploaded",
@@ -94,6 +102,6 @@ async def ingest_file(
         object_id=doc.id,
         actor_user_id=actor_user_id,
         condominium_id=condominium_id,
-        details={"origin": origin.value},
+        details={"origin": origin.value, "evidence": not process},
     )
     return IngestOutcome(safe_name, doc.id)

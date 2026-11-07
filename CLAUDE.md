@@ -19,7 +19,7 @@ Como usar:
 3. **Preservar o que existe.** Arquitetura atual (FastAPI + Next.js, RLS, fila de jobs, cliente LLM único), Design System v1.0 (`web/app/globals.css`, `components/ui`, `components/condoos`, `docs/ui-audit.md`) e todas as regras deste arquivo continuam valendo. Mudança estrutural só com decisão registrada.
 4. **Conflitos não se resolvem em silêncio.** Precedência do pacote: requisitos aprovados > decisões aceitas > código real (estado) > plano > sugestão de IA. Se o planejamento divergir deste arquivo, de `docs/decisions.md` ou do produto atual (ex.: público inicial, papel da administradora, revisão interna do Optimize), registrar a divergência e perguntar ao Marcio.
 5. **Nomes sem colisão.** "Marco 1–6" abaixo são os marcos do MVP auditor (concluídos); os marcos do planejamento são M0–M5. Decisões do projeto seguem em `docs/decisions.md` (D72 em diante); as decisões abertas do Plano Diretor são citadas como "Plano D-01..D-12".
-6. **Registrar entre sessões.** Ao fim de cada fatia: `docs/roadmap-status.md` (estado por requisito: `nao_iniciado` … `validado`, só com evidência) e `docs/traceability.md` (FR ↔ código ↔ teste), além de `docs/decisions.md`. Os demais documentos vivos do Plano Diretor §12.3 são criados pelo prompt 01, quando for rodado, não antes.
+6. **Registrar entre sessões.** Ao fim de cada fatia: `docs/roadmap-status.md` (estado por requisito: `nao_iniciado` … `validado`, só com evidência) e `docs/traceability.md` (FR ↔ código ↔ teste), além de `docs/decisions.md`. O prompt 01 foi rodado em 07/11/2026 (D72): diagnóstico em `docs/01-repo-audit.md`, FR × produto em `docs/02-gap-matrix.md`, propostas e divergências em `docs/03-decisions-register.md`, além de `docs/product-roadmap.md`, `docs/backlog.md` (histórias CB-xxx) e `docs/pilot-protocol.md`. DV-01..DV-05 respondidas pelo Marcio (D73–D77): condomínio é o cliente e a administradora é colaboradora opcional; revisão humana proporcional ao risco (economia sempre revisada); Assunto independente e N:N com achados; Oportunidade e estágios de economia separados de achado; papéis síndico, CondoOS Admin, CondoOS Reviewer e administradora no piloto. Modelo proposto em `docs/data-model.md`, permissões em `docs/authorization-matrix.md`, fluxos em `docs/flows.md`; as migrações 0011–0014 só são escritas depois de aprovadas.
 7. **Limites do produto continuam:** nenhuma ação externa, pagamento, contratação, multa ou envio sem política e aprovação humana; recomendação do Optimize só sai após revisão interna; dados de piloto reais só com autorização.
 
 ## Regras de trabalho
@@ -60,6 +60,8 @@ api/            FastAPI + SQLAlchemy 2 (async) + Alembic; worker da fila de jobs
   app/pending.py  cockpit de pendências: faturamento dos contratos e aprovação dos avulsos (D70)
   app/agenda.py   agenda: vencimentos, NF prevista, reajustes e fim de contrato (D71)
   app/core/retention.py  política de retenção (job diário retention.purge)
+  app/policy/     motor de política das ações (nega por padrão) e kill switch (D83)
+  app/actions/    pedido de ação com aprovação, outbox e despacho sem envio (D83)
   scripts/pilot_run.py   aceite do Marco 6: condomínio fictício do upload ao relatório
   app/prompts/    prompts versionados (*.md)
   app/db/         models.py, enums.py, session.py, migrations/
@@ -104,7 +106,8 @@ make pilot         # aceite do Marco 6 (após reset + up) → docs/pilot/run.md
 ```
 
 - Web: http://localhost:3000 · API: http://localhost:8000/docs · E-mails: http://localhost:8025
-- Usuários do seed: `ana.sindica@acacias.example.com` (síndica), `bruno.conselho@acacias.example.com` (conselheiro), `carla.sindica@mirante.example.com` (síndica), `diego.gerente@atlantida.example.com` (gerente), `elisa.analista@atlantida.example.com` (analista).
+- Usuários do seed: `ana.sindica@acacias.example.com` (síndica), `bruno.conselho@acacias.example.com` (conselheiro), `carla.sindica@mirante.example.com` (síndica), `diego.gerente@atlantida.example.com` (gerente), `elisa.analista@atlantida.example.com` (analista), `fabio.admin@condoos.example.com` (Admin CondoOS, nos dois condomínios), `gabriela.revisora@condoos.example.com` (Reviewer CondoOS, só Mirante).
+- Equipe CondoOS (D79): `python -m app.platform grant-role|revoke-role|assign|unassign ...` (papel dono do banco) cria o primeiro Admin; depois o Admin atribui pela API `/condominiums/{id}/assignments`.
 - Testes do backend: `TEST_DATABASE_ADMIN_URL` (padrão `postgresql+asyncpg://postgres:postgres@localhost:5432/postgres`). A suíte recria o banco `condoos_test`, aplica as migrações e carrega o seed.
 - E2E com um Chromium do sistema: `PW_CHROMIUM_PATH=/caminho/do/chrome make e2e`.
 - LLM: sem `ANTHROPIC_API_KEY`, o modo é `replay` (só respostas gravadas; o resto vai para a fila). Para gravar respostas reais: `LLM_MODE=record`. A suíte de testes nunca chama a API.
@@ -114,7 +117,8 @@ make pilot         # aceite do Marco 6 (após reset + up) → docs/pilot/run.md
 
 - **Multi-tenant:** toda tabela com dados de condomínio tem `condominium_id`. Toda consulta filtra por ele **e** o RLS do PostgreSQL filtra de novo. Ao criar uma tabela nova com dados de condomínio, acrescente-a em `RLS_TABLES` (`app/db/models.py`) e crie uma migração com a política. Teste o isolamento.
 - **Banco nas rotas:** use sempre o alias `DbSession` (commit antes da resposta, D18). Rotas de um condomínio recebem `access = Depends(require(Permission.X))`.
-- **Outro condomínio = 404**, nunca 403.
+- **Outro condomínio = 404**, nunca 403. A tentativa é gravada como `security.access_denied` (e o 403 por papel como `security.permission_denied`) por `auth/deps.py`, em transação própria (D78). Rotas de condomínio devem passar por `require()`/`get_condo_access` para herdar isso.
+- **CI** (`.github/workflows/ci.yml`) roda `make lint` e `pytest` com pgvector a cada push; mantenha-o verde.
 - **`decision` e `audit_log` só aceitam inclusão.** Nunca apagar nem alterar.
 - **Jobs** são idempotentes: use `dedupe_key` ao enfileirar e o hash do arquivo para documentos.
 - **Logs** só com ids, nunca dados de cliente.
@@ -126,6 +130,14 @@ make pilot         # aceite do Marco 6 (após reset + up) → docs/pilot/run.md
 - **Achados** nunca usam "fraude", "desvio" ou "irregularidade comprovada" (o motor recusa).
 - **Explicações por IA** só citam números dos dados da regra e das evidências; `findings/explain.py` confere por código.
 - **Decisões** seguem `findings/decisions.py` (quem pode o quê); a interface mostra só `allowed_actions`.
+- **Acesso** (D79): papéis vêm de `membership` ativa (sem `revoked_at`, dentro de `expires_at`) e, para a equipe CondoOS, de `platform_role` + `condo_assignment` vigentes. Monte permissões sempre com `auth/deps.py::access_for` (aplica `management_company_reviews`). Nenhum papel recebe `frozenset(Permission)`; validar e aprovar ficam em papéis separados (`tests/test_access_model.py`). Remover acesso revoga, não apaga.
+- **Assuntos** (D80): regras em `app/cases/` (estados, "sem próxima ação, sem controle", resolução com tarefas fechadas e evidência, vínculos que nunca se apagam, duplicidade antes de criar). `case_event` só aceita inclusão. Evidência enviada pelo assunto não vai para a extração (`ingest_file(process=False)`). Datas na tela em horário de Brasília (`lib/format.ts`); prazo só com a data vale até 23h59 do fuso do condomínio.
+- **Oportunidades** (D81): economia só calculada por código (`app/opportunities/`, método versionado), uma linha por estágio em `savings_record` (só inclusão), estágios nunca somados e sempre com o nome próprio. Antes da aprovação da revisora CondoOS a oportunidade responde 404 para o condomínio; o corpo diretivo vê só a estimativa validada. Revisar e aprovar pelo condomínio são papéis diferentes.
+- **Briefing** (D82): montado por código em `app/briefing/` só a partir de registros; cada seção roda num savepoint e, se falhar, vira "dados parciais" (o teste exige que em uso normal só dados desatualizados sejam parciais). Um por pessoa, condomínio e dia; "atualizar" cria versão nova. Só dentro do app, sem e-mail. Na tela do síndico a aba "Resumo" se chama "Hoje" (rota `/resumo`).
+- **Ações e kill switch** (D83): só `app/policy/` autoriza (código tipado, versionado, nega por padrão; pagamento, contratação, multa e dados bancários negados sempre; nenhuma regra responde "permite"). Pedido em `app/actions/`: conteúdo congelado por hash, o síndico aprova a versão que viu, a aprovação vale 7 dias, mudança depois de aprovada anula. O despacho (`action.dispatch`) confere tudo de novo e **não envia nada**: a ação espera uma pessoa executar e registrar. Custo acima do teto ou aprovação vencida voltam para aprovação. `action_decision` só aceita inclusão; outbox com chave única. Tipo de job novo que tenha efeito entra em `PAUSABLE_JOBS` (o worker não roda job pausado).
+- **Economia contratada e realizada** (D84): "contratada" só com o documento do acordo (`record_contracted`, `acordo_v1`); "realizada" só a revisora CondoOS mede, pelas faturas com nota emitidas depois do acordo (`measure_realized`, `medicao_faturas_v1`). Cada estágio é linha nova em `savings_record`; nada paga nem envia.
+- **Versões e proveniência** (D85): alçadas e parâmetros mudam por `app/condo_settings.py` (versão nova com autor e motivo; regras usam `ctx.limits`/`ctx.rule_params`, a versão vigente no mês, nunca `condominium.approval_limits` direto). Extração grava `field_provenance` (origem, página, trecho; trecho só se o texto mostrar o valor). Documento novo do mesmo documento lógico entra por `.../documents/{id}/versions`; a busca usa só a versão vigente. Cláusulas de rescisão em `app/extraction/clauses.py` (por regra, com trecho; valor posto por pessoa fica).
+- **Revisão** (D74, D79): o status inicial de um achado vem da política (`app/review/`), não da severidade direto. Status novo precisa entrar em `NOT_AT_RISK`/`UNDER_REVIEW` (`db/enums.py`) quando couber.
 - **Telas da administradora** aceitam `?condominio=<id>` (filtro por condomínio, D69); o menu lateral mantém a escolha.
 - **Interface:** use os tokens e os componentes de `components/ui` e `components/condoos`; status sempre com texto e ícone, nunca só cor; verde-lima só em ação primária e item ativo.
 - **Casamento ambíguo** vai para `match_issue`, nunca é escolhido ao acaso.

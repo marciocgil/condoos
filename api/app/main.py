@@ -8,18 +8,24 @@ from fastapi import FastAPI
 
 from app.config import get_settings
 from app.routers import (
+    actions,
     agenda,
     approvals,
     auth,
+    briefing,
+    cases,
     chat,
     condominiums,
     documents,
     findings,
     me,
+    opportunities,
+    platform,
     portfolio,
     queue,
     registry,
     reports,
+    review_policy,
     settings,
 )
 
@@ -55,6 +61,12 @@ def create_app() -> FastAPI:
     app.include_router(approvals.router)
     app.include_router(registry.router)
     app.include_router(agenda.router)
+    app.include_router(platform.router)
+    app.include_router(review_policy.router)
+    app.include_router(cases.router)
+    app.include_router(opportunities.router)
+    app.include_router(briefing.router)
+    app.include_router(actions.router)
 
     @app.get("/health", tags=["health"])
     async def health() -> dict[str, str]:

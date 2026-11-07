@@ -16,6 +16,7 @@ from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.service import normalize_email
+from app.condo_settings import ensure_baseline
 from app.core.audit import record_audit
 from app.core.br import is_valid_cnpj
 from app.db.enums import BoardPosition, Role
@@ -129,6 +130,9 @@ async def onboard(session: AsyncSession, spec: OnboardingIn) -> Condominium:
     condo = Condominium(
         id=uuid.uuid4(),
         management_company_id=company_id,
+        # With a management company, its manager reviews findings as before (D74); the
+        # condominium can turn it off. Without one, only CondoOS reviewers do.
+        management_company_reviews=company_id is not None,
         name=c.name,
         slug=c.slug,
         cnpj=c.cnpj,
@@ -141,6 +145,7 @@ async def onboard(session: AsyncSession, spec: OnboardingIn) -> Condominium:
     )
     session.add(condo)
     await session.flush()
+    await ensure_baseline(session, condo)  # version 1 of the limits (CB-012)
     grants: list[tuple[AppUser, Role]] = []
     for b in spec.board:
         user = await _user(session, b.name, b.email) if b.email else None

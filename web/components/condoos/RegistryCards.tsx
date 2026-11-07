@@ -13,6 +13,26 @@ import { ROLE_LABEL } from "@/lib/labels";
 import type { Settings } from "@/lib/types";
 
 const POSITIONS = ["sindico", "subsindico", "conselheiro"] as const;
+// Brazilian IANA zones offered in the profile (ADR-P07); a stored zone outside the list is kept.
+const TIMEZONES = [
+  "America/Sao_Paulo",
+  "America/Bahia",
+  "America/Fortaleza",
+  "America/Recife",
+  "America/Belem",
+  "America/Manaus",
+  "America/Cuiaba",
+  "America/Campo_Grande",
+  "America/Porto_Velho",
+  "America/Boa_Vista",
+  "America/Rio_Branco",
+  "America/Noronha",
+];
+const SCOPE_LABEL: Record<string, string> = {
+  administradora: "toda a carteira",
+  condoos: "equipe CondoOS",
+  condominio: "este condomínio",
+};
 
 function Feedback({ error, ok }: { error: string | null; ok: string | null }) {
   if (error)
@@ -53,6 +73,7 @@ export function ProfileCard({
       units: Number(form.units),
       address: form.address,
       retention_years: Number(form.retention_years),
+      timezone: form.timezone,
     });
     setBusy(false);
     if (!r.ok) return setError(r.error);
@@ -106,6 +127,26 @@ export function ProfileCard({
             />
           </Field>
         </div>
+        <Field
+          id="p-timezone"
+          label="Fuso horário"
+          hint="Nome IANA. Define o “hoje” da agenda e dos prazos."
+        >
+          <select
+            id="p-timezone"
+            className={controlClass}
+            value={form.timezone}
+            onChange={(e) => setForm({ ...form, timezone: e.target.value })}
+          >
+            {(TIMEZONES.includes(form.timezone) ? TIMEZONES : [form.timezone, ...TIMEZONES]).map(
+              (tz) => (
+                <option key={tz} value={tz}>
+                  {tz.replace("America/", "").replace("_", " ")}
+                </option>
+              ),
+            )}
+          </select>
+        </Field>
         <Feedback error={error} ok={ok} />
         <Button variant="primary" onClick={() => void save()} disabled={busy}>
           {busy ? "Salvando…" : "Salvar dados"}
@@ -348,8 +389,9 @@ export function MembersCard({
             <span className="min-w-0">
               <span className="block truncate">{m.name}</span>
               <span className="text-xs text-muted">
-                {ROLE_LABEL[m.role] ?? m.role} ·{" "}
-                {m.scope === "administradora" ? "toda a carteira" : "este condomínio"}
+                {ROLE_LABEL[m.role] ?? m.role} · {SCOPE_LABEL[m.scope] ?? m.scope}
+                {m.status === "convidado" && " · convite pendente"}
+                {m.expires_at && ` · até ${formatDate(m.expires_at.slice(0, 10))}`}
               </span>
             </span>
             {m.id && (

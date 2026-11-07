@@ -226,7 +226,7 @@ async def close_competence(
             for label, n in (
                 ("documento(s) para revisar", pending["documentos"]),
                 ("casamento(s) ambíguo(s)", pending["casamentos"]),
-                ("achado(s) grave(s) para validar", pending["achados_graves"]),
+                ("achado(s) para revisar ou com evidência pendente", pending["achados_graves"]),
             )
             if n
         ]

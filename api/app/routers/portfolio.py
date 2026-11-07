@@ -11,11 +11,11 @@ from fastapi import APIRouter, Query
 from pydantic import BaseModel
 from sqlalchemy import func, select
 
-from app.auth.deps import CurrentPrincipal, roles_on_condominium
+from app.auth.deps import CurrentPrincipal, access_for
 from app.auth.rbac import CondoAccess, Permission
 from app.core.br import format_cnpj
-from app.core.time import add_months
-from app.db.enums import FindingStatus
+from app.core.time import add_months, local_today
+from app.db.enums import UNDER_REVIEW, FindingStatus
 from app.db.models import (
     Competence,
     Condominium,
@@ -39,6 +39,7 @@ OPEN = (
     FindingStatus.PUBLICADO.value,
     FindingStatus.CONTESTADO.value,
 )
+REVIEW = tuple(s.value for s in UNDER_REVIEW)
 
 
 class CondoRow(BaseModel):
@@ -50,6 +51,8 @@ class CondoRow(BaseModel):
     pending_validation: int
     queue_items: int
     status: str  # revisar | enviado | em_dia
+    can_close: bool  # the user may close this condominium's competences
+    has_competence: bool  # a competence exists for the portfolio's latest month
 
 
 class PortfolioOut(BaseModel):
@@ -87,6 +90,12 @@ class ContractRow(BaseModel):
 
 
 async def _manager_condos(db: DbSession, principal: CurrentPrincipal) -> list[Condominium]:
+    return [c for c, _ in await _manager_access(db, principal)]
+
+
+async def _manager_access(
+    db: DbSession, principal: CurrentPrincipal
+) -> list[tuple[Condominium, CondoAccess]]:
     condos = list(
         await db.scalars(
             select(Condominium)
@@ -94,19 +103,19 @@ async def _manager_condos(db: DbSession, principal: CurrentPrincipal) -> list[Co
             .order_by(Condominium.name)
         )
     )
-    out = []
+    out: list[tuple[Condominium, CondoAccess]] = []
     for c in condos:
-        access = CondoAccess(
-            principal.user.id, c.id, await roles_on_condominium(db, principal.user.id, c)
-        )
+        access = await access_for(db, principal.user.id, c)
         if access.can(Permission.VIEW_PENDING_FINDINGS):
-            out.append(c)
+            out.append((c, access))
     return out
 
 
 @router.get("")
 async def portfolio(db: DbSession, principal: CurrentPrincipal) -> PortfolioOut:
-    condos = await _manager_condos(db, principal)
+    accesses = await _manager_access(db, principal)
+    condos = [c for c, _ in accesses]
+    can_close = {c.id: a.can(Permission.CLOSE_COMPETENCE) for c, a in accesses}
     ids = [c.id for c in condos]
     findings = (
         list(await db.scalars(select(Finding).where(Finding.condominium_id.in_(ids))))
@@ -131,11 +140,11 @@ async def portfolio(db: DbSession, principal: CurrentPrincipal) -> PortfolioOut:
     rows = []
     for c in condos:
         mine = [f for f in findings if f.condominium_id == c.id and f.status in OPEN]
-        pending = sum(f.status == FindingStatus.AGUARDANDO_VALIDACAO.value for f in mine)
-        published = any(
-            x.condominium_id == c.id and x.month == latest and x.published_at is not None
-            for x in comps
-        )
+        pending = sum(
+            f.condominium_id == c.id and f.status in REVIEW for f in findings
+        )  # waiting for review, including the ones waiting for evidence (D74)
+        current = next((x for x in comps if x.condominium_id == c.id and x.month == latest), None)
+        published = current is not None and current.published_at is not None
         rows.append(
             CondoRow(
                 id=c.id,
@@ -146,6 +155,8 @@ async def portfolio(db: DbSession, principal: CurrentPrincipal) -> PortfolioOut:
                 pending_validation=pending,
                 queue_items=pending + docs_review[c.id],
                 status="revisar" if pending else ("enviado" if published else "em_dia"),
+                can_close=can_close[c.id],
+                has_competence=current is not None,
             )
         )
     rows.sort(key=lambda r: r.amount_at_risk, reverse=True)
@@ -323,7 +334,7 @@ async def pending(
 ) -> PendingOut:
     """Cockpit of pending items (D70): contract billing and one-off services to back."""
     condos = _only(await _manager_condos(db, principal), condominium_id)
-    today = date.today()
+    today = local_today(condos[0].timezone if condos else None)
     if month:
         chosen = date(int(month[:4]), int(month[5:7]), 1)
     else:
@@ -338,7 +349,7 @@ async def pending(
     out: list[PendingCondoOut] = []
     for c in condos:
         for m in recent:
-            result = await month_pending(db, c.id, m, today)
+            result = await month_pending(db, c.id, m, local_today(c.timezone))
             per_month[m] += result.open_count
             if m != chosen:
                 continue

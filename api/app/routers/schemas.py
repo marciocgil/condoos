@@ -45,6 +45,7 @@ class MeOut(BaseModel):
     email: str
     condominiums: list[CondoMembershipOut]
     management_companies: list[CompanyMembershipOut]
+    platform_roles: list[str] = []  # condoos_admin | condoos_reviewer (D77)
 
 
 class CondominiumOut(ORM):
@@ -87,6 +88,12 @@ class ContractOut(ORM):
     end_date: date | None
     amendments: int = 0  # termos aditivos linked to the contract (D66)
     original_monthly_value: Decimal | None = None  # as signed; monthly_value is in force
+    # Read from the contract text with the excerpt (CB-060); None = not stated / not read.
+    source_document_id: uuid.UUID | None = None  # the version in force (CB-031)
+    notice_days: int | None = None
+    auto_renewal: bool | None = None
+    termination_penalty: str | None = None
+    clause_evidence: dict[str, Any] = {}
 
 
 class CompetenceOut(ORM):

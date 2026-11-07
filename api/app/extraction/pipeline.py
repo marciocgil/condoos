@@ -27,6 +27,7 @@ from app.extraction.convert import Converted, convert
 from app.extraction.fields import BANK_TYPES, SPECS, TEXT_ONLY_TYPES
 from app.extraction.heuristics import CERTAIN, classify_text, prefill
 from app.extraction.llm_extract import classify_with_llm, extract_with_llm
+from app.extraction.provenance import build as build_provenance
 from app.extraction.xml_fiscal import NotFiscalXml, parse_fiscal_xml
 from app.ingestion.bank.base import BankFileError
 from app.ingestion.bank.service import parse_bank_file, store_statement
@@ -51,6 +52,7 @@ class Analysis:
     text: str | None = None
     page_count: int | None = None
     complete: bool = False  # True when no human review is needed
+    provenance: dict[str, Any] = field(default_factory=dict)  # per field (CB-030)
 
     @property
     def extraction_source(self) -> str:
@@ -69,6 +71,7 @@ async def analyze(
 ) -> Analysis:
     """Classify and extract a non-bank document. No database writes except ``llm_calls``."""
     raw: dict[str, Any] = {}
+    origin: dict[str, str] = {}  # where each raw value came from (CB-030)
     source_conf: dict[str, float] = {}
     sources: list[str] = []
     converted: Converted | None = None
@@ -84,6 +87,7 @@ async def analyze(
         for name, value in xml.values.items():
             if value not in (None, "", []):
                 raw[name], source_conf[name] = value, CERTAIN
+                origin[name] = "xml"
         sources.append(xml.layout)
         page_count = 1
     else:
@@ -133,6 +137,7 @@ async def analyze(
         for name, value in pf.values.items():
             if source_conf.get(name, 0.0) < pf.confidence[name]:
                 raw[name], source_conf[name] = value, pf.confidence[name]
+                origin[name] = "texto"
         if pf.values:
             sources.append("texto")
 
@@ -151,6 +156,7 @@ async def analyze(
             for name in missing_certain:
                 if values.get(name) not in (None, "", []):
                     raw[name], source_conf[name] = values[name], model_conf.get(name, 0.0)
+                    origin[name] = "ia"
             sources.append("ia")
         except LLMUnavailable as exc:
             logger.info("extraction without model reason=%s", type(exc).__name__)
@@ -163,6 +169,7 @@ async def analyze(
     if base.reasons and notes:
         base.reasons.append(f"Observação da IA: {notes}")
     base.complete = not result.needs_review
+    base.provenance = build_provenance(doc_type, result.values, origin, text)
     return base
 
 
@@ -197,6 +204,7 @@ async def process_document(session: AsyncSession, payload: dict[str, Any]) -> No
     doc.page_count = analysis.page_count
     doc.extracted = analysis.values
     doc.field_confidence = analysis.confidence
+    doc.field_provenance = analysis.provenance
     doc.needs_review = not analysis.complete
     doc.review_reasons = [] if analysis.complete else analysis.reasons
     doc.extraction_status = (

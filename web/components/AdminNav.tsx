@@ -1,18 +1,22 @@
 "use client";
 
 import {
-  Building2,
-  ChevronsLeft,
   BarChart3,
+  CheckSquare,
+  Building2,
   CalendarDays,
+  ChevronsLeft,
   ChevronsRight,
   ClipboardList,
   FileSignature,
+  FolderKanban,
   Inbox,
   LayoutGrid,
   MessageSquare,
+  PiggyBank,
   Settings,
   Store,
+  Sun,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
@@ -22,8 +26,12 @@ import { Logo } from "@/components/layout/Logo";
 import { cx } from "@/components/ui/cx";
 
 const ITEMS = [
+  { href: "/admin/hoje", label: "Hoje", icon: Sun },
   { href: "/admin/carteira", label: "Carteira", icon: LayoutGrid },
   { href: "/admin/fila", label: "Fila de exceções", icon: Inbox, counter: true },
+  { href: "/admin/assuntos", label: "Assuntos", icon: FolderKanban },
+  { href: "/admin/oportunidades", label: "Oportunidades", icon: PiggyBank },
+  { href: "/admin/aprovacoes", label: "Aprovações", icon: CheckSquare },
   { href: "/admin/pendencias", label: "Pendências", icon: ClipboardList },
   { href: "/admin/agenda", label: "Agenda", icon: CalendarDays },
   { href: "/admin/fornecedores", label: "Fornecedores", icon: Store },

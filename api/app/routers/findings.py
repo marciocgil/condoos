@@ -18,7 +18,7 @@ from sqlalchemy.sql import Select
 from app.auth.deps import require
 from app.auth.rbac import CondoAccess, Permission
 from app.core.br import format_cnpj
-from app.db.enums import VISIBLE_TO_BOARD, DecisionAction, FindingStatus
+from app.db.enums import NOT_AT_RISK, VISIBLE_TO_BOARD, DecisionAction
 from app.db.models import (
     Approval,
     AppUser,
@@ -28,6 +28,7 @@ from app.db.models import (
     Expense,
     Finding,
     FindingComment,
+    PlatformRoleGrant,
     Supplier,
 )
 from app.db.session import DbSession
@@ -94,7 +95,8 @@ class FindingDetailOut(FindingOut):
     supplier: SupplierBrief | None
     decisions: list[DecisionOut]
     comments: list[CommentOut]
-    validated_by_management: bool
+    validated_by_management: bool  # validated by the management company's manager
+    validated_by_condoos: bool = False  # validated by a CondoOS reviewer (D74)
     allowed_actions: list[str]
     can_comment: bool
     # R12 (above the approval limit): the expense and the approvals already recorded for it
@@ -271,16 +273,7 @@ async def month_summary(
         )
     )
     # "Em risco" counts what is still open; ignored findings are not risk anymore.
-    open_ = [
-        f
-        for f in findings
-        if f.status
-        not in (
-            FindingStatus.IGNORADO.value,
-            FindingStatus.DESCARTADO.value,
-            FindingStatus.SUPERADO.value,
-        )
-    ]
+    open_ = [f for f in findings if f.status not in NOT_AT_RISK]
     expenses = list(
         await db.scalars(
             select(Expense.amount).where(
@@ -368,6 +361,16 @@ async def _detail(db: DbSession, access: CondoAccess, f: Finding) -> FindingDeta
             .order_by(FindingComment.created_at)
         )
     ).all()
+    validators = {d.user_id for d, _ in decisions if d.action == DecisionAction.VALIDAR.value}
+    staff = (
+        set(
+            await db.scalars(
+                select(PlatformRoleGrant.user_id).where(PlatformRoleGrant.user_id.in_(validators))
+            )
+        )
+        if validators
+        else set()
+    )
     return FindingDetailOut(
         **base.model_dump(),
         rule_inputs=f.rule_inputs,
@@ -392,7 +395,8 @@ async def _detail(db: DbSession, access: CondoAccess, f: Finding) -> FindingDeta
             CommentOut(id=c.id, body=c.body, user_name=name, created_at=c.created_at)
             for c, name in comments
         ],
-        validated_by_management=any(d.action == DecisionAction.VALIDAR.value for d, _ in decisions),
+        validated_by_management=bool(validators - staff),
+        validated_by_condoos=bool(validators & staff),
         allowed_actions=[a.value for a in allowed_actions(access, f)],
         can_comment=access.can(Permission.COMMENT_FINDING),
         **await _approval_info(db, access, f),

@@ -4,7 +4,7 @@ audited with ids and field names, never people's data.
 """
 
 import uuid
-from datetime import date
+from datetime import date, datetime
 from decimal import Decimal, InvalidOperation
 from typing import Annotated, Any, Literal
 
@@ -12,13 +12,14 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, EmailStr, Field, field_validator
 from sqlalchemy import select
 
-from app.auth.deps import CurrentPrincipal, require
+from app.auth.deps import CurrentPrincipal, active_membership, require
 from app.auth.rbac import CondoAccess, Permission
 from app.auth.service import normalize_email
 from app.core.audit import record_audit
 from app.core.br import is_valid_cnpj, only_digits
 from app.core.jobs import enqueue
-from app.db.enums import AdjustmentIndex, BoardPosition, Role
+from app.core.time import is_valid_timezone, utcnow
+from app.db.enums import AdjustmentIndex, BoardPosition, PlatformRole, Role
 from app.db.models import (
     AppUser,
     BoardMember,
@@ -30,6 +31,7 @@ from app.db.models import (
 from app.db.session import DbSession, get_worker_engine, sessionmaker_for
 from app.enrichment.suppliers import get_or_create_supplier
 from app.onboarding import BoardIn, CondoIn, OnboardingIn, onboard
+from app.platform import active_grant, assign
 from app.routers.schemas import ContractOut
 
 router = APIRouter(tags=["registry"])
@@ -85,6 +87,14 @@ class ProfileIn(BaseModel):
     units: int = Field(gt=0)
     address: str = Field(min_length=5, max_length=300)
     retention_years: int = Field(ge=5, le=30)
+    timezone: str | None = None  # IANA name (ADR-P07); None keeps the current one
+
+    @field_validator("timezone")
+    @classmethod
+    def _timezone(cls, v: str | None) -> str | None:
+        if v is not None and not is_valid_timezone(v):
+            raise ValueError("fuso horário desconhecido (use o nome IANA, ex.: America/Sao_Paulo)")
+        return v
 
 
 @router.put("/condominiums/{condominium_id}/profile")
@@ -93,7 +103,7 @@ async def update_profile(
 ) -> dict[str, str]:
     condo = await db.get(Condominium, access.condominium_id, with_for_update=True)
     assert condo is not None
-    changed = [k for k, v in body.model_dump().items() if getattr(condo, k) != v]
+    changed = [k for k, v in body.model_dump(exclude_none=True).items() if getattr(condo, k) != v]
     for key in changed:
         setattr(condo, key, getattr(body, key))
     if changed:
@@ -189,6 +199,15 @@ class MemberIn(BaseModel):
     name: str = Field(min_length=3, max_length=200)
     email: EmailStr
     role: BOARD_ROLES
+    # Temporary access for external participants (D77); None = no end date.
+    expires_at: datetime | None = None
+
+    @field_validator("expires_at")
+    @classmethod
+    def _future(cls, v: datetime | None) -> datetime | None:
+        if v is not None and (v.tzinfo is None or v <= utcnow()):
+            raise ValueError("o fim do acesso precisa ser uma data futura com fuso")
+        return v
 
 
 @router.post("/condominiums/{condominium_id}/members", status_code=status.HTTP_201_CREATED)
@@ -201,21 +220,40 @@ async def add_member(
         user = AppUser(id=uuid.uuid4(), name=body.name.strip(), email=email, is_active=True)
         db.add(user)
         await db.flush()
-    exists = await db.scalar(
-        select(Membership.id).where(
+    existing = await db.scalar(
+        select(Membership).where(
             Membership.user_id == user.id,
             Membership.condominium_id == access.condominium_id,
             Membership.role == body.role,
         )
     )
-    if exists is not None:
+    now = utcnow()
+    if (
+        existing is not None
+        and existing.revoked_at is None
+        and (existing.expires_at is None or existing.expires_at > now)
+    ):
         raise HTTPException(status.HTTP_409_CONFLICT, "Essa pessoa já tem esse acesso.")
-    membership = Membership(
-        id=uuid.uuid4(), user_id=user.id, condominium_id=access.condominium_id, role=body.role
-    )
-    db.add(membership)
+    details: dict[str, Any] = {"role": body.role, "temporary": body.expires_at is not None}
+    if existing is not None:  # revoked or expired: granted again, history kept in the audit
+        membership = existing
+        membership.revoked_at = None
+        membership.expires_at = body.expires_at
+        membership.invited_at = now
+        membership.accepted_at = None
+        details["reactivated"] = True
+    else:
+        membership = Membership(
+            id=uuid.uuid4(),
+            user_id=user.id,
+            condominium_id=access.condominium_id,
+            role=body.role,
+            invited_at=now,
+            expires_at=body.expires_at,
+        )
+        db.add(membership)
     await db.flush()
-    await _audit(db, access, "member.added", "membership", membership.id, {"role": body.role})
+    await _audit(db, access, "member.added", "membership", membership.id, details)
     return {"id": str(membership.id)}
 
 
@@ -225,16 +263,19 @@ async def remove_member(
 ) -> dict[str, str]:
     membership = await db.scalar(
         select(Membership).where(
-            Membership.id == membership_id, Membership.condominium_id == access.condominium_id
+            Membership.id == membership_id,
+            Membership.condominium_id == access.condominium_id,
+            Membership.revoked_at.is_(None),
         )
     )
     if membership is None:  # company-wide accesses are not removed from a condominium
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Acesso não encontrado.")
     if membership.user_id == access.user_id:
         raise _unprocessable("Você não pode remover o próprio acesso.")
-    await db.delete(membership)
+    # Revoked, not deleted (D77): the row keeps who had which access and until when.
+    membership.revoked_at = utcnow()
     await _audit(db, access, "member.removed", "membership", membership_id)
-    return {"message": "Acesso removido. As sessões abertas expiram no próximo acesso."}
+    return {"message": "Acesso removido. As sessões abertas perdem o acesso na próxima ação."}
 
 
 # --------------------------------------------------------------------------- contracts
@@ -365,27 +406,33 @@ class NewCondominiumIn(BaseModel):
 async def create_condominium(
     body: NewCondominiumIn, principal: CurrentPrincipal, db: DbSession
 ) -> dict[str, str]:
-    """A manager of a management company creates a condominium in it."""
+    """A manager of a management company creates a condominium in it; a CondoOS admin
+    creates a condominium contracting directly, without a management company (D73), and is
+    assigned to it."""
     company_id = await db.scalar(
         select(Membership.management_company_id).where(
             Membership.user_id == principal.user.id,
             Membership.management_company_id.is_not(None),
             Membership.role == Role.GERENTE.value,
+            *active_membership(),
         )
     )
-    if company_id is None:
+    is_admin = await active_grant(db, principal.user.id, PlatformRole.CONDOOS_ADMIN) is not None
+    if company_id is None and not is_admin:
         raise HTTPException(
-            status.HTTP_403_FORBIDDEN, "Só o gerente da administradora cadastra condomínios."
+            status.HTTP_403_FORBIDDEN,
+            "Só o gerente da administradora ou o administrador CondoOS cadastra condomínios.",
         )
     spec = OnboardingIn(condominium=body.condominium, board=body.board)
     # The new condominium is not in this request's tenant scope yet (RLS): it is created in
-    # its own transaction with the worker role, after the manager check above.
+    # its own transaction with the worker role, after the checks above.
     async with sessionmaker_for(get_worker_engine())() as session, session.begin():
         from app.db.models import ManagementCompany
 
-        company = await session.get(ManagementCompany, company_id)
-        assert company is not None
-        spec.management_company_cnpj = company.cnpj
+        if company_id is not None:
+            company = await session.get(ManagementCompany, company_id)
+            assert company is not None
+            spec.management_company_cnpj = company.cnpj
         try:
             condo = await onboard(session, spec)
         except ValueError as exc:
@@ -398,4 +445,15 @@ async def create_condominium(
             actor_user_id=principal.user.id,
             condominium_id=condo.id,
         )
+        if company_id is None:  # CondoOS admin: assigned to what it created
+            admin = await session.get(AppUser, principal.user.id)
+            assert admin is not None
+            await assign(
+                session,
+                condominium_id=condo.id,
+                user=admin,
+                role=PlatformRole.CONDOOS_ADMIN,
+                reason="Cadastro do condomínio",
+                actor_user_id=principal.user.id,
+            )
     return {"id": str(condo.id), "slug": condo.slug}

@@ -13,13 +13,13 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 
-from app.auth.deps import CurrentPrincipal, require, roles_on_condominium
+from app.auth.deps import CurrentPrincipal, access_for, require
 from app.auth.rbac import CondoAccess, Permission
 from app.core.audit import record_audit
 from app.core.br import is_valid_cnpj, is_valid_cpf
 from app.core.money import brl
 from app.core.time import utcnow
-from app.db.enums import DocumentType, ExtractionStatus, FindingStatus
+from app.db.enums import UNDER_REVIEW, DocumentType, ExtractionStatus, FindingStatus
 from app.db.models import (
     BankTransaction,
     Condominium,
@@ -34,6 +34,7 @@ from app.db.session import DbSession
 from app.extraction.confidence import COUNTERPARTY_CNPJ, OWN_CNPJ
 from app.extraction.fields import REVIEW_THRESHOLD, SPECS, InvalidValue, normalize, specs_for
 from app.extraction.pipeline import enqueue_match
+from app.extraction.provenance import confirmed as confirmed_provenance
 from app.storage.base import get_storage
 
 router = APIRouter(tags=["queue"])
@@ -70,6 +71,7 @@ class ReviewOut(BaseModel):
     fields_by_type: dict[str, list[FieldSpecOut]]
     values: dict[str, Any]
     confidence: dict[str, float]
+    provenance: dict[str, Any] = {}  # source, page and excerpt per field (CB-030)
     reasons: list[str]
     threshold: float
     file_url: str
@@ -96,9 +98,7 @@ async def _queue(db: DbSession, principal: CurrentPrincipal) -> list[QueueItemOu
     can_correct: dict[uuid.UUID, str] = {}
     can_validate: dict[uuid.UUID, str] = {}
     for condo in condos:
-        access = CondoAccess(
-            principal.user.id, condo.id, await roles_on_condominium(db, principal.user.id, condo)
-        )
+        access = await access_for(db, principal.user.id, condo)
         if access.can(Permission.CORRECT_EXTRACTION):
             can_correct[condo.id] = condo.name
         if access.can(Permission.VALIDATE_FINDING):
@@ -146,7 +146,7 @@ async def _queue(db: DbSession, principal: CurrentPrincipal) -> list[QueueItemOu
             select(Finding)
             .where(
                 Finding.condominium_id.in_(can_validate),
-                Finding.status == FindingStatus.AGUARDANDO_VALIDACAO.value,
+                Finding.status.in_([s.value for s in UNDER_REVIEW]),
             )
             .order_by(Finding.amount_at_risk.desc())
         )
@@ -157,7 +157,11 @@ async def _queue(db: DbSession, principal: CurrentPrincipal) -> list[QueueItemOu
                     id=f.id,
                     condominium_id=f.condominium_id,
                     condominium_name=can_validate[f.condominium_id],
-                    title=f"Grave: {f.title}",
+                    title=(
+                        f"Evidência pendente: {f.title}"
+                        if f.status == FindingStatus.PENDENTE_EVIDENCIA.value
+                        else f"Grave: {f.title}"
+                    ),
                     detail=f"{brl(f.amount_at_risk)} em risco",
                     created_at=f.created_at,
                 )
@@ -220,6 +224,7 @@ async def get_review(
         },
         values=doc.extracted,
         confidence=doc.field_confidence,
+        provenance=doc.field_provenance or {},
         reasons=doc.review_reasons,
         threshold=REVIEW_THRESHOLD,
         file_url=await asyncio.to_thread(get_storage().presigned_url, doc.storage_key),
@@ -309,6 +314,13 @@ async def save_review(
                 )
             )
 
+    doc.field_provenance = confirmed_provenance(
+        {} if type_changed else (doc.field_provenance or {}),
+        {} if type_changed else (doc.extracted or {}),
+        values,
+        str(access.user_id),
+        utcnow().isoformat(),
+    )
     doc.doc_type = doc_type.value
     doc.extracted = values
     doc.field_confidence = {name: 1.0 for name in values}  # verified by a person

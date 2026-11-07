@@ -322,3 +322,219 @@ Telas:
 - Síndico: "Em atraso" e "Próximos 30 dias", mais um cartão no Resumo. As quatro abas de baixo continuam as mesmas.
 
 O CondoOS não move dinheiro: a agenda não tem ação de pagar nem de agendar pagamento. Corrigido junto: o valor esperado em Pendências passa a incluir o reajuste por índice (antes mostrava o valor original do contrato).
+
+## Planejamento estratégico (pacote v1.0)
+
+**D72 — Documentos vivos do planejamento** (prompt 01, 07/11/2026). O planejador mestre criou `docs/01-repo-audit.md`, `docs/02-gap-matrix.md`, `docs/03-decisions-register.md`, `docs/product-roadmap.md`, `docs/backlog.md`, `docs/traceability.md`, `docs/pilot-protocol.md` e `docs/roadmap-status.md`, sem alterar código.
+- `docs/decisions.md` continua sendo o registro das decisões aceitas (é o "decision-log" do Plano Diretor §12.3). `docs/03-decisions-register.md` guarda só propostas (ADR-P01..P07), divergências com o produto (DV-01..DV-07) e as decisões abertas do Plano (Plano D-01..D-12). Proposta aceita ganha número D7x aqui.
+- Histórias do projeto usam o prefixo CB-xxx, para não colidir com US-001..020 da Especificação.
+- Os testes não foram executados na sessão do planejamento (contêiner sem dependências nem pgvector); o estado dos FR usa `pronto_para_validar`, nunca `validado`, até haver execução e aceite.
+
+**D73 — Condomínio é o cliente; administradora é colaboradora opcional** (DV-01, Marcio, 07/11/2026). O piloto é contratado diretamente pelo condomínio; o síndico é o usuário principal e decide. A administradora continua com suas rotinas (financeiro, folha, burocracia) e, quando participa, é fonte de dados, executora de tarefas e parceira operacional, nunca dependência estrutural nem aprovadora obrigatória. O trabalho hoje feito pela analista se divide em automatizável (CondoOS), que exige validação (CondoOS Reviewer) e que fica na administradora. O produto atual continua funcionando para condomínios com administradora. Fluxo em `docs/flows.md` (F1).
+
+**D74 — Revisão humana proporcional ao risco** (DV-02, Marcio, 07/11/2026). Todo achado é identificado e registrado automaticamente; a qualificação (categoria, severidade, evidência, confiança, impacto, risco) define a revisão por uma política configurável e versionada (`review_policy`, proposta em `docs/data-model.md` §3). Para o piloto: recomendação de economia exige revisão interna CondoOS; achado crítico/alto exige revisão por pessoa qualificada (sem atrasar alertas urgentes); baixo risco segue automático dentro da política; inconclusivo fica pendente de evidência. A validação pelo gerente da administradora (D48) continua permitida quando o condomínio a habilita, mas não é obrigatória. A política padrão reproduz o comportamento atual.
+
+**D75 — Assunto é objeto independente, ligado a achados** (DV-03, Marcio, 07/11/2026; aceita ADR-P01). Achado = informação identificada; Assunto = contexto de gestão e acompanhamento, transversal a Optimize e Operate. Nem todo achado gera assunto; um assunto reúne vários achados; um achado pode estar em mais de um assunto; assunto pode nascer sem achado (pedido humano, manutenção, obrigação, evento externo). Vínculos preservam histórico e origem; duplicidade é verificada antes de criar. Modelo em `docs/data-model.md` §4.
+
+**D76 — Oportunidade e estágios de economia separados de achado** (DV-04, Marcio, 07/11/2026; aceita ADR-P05). Fluxo: achado → qualificação → oportunidade → recomendação → validação → aprovação → execução → mensuração. Economia em estágios distintos (potencial, estimada validada, aprovada, contratada, realizada), cada um com valor, periodicidade, baseline, método, premissas, evidências, confiança, custos de implementação e riscos. Estimativa nunca é apresentada como economia capturada. Modelo em `docs/data-model.md` §5.
+
+**D77 — Permissões granulares e papéis do piloto** (DV-05, Marcio, 07/11/2026). Papéis ativos no piloto: síndico, CondoOS Admin, CondoOS Reviewer e administradora (colaborador externo); subsíndico e conselheiro continuam como hoje. Zelador, fornecedor e morador ficam previstos e sem permissão até a necessidade do piloto. Ler, editar, validar, aprovar e executar são permissões separadas; validar recomendação não é aprovar no condomínio. Papéis de plataforma só veem condomínios atribuídos (menor privilégio); acesso externo é temporário e revogável; tudo auditado. Decisão do Claude, reversível: no condomínio sem administradora, o fechamento do mês passa ao reviewer. Matriz em `docs/authorization-matrix.md`.
+
+**Mudanças persistentes de D73–D77** (migrações 0011–0014) estão propostas em `docs/data-model.md` §7 com impacto, relacionamentos e critérios de validação, e **aguardam aprovação do Marcio** antes de serem escritas.
+
+## Fechamento do gate G1 (incremento 1 do roadmap)
+
+**D78 — CI, evento de segurança e prova de revogação** (CB-001, CB-003, CB-004; 07/11/2026; plano de migração 0011–0014 aprovado pelo Marcio no mesmo dia).
+- **CI** (`.github/workflows/ci.yml`): a cada push e pull request, backend (ruff, black, mypy e a suíte pytest contra `pgvector/pgvector:pg16`, `uv sync --frozen`, sem o extra docling e sem chave de LLM) e frontend (eslint, tsc, prettier). O E2E continua local (`make e2e`), porque precisa da stack inteira.
+- **Evento de segurança.** Pedido a condomínio sem acesso continua 404 (D15) e grava `audit_log` `security.access_denied` com `requested_condominium_id`, método e **modelo** da rota (sem ids nem query); `condominium_id` fica nulo, porque o id pedido pode não existir. Papel sem permissão continua 403 e grava `security.permission_denied` com o condomínio, a permissão e os papéis. Os dois são gravados em transação própria (`core/audit.py::record_security_event`), porque a da requisição é desfeita no erro; falha ao gravar nunca muda a resposta. Só ids e códigos.
+- **Revogação (SEC-10).** O acesso é recalculado a cada requisição; testes provam que, com a sessão ainda válida, remover o acesso dá 404 na requisição seguinte e desativar a pessoa dá 401 (`tests/test_access_revocation.py`).
+- **Fuso por condomínio (CB-002)** não entrou neste incremento: a coluna `condominium.timezone` faz parte da migração 0011 aprovada e vem no incremento 2, para não criar uma migração fora do plano.
+- Limite conhecido: um volume alto de tentativas negadas gera uma linha de auditoria por tentativa; limitação de taxa fica para quando houver acesso externo (fornecedor/morador).
+
+## Incremento 2 — acesso e revisão proporcional (migrações 0011 e 0012)
+
+**D79 — Modelo de acesso e política de revisão implementados** (CB-002, CB-013..CB-017; 07/11/2026; plano aprovado em D73–D77).
+- **Papéis de plataforma** (`platform_role`) e **atribuição por condomínio** (`condo_assignment`, com RLS). A função `app_accessible_condominium_ids` ganhou o ramo da equipe CondoOS e passou a ignorar acessos revogados ou vencidos. Admin e Reviewer só alcançam condomínios atribuídos e vigentes. O primeiro Admin é criado por linha de comando (`python -m app.platform grant-role ...`, com o papel dono do banco); depois, o Admin atribui pessoas da equipe pela API (`/condominiums/{id}/assignments`). Ainda não há tela para isso.
+- **O gerente deixa de ter "todas as permissões".** Antes era `frozenset(Permission)`. Agora a lista é explícita, com as mesmas permissões de antes mais `review_finding`. Sem essa mudança, ele herdaria em silêncio revisão de oportunidade e gestão da plataforma. Validar e revisar só valem quando `condominium.management_company_reviews` está ligado. A regra é aplicada em `CondoAccess.permissions`, então fila, ações permitidas e rotas obedecem juntas.
+- **Acesso externo temporário:** `membership` ganhou `invited_at`, `accepted_at`, `expires_at` e `revoked_at`. Remover um acesso agora **revoga** em vez de apagar (antes era `DELETE`); conceder de novo reativa a mesma linha. O convite é aceito no primeiro login. Papéis `zelador`, `fornecedor` e `morador` foram reservados e não têm permissão.
+- **Fuso horário** por condomínio (`condominium.timezone`, nome IANA). Agenda e pendências usam o "hoje" do condomínio (`core/time.py::local_today`). Salvar o perfil sem informar o fuso mantém o atual.
+- **Política de revisão** (`review_policy`, só inclusão, versionada; a linha com `condominium_id` nulo é o padrão da plataforma e todos a leem). As regras são dados tipados (pydantic com campos desconhecidos recusados), sem expressão em texto. A última regra de cada objeto precisa valer para todos os casos. Sem regra aplicável, a resposta é revisão pela equipe CondoOS. O padrão v1 reproduz o comportamento anterior: achados graves passam por revisão qualificada (equipe CondoOS, ou gerente se permitido) e os demais são publicados direto; oportunidades sempre passam por revisão interna da equipe CondoOS. O achado guarda `review_requirement` e `review_policy_version`.
+- **Pendente de evidência:** status `pendente_evidencia` e ação `solicitar_evidencia` (comentário obrigatório, permissão `review_finding`). Esses achados ficam fora da visão do corpo diretivo e do valor em risco, entram na fila de revisão e bloqueiam o fechamento do mês. A coluna `decision.action` passou de 10 para 25 caracteres.
+- **Revisão interna** (`internal_review`): só a equipe CondoOS valida. Fica pronta para as oportunidades da VS-03.
+- **Quem configura:** síndico ou Admin (`configure_policy`) decidem se a administradora revisa, por `PUT /condominiums/{id}/review-policy`. O gerente não decide isso. O conselho lê a política. Na interface, o cartão "Quem revisa os achados" aparece em Configurações (administradora/Admin). **A tela do síndico para essa chave fica para depois**; a API já atende.
+- **Cadastro direto:** o Admin cadastra pela Carteira um condomínio sem administradora e é atribuído a ele automaticamente. Condomínio novo com administradora nasce com `management_company_reviews = true`; sem administradora, `false`.
+- **Detalhe do achado** distingue "Validado pela administradora" de "Revisado pela equipe CondoOS" (antes, toda validação aparecia como da administradora).
+- **Seed:** Fábio Nogueira Lins (`fabio.admin@condoos.example.com`, Admin nos dois condomínios) e Gabriela Pires Rocha (`gabriela.revisora@condoos.example.com`, Reviewer só em Mirante). Os ids vêm de uuid5, para não alterar a sequência aleatória dos casos plantados.
+- **Migração:** `upgrade → seed → downgrade 0010 → upgrade` verificada num banco separado. O downgrade remove os acessos revogados ou vencidos (para que não voltem a valer) e perde as atribuições da equipe CondoOS.
+- **Limites conhecidos:** sem tela de atribuição de pessoal CondoOS; sem tela do síndico para a política; a política por condomínio existe no modelo, mas ainda não é editável; `confidence` e `category` dos achados ficam nulos até as regras preenchê-los.
+
+## VS-01 — Assunto (migração 0013)
+
+**D80 — Assuntos implementados** (CB-020..CB-027; 07/11/2026; modelo aprovado em D75 e no plano de migração).
+- **Tabelas:** `case_record`, `case_event` (só inclusão; é a linha do tempo), `case_link` (N:N; desfazer o vínculo só preenche `unlinked_at`) e `case_task`, todas com RLS. O nome `case` é palavra reservada no SQL; por isso `case_record` e `case_task` (o modelo de dados dizia `case` e `task`). A numeração `A-AAAA-NNNN` é sequencial por condomínio, com a linha do condomínio travada durante a criação.
+- **"Sem próxima ação, sem controle"** (Espec. §8.4): um assunto aberto tem responsável, próxima ação e prazo, ou está suspenso com motivo e data. Isso é checado no serviço e também por um CHECK no banco. A fila mostra os alertas: sem responsável, sem prazo, próxima ação atrasada e suspensão vencida.
+- **Estados** (Espec. §8.2) em `app/cases/__init__.py::TRANSITIONS`. Cancelar, suspender, reabrir e resolver exigem motivo, assim como voltar de "aguardando validação" para "em execução". **Resolver** exige todas as tarefas fechadas e, quando o assunto pede evidência (o padrão), ao menos uma evidência ativa. "O fornecedor disse que fez" leva a "aguardando validação", nunca a "resolvido" (WF-04, OPS-02). Assunto encerrado não é editado; só reaberto, e o histórico fica.
+- **Vínculos:** achado, documento, contrato, fornecedor (só se o condomínio o usa), despesa e outro assunto. Oportunidade fica para a VS-03. Achado em revisão não pode ser vinculado por quem não o vê. Um registro que já está em outro assunto aberto exige motivo. O vínculo entre assuntos aparece nos dois lados ("citado por"). O achado não muda de status por estar num assunto.
+- **Duplicidade antes de criar:** a API devolve 409 com os candidatos (assuntos abertos que compartilham um registro vinculado, ou da mesma categoria abertos nos últimos 14 dias) e não grava nada. Para seguir, é preciso informar por que abrir outro assunto; o motivo fica no evento de criação.
+- **Permissões:** `manage_cases` (síndico, Admin e Reviewer) abre, edita, vincula, atribui e move qualquer assunto. `update_task` (também a administradora) trabalha nas próprias tarefas e nos assuntos dos quais é responsável. Responsável e executor precisam ter uma dessas permissões no condomínio; uma tarefa pode ir para uma pessoa sem acesso, identificada pelo nome (ex.: "Zelador Paulo"). O conselho lê e comenta.
+- **Evidência:** o upload pelo assunto vira documento do condomínio **sem** passar pela extração (`ingest_file(process=False)`), para não encher a fila de exceções com fotos. Também é possível citar um documento já enviado. Concluir uma tarefa que exige evidência anexa o arquivo ao assunto.
+- **Notificação interna:** nesta fatia é só no aplicativo ("Meus assuntos" lista o que a pessoa responde ou executa, e a troca de responsável vira evento). Nenhum e-mail (Plano D-04).
+- **Datas:** prazo informado só com a data vale até 23h59 no fuso do condomínio. **Defeito encontrado pelo E2E e corrigido:** `formatDateTime` usava o fuso do processo, e as páginas renderizadas no servidor (UTC) mostravam "02:59". Passou a usar o horário de Brasília; formatar no fuso de cada condomínio fica para depois.
+- **Telas:** aba "Assuntos" no celular do síndico (a quinta aba; abertos, meus e encerrados), item "Assuntos" no menu da administradora/equipe CondoOS, formulário de abertura com o tratamento de duplicidade, Assunto 360° (próxima ação, mudança de estado com motivo, contexto, tarefas, evidências, vínculos, comentários e linha do tempo) e "Abrir assunto" no detalhe do achado. Componentes do DS reaproveitados: `Card`, `Badge`, `Field`, `DataTable`, `Timeline`, `EmptyState`; novos: `CaseStatusBadge`/`CaseAttention`, `CaseCards`, `CaseForm`, `CaseDetailView`.
+- **Limites conhecidos:** a tela só cria vínculo com achado (ao abrir a partir dele); os demais vínculos já existem na API, mas ainda não na tela. A fila não tem filtro de categoria ou criticidade na tela (a API filtra). Não há envio de alerta de prazo (FR-026). A tela Hoje ainda não mostra assuntos.
+
+## VS-03 — Oportunidade com revisão interna (migração 0014)
+
+**D81 — Oportunidades e estágios de economia implementados** (CB-061, CB-062, CB-064; 07/11/2026; modelo aprovado em D76 e no plano de migração).
+- **Tabelas:** `opportunity`, `opportunity_finding`, `savings_record` e `opportunity_review`, todas com RLS. As duas últimas só aceitam inclusão: valor e decisão são fotografias e nunca são editados.
+- **Origem:** a equipe CondoOS (`view_opportunity_draft`) gera a oportunidade a partir de um achado R02 (cobrança acima do contrato) ou R03 (reajuste acima do índice). Um achado tem no máximo uma oportunidade em aberto. Oportunidade criada à mão, sem achado, fica para depois.
+- **Cálculo por código, nunca pela IA:** o método `excesso_mensal_v1` usa a diferença mensal da regra; o anualizado é ×12 e o custo de implantação é zero. O baseline é o valor contratual reajustado (R02) ou o valor anterior corrigido pelo índice (R03). As premissas ficam escritas e o ressarcimento do mês já pago a maior aparece à parte, como premissa. A confiança é "alta" se o síndico confirmou o achado e "média" nos demais casos. O hash da versão cobre valor, periodicidade, custo, baseline, premissas, confiança e método, e o teste confere que o cálculo é reproduzível (FIN-01).
+- **Revisão interna** (D74): a política padrão põe toda oportunidade em `em_revisao_interna`, e só a revisora CondoOS age. Ela pode:
+  - aprovar (grava "economia estimada validada" e marca `presented_at`);
+  - ajustar (nova linha de potencial, com motivo);
+  - devolver ou rejeitar (com motivo);
+  - reabrir a revisão de algo já apresentado (sai da visão do condomínio até nova aprovação).
+- **Antes da aprovação, a oportunidade não existe para o corpo diretivo nem para a administradora:** a API responde 404 (OPT-01, FR-046). Depois da aprovação, o corpo diretivo vê só a economia estimada validada (nunca o potencial bruto) e, do histórico, só as aprovações e as decisões do condomínio, sem as notas internas.
+- **Decisão do condomínio** (`approve_in_condo`, só o síndico): aprovar e seguir (grava "economia aprovada para execução") ou recusar (com motivo). Se o potencial mudar depois da revisão, a aprovação do condomínio é recusada até nova revisão (US-011). Revisora e síndico não fazem a ação um do outro (D77).
+- **Estágios lado a lado, nunca somados:** cada um tem nome próprio na tela (potencial identificada, estimada validada, aprovada para execução, contratada ou negociada, realizada e comprovada) e a tela avisa que a estimativa não é economia capturada.
+- **Assunto ↔ oportunidade:** o vínculo foi habilitado. O assunto pode nascer de uma oportunidade (origem `opportunity`) e o síndico abre um assunto para acompanhar a oportunidade aprovada.
+- **Telas:**
+  - menu "Oportunidades" no desktop;
+  - "Gerar oportunidade" no detalhe de achados R02/R03 (só para a equipe CondoOS);
+  - detalhe com recomendação, estágios, premissas, ações de revisão ou decisão e histórico;
+  - no celular do síndico, cartão "Oportunidades de economia" no Resumo, mais lista e detalhe.
+- **Limites conhecidos:**
+  - estágios "contratada" e "realizada" (CB-063) e extração de aviso prévio e multa (CB-060) não entraram;
+  - um único método de cálculo (R02/R03);
+  - o relatório PDF/XLSX ainda não mostra oportunidades.
+
+## VS-04 — Briefing do dia e tela Hoje (migração 0015)
+
+**D82 — Briefing orientado por dados** (CB-041, CB-042; 07/11/2026; migração 0015 aprovada pelo Marcio no mesmo dia).
+- **Tabela `briefing`** (RLS): um registro por pessoa, condomínio e dia no fuso do condomínio. "Atualizar" cria uma versão nova e nunca edita a anterior. Cada registro guarda o período (desde o briefing anterior da pessoa, ou as últimas 24 h), as fontes parciais e a hora em que foi lido. Retenção de 90 dias no job diário (`retention.purge`): o briefing é uma conveniência, não um registro.
+- **Montado por código, sem IA** (`app/briefing/`). Sete seções:
+  - riscos e atrasos (assuntos com próxima ação atrasada, suspensão vencida ou criticidade crítica; achados graves sem decisão; vencimentos sem pagamento);
+  - decisões aguardando a pessoa, conforme as permissões dela (achados para decidir, oportunidades apresentadas, achados em revisão, oportunidades em revisão CondoOS, fila de exceções);
+  - o que está em andamento com ela (tarefas e assuntos);
+  - o que foi concluído no período;
+  - agenda dos próximos 7 dias;
+  - oportunidades (com o nome do estágio, nunca somadas);
+  - qualidade dos dados (último documento recebido e último lançamento do extrato).
+- **Não afirma o que não aconteceu:** "Concluído" só lista eventos registrados no período (assunto resolvido ou cancelado, tarefa concluída, decisão sobre achado, decisão sobre oportunidade). Cada item aponta para a fonte e abre no contexto certo.
+- **Não mistura condomínios:** um briefing por condomínio; o desktop mostra um por condomínio, lado a lado. O teste confere que toda referência pertence ao condomínio do próprio briefing.
+- **Fonte que falha ou está desatualizada:** cada seção roda num savepoint próprio. Se falhar, o briefing sai mesmo assim, com o aviso "Dados parciais" e a fonte indicada. Também conta como parcial ficar mais de 35 dias sem documento novo ou sem lançamento no extrato.
+- **Defeito encontrado e lição:** a seção "Concluído" falhava (uso de `Result.tuples()`, obsoleto no SQLAlchemy) e a proteção de fonte parcial escondeu o erro; só um teste de conteúdo o pegou. Por isso o teste principal agora exige que, em uso normal, as únicas fontes parciais sejam as de dados desatualizados.
+- **Privacidade:** os nomes exibidos vêm só das pessoas que aparecem nos registros do período (a tabela de usuários não tem RLS; nunca carregar todos).
+- **Entrega só dentro do aplicativo** (Plano D-04): nenhum e-mail ou mensagem. A leitura é registrada quando a pessoa abre a tela.
+- **Telas:**
+  - no celular, a aba "Resumo" passou a se chamar **"Hoje"**: o briefing vem primeiro e a auditoria do mês segue logo abaixo, sem mudança (mesma rota `/resumo`);
+  - no desktop, novo item **"Hoje"** no topo do menu, com um briefing por condomínio.
+  - A tela inicial do desktop continua sendo a Carteira.
+- **Teste E2E corrigido:** o fluxo de cadastro de contrato tinha uma corrida antiga (clicava "Mirante do Vale" antes de a página de novo contrato carregar e acertava o filtro da lista); agora espera a navegação.
+- **Limites conhecidos:**
+  - sem reescrita por IA do texto (pode vir depois, com a mesma conferência numérica das explicações);
+  - sem envio por e-mail ou WhatsApp;
+  - sem horário configurável por pessoa (FR-009);
+  - sem digest semanal (FR-038).
+
+## VS-05 — Pedido de ação com aprovação, política mínima e kill switch (migração 0016)
+
+**D83 — Ação aprovada com escopo congelado, sem envio externo** (CB-010, CB-011, CB-050; 07/11/2026; migração 0016 aprovada pelo Marcio no mesmo dia).
+- **Tabelas** (todas com RLS):
+  - `action_request`: tipo da ação, assunto e oportunidade opcionais, conteúdo congelado com hash (efeito exato, motivo, quem executa, fornecedor, prazo, riscos), teto de custo, decisão e versão da política, estado, chave de idempotência (única por condomínio), quem aprovou e até quando vale a aprovação, execução registrada;
+  - `action_decision`: cada passo (pedir, ajustar, aprovar, recusar, cancelar, anular, encaminhar, bloquear, aprovação vencida, executar), com a versão do conteúdo; **só inclusão**;
+  - `outbox_event`: um evento por aprovação, com chave de idempotência única: reprocessar a mesma aprovação não duplica;
+  - `automation_pause`: o kill switch, por condomínio e por tipo (ou "todas"); retomar preenche `resumed_at` e mantém o histórico.
+- **Motor de política mínimo** (`app/policy/`, código tipado, versão 1, sem avaliação de texto):
+  - tipo desconhecido → **nega**;
+  - pagamento, contratação, multa e alteração de dados bancários → **nega sempre** (decisão humana fora do sistema);
+  - pedir orçamento sem compromisso → só com teto R$ 0,00;
+  - cobrar fornecedor, pedir orçamento e agendar visita técnica → **exige aprovação** do síndico;
+  - teto acima da alçada do síndico → **nega** ("leve ao conselho ou à assembleia");
+  - custo sem alçada configurada → **exige revisão** (configurar a alçada antes);
+  - automação pausada → **pausa**.
+  - Nenhuma regra desta versão responde "permite": nada roda sem uma pessoa.
+  - A negativa fica registrada em `audit_log` (`action.denied_by_policy`), sem criar pedido.
+- **Ciclo** (Especificação §9.5):
+  - quem trata assuntos (`manage_cases`: síndico, Admin e Reviewer CondoOS) pede;
+  - só quem aprova pelo condomínio (`approve_in_condo`: síndico) aprova, recusa ou pede ajustes;
+  - a aprovação vale para o hash da versão que estava na tela. Versão diferente → 409 (SEC-04);
+  - a aprovação vale por 7 dias;
+  - ajustar depois de aprovado anula a aprovação e cancela o evento pendente;
+  - recusa exige motivo e nunca gera evento (WF-06).
+- **Despacho** (job `action.dispatch`, worker): confere de novo o estado, o hash do conteúdo (recalculado), a validade e a política.
+  - Conteúdo alterado por fora → `bloqueada`.
+  - Aprovação vencida ou política mudada → volta para aprovação.
+  - Sem conector no piloto, **nada é enviado**: a ação passa a "aprovada, aguardando execução" e uma pessoa executa e registra.
+- **Execução registrada:** confere a validade de novo (SEC-05). Custo final acima do teto anula a aprovação, atualiza o teto e devolve para nova aprovação (SEC-04). Não existem estados "expirada" ou "invalidada": o pedido volta para aprovação, e a trilha registra "aprovação vencida" ou "anulou a aprovação".
+- **Kill switch** (FR-007): `configure_policy` (síndico, Admin CondoOS) pausa e retoma. Tipos pausáveis: despacho de ações e reescrita das explicações por IA.
+  - O worker não roda job pausado: devolve para a fila sem gastar tentativa e tenta de novo em 1 minuto.
+  - Pedidos novos recebem 409 enquanto houver pausa.
+  - Pausar e retomar ficam em `audit_log`.
+- **Assunto:** cada passo de uma ação vinculada entra na linha do tempo do assunto (`case_event` tipo `acao`).
+- **Hoje:** o briefing mostra ao síndico as ações aguardando aprovação e, a quem trata assuntos, as aguardando execução.
+- **Telas:**
+  - "Aprovações" no celular, com pedidos, aprovação contextual e o card de pausa (acesso pelo Hoje e pelo assunto);
+  - item "Aprovações" no menu do desktop;
+  - "Pedir ação com aprovação" no assunto;
+  - card "Pausar automações" em Configurações.
+  - A tela de aprovação mostra o que a §7.5 pede: o que será autorizado, por quê, o que acontece depois do clique, custo e teto, quem executa, fontes, riscos, alçada e vigência.
+- **Fora do escopo:** autenticação reforçada (§7.5 item 10; depende de MFA, excluído), "Escalar" e delegação, aprovação pelo conselho, conectores de envio, política configurável pelo condomínio (CB-012).
+
+## Sobras do backlog (CB-018, CB-019, CB-023, CB-028, CB-063, CB-070)
+
+**D84 — Itens do backlog sem mudança de estrutura** (07/11/2026; pedido do Marcio: "Faça os itens de backlog"). Nenhuma migração nova.
+- **CB-018, equipe CondoOS em Configurações.** O Admin CondoOS atribuído ao condomínio lista, atribui (motivo e prazo opcional) e remove pessoas da equipe pela API existente. A pessoa precisa já ter o papel na plataforma. O status aparece como texto e ícone ("Ativa" ou "Encerrada").
+- **CB-019, "Ajustes" no celular do síndico.** Novo link no topo da tela, com quem revisa os achados (liga e desliga a revisão pela administradora) e a pausa de automações. A pausa saiu da tela Aprovações e foi para cá.
+- **CB-023, filtros da fila de assuntos.** Pessoa, categoria, criticidade e prazo (atrasados, próximos 7 dias, sem prazo) no celular e no desktop. A API ganhou `?prazo=`. Os filtros ficam na URL.
+  - Defeito achado pelo E2E: escolher dois filtros em seguida perdia o primeiro, porque a URL ainda não tinha sido atualizada. Corrigido.
+- **CB-028, vincular pela tela do assunto.** "Vincular registro" busca contratos, documentos, fornecedores, despesas, achados e outros assuntos (nova rota só de leitura `.../link-candidates`).
+  - Respeita a visibilidade: o corpo diretivo não vê achados em revisão; outro condomínio responde 404.
+  - Marca o registro que já está em outro assunto aberto e pede o motivo antes de vincular, como a API exige.
+- **CB-063, economia contratada e realizada** (sem mover dinheiro nem enviar nada):
+  - **contratada:** registrada pelo síndico ou pela revisora CondoOS depois da aprovação do condomínio, com o documento do acordo (guardado sem ir para a extração) e o novo valor mensal. A economia é o baseline menos o valor acordado (método `acordo_v1`), com o custo da mudança; a oportunidade passa a "em execução";
+  - **realizada:** medida só pela revisora CondoOS, a partir das faturas com nota emitidas depois do acordo (até 12), comparadas com o baseline (método `medicao_faturas_v1`). A confiança é média com menos de 3 faturas; sem fatura, nada é registrado. Passa a "resultado medido";
+  - cada estágio é uma linha nova em `savings_record`, nunca somada aos outros. Como `opportunity_review` só aceita as ações já listadas na migração 0014, o histórico desses dois passos vem de `savings_record` e `audit_log`.
+- **CB-070, base do piloto.** As métricas internas ganharam indicadores do protocolo §4, só com contagens:
+  - despesas por competência;
+  - achados contestados ou ignorados (só um sinal de falso positivo);
+  - divergências confirmadas em R$ (não é economia);
+  - tentativas de acesso entre condomínios e ações negadas pela política (meta: zero);
+  - sessões do corpo diretivo;
+  - economia anual por estágio, estimada validada e realizada, sempre separadas.
+  - Horas poupadas e falso positivo real continuam fora do produto (diário e revisão amostral).
+
+## Itens do backlog com migração (0017)
+
+**D85 — Versões, proveniência e cláusulas de rescisão** (CB-012, CB-030, CB-031, CB-060; 07/11/2026; migração 0017 aprovada pelo Marcio no mesmo dia). Migração toda aditiva; ida e volta verificada.
+- **CB-012, alçadas e parâmetros versionados.**
+  - Nova tabela `condominium_settings_version` (RLS, só inclusão). A versão 1 sai dos valores atuais.
+  - Mudar alçada ou parâmetro em Configurações cria uma versão com autor, motivo e início. Salvar os mesmos valores não cria versão.
+  - As regras avaliam cada mês com a versão vigente no fim dele; meses anteriores à primeira versão usam a primeira. A R12 registra a versão que decidiu (`versao_alcadas`).
+  - `condominium.approval_limits` e `rule_params` continuam com o valor atual, então nada que já os lia mudou.
+  - O motor de ações (D83) usa a alçada atual, porque a decisão é agora.
+- **CB-030, proveniência por campo** (`document.field_provenance`).
+  - Cada campo guarda a origem (XML, texto, IA) e, quando o texto mostra o valor, a página e o trecho. O trecho é localizado por código nos formatos brasileiros (R$ 1.234,56, 05/10/2026, CNPJ e CPF formatados) e nunca é inventado.
+  - Campo sem valor fica "não disponível".
+  - A revisão por pessoa marca todos os campos como "confirmado", com autor e data. O trecho é mantido quando o valor não mudou.
+  - A tela de correção mostra origem, página e trecho de cada campo. A IA que não tem trecho localizado aparece como "confira no arquivo".
+- **CB-031, versão de documento** (`document.version`, `document.supersedes_id`).
+  - Nova rota `POST .../documents/{id}/versions`: o arquivo novo vira a versão seguinte.
+  - A anterior fica guardada, com o ponteiro para a nova, e sai da busca do chat.
+  - Os contratos que vinham dela passam a apontar para a nova.
+  - Só uma versão mais nova por documento; o mesmo arquivo de novo é recusado.
+  - O contrato tem "Enviar nova versão do contrato".
+- **CB-060, aviso prévio, renovação e multa** (`contract.notice_days`, `auto_renewal`, `termination_penalty`, `clause_evidence`).
+  - Lidos por regra do texto do contrato, com o trecho; o que o texto não diz fica vazio.
+  - Aplicados quando o contrato nasce do documento e no seed. Para bancos existentes: `python -m app.extraction.clauses`. Valor posto por pessoa é mantido.
+  - A agenda mostra o prazo do aviso prévio ("previsto"); as telas de contrato mostram os termos ou "não disponível".
+- **Limites:**
+  - a leitura de cláusulas é por regra (sem IA) e cobre as redações comuns;
+  - não há tela para editar os termos lidos;
+  - a versão do documento é marcada pela pessoa (não há detecção automática de "mesmo documento").
+
+## Integração de branches
+
+**D86 — Ações do relatório na carteira seguem permissão e competência** (trazida da branch `claude/compassionate-edison-b6wkpi`, onde tinha o número D65, já usado). `/portfolio` devolve, por condomínio, `can_close` (papel com `close_competence`) e `has_competence` (existe competência do último mês da carteira). A tela mostra "Fechar mês" só com os dois verdadeiros e a prévia só quando a competência existe (senão "—"). Antes, a analista via o botão e recebia 403, e um condomínio recém-cadastrado recebia 404.
+
+**D87 — Método da economia realizada confirmado (Plano D-07).** O Marcio aprovou em 07/11/2026 o método `medicao_faturas_v1` (D84): média das faturas com nota emitidas depois do acordo, comparada ao baseline, com o custo da mudança descontado no valor líquido. Sazonalidade e mudança de escopo continuam fora; um método novo entra como versão nova.

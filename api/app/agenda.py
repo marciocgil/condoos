@@ -35,7 +35,7 @@ from app.enrichment.indices import load_index_table
 from app.pending import GRACE_DAYS, billing_expected, month_end
 from app.rules.contracts import anniversaries, contract_value_at, terms_at
 
-KINDS = ("vencimento", "nf_prevista", "reajuste", "fim_contrato")
+KINDS = ("vencimento", "nf_prevista", "reajuste", "aviso_previo", "fim_contrato")
 ADJUSTING = {
     AdjustmentIndex.IPCA.value,
     AdjustmentIndex.IGPM.value,
@@ -213,6 +213,26 @@ async def condominium_agenda(
                             contract_id=c.id,
                         )
                     )
+        # Last day to give notice before the end of the term (CB-060), read from the contract.
+        if c.end_date is not None and c.notice_days:
+            deadline = c.end_date - timedelta(days=c.notice_days)
+            if start <= deadline <= end:
+                events.append(
+                    Event(
+                        date=deadline,
+                        kind="aviso_previo",
+                        title=f"Prazo do aviso prévio · {name}",
+                        detail=(
+                            f"{c.notice_days} dias antes do fim; renova automaticamente se "
+                            "ninguém avisar"
+                            if c.auto_renewal
+                            else f"{c.notice_days} dias antes do fim do contrato"
+                        ),
+                        status="previsto" if deadline >= today else "vencido",
+                        predicted=deadline >= today,
+                        contract_id=c.id,
+                    )
+                )
         # End of the term.
         if c.end_date is not None and start <= c.end_date <= end:
             events.append(

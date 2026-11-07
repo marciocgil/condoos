@@ -191,7 +191,23 @@ async def test_rls_blocks_writes_into_another_condominium(
 
 @pytest.mark.parametrize(
     "statement",
-    ["UPDATE decision SET comment = 'x'", "DELETE FROM decision", "DELETE FROM audit_log"],
+    [
+        "UPDATE decision SET comment = 'x'",
+        "DELETE FROM decision",
+        "DELETE FROM audit_log",
+        "UPDATE review_policy SET reason = 'x'",
+        "DELETE FROM review_policy",
+        "UPDATE case_event SET reason = 'x'",
+        "DELETE FROM case_event",
+        "UPDATE savings_record SET amount = 0",
+        "DELETE FROM savings_record",
+        "UPDATE opportunity_review SET comment = 'x'",
+        "DELETE FROM opportunity_review",
+        "UPDATE action_decision SET comment = 'x'",
+        "DELETE FROM action_decision",
+        "UPDATE condominium_settings_version SET reason = 'x'",
+        "DELETE FROM condominium_settings_version",
+    ],
 )
 async def test_append_only_tables(app_engine: AsyncEngine, statement: str) -> None:
     with pytest.raises((DBAPIError, ProgrammingError), match="permission denied"):

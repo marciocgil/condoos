@@ -27,14 +27,26 @@ from sqlalchemy import (
     UniqueConstraint,
     func,
 )
+from sqlalchemy import (
+    text as sql_text,
+)
 from sqlalchemy.dialects.postgresql import JSONB, TSVECTOR, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
+from app.core.time import DEFAULT_TIMEZONE
 from app.db.base import Base, IdTimestampMixin
 from app.db.enums import (
+    MEMBERSHIP_ROLES,
+    ActionDecisionKind,
+    ActionStatus,
     AdjustmentIndex,
     BankTransactionOrigin,
     BoardPosition,
+    CaseCategory,
+    CaseLinkTarget,
+    CaseOrigin,
+    CaseSeverity,
+    CaseStatus,
     ChatRole,
     CompetenceStatus,
     DecisionAction,
@@ -43,8 +55,16 @@ from app.db.enums import (
     ExtractionStatus,
     FindingStatus,
     JobStatus,
-    Role,
+    OpportunityReviewAction,
+    OpportunityStatus,
+    OpportunityType,
+    OutboxStatus,
+    PlatformRole,
+    PolicyDecision,
+    ReviewRequirement,
+    SavingsStage,
     Severity,
+    TaskStatus,
 )
 
 Json = JSON().with_variant(JSONB(), "postgresql")
@@ -91,6 +111,15 @@ class Condominium(IdTimestampMixin, Base):
     rule_params: Mapped[dict[str, Any]] = mapped_column(Json, default=dict)
     expense_categories: Mapped[list[str]] = mapped_column(Json, default=list)
     retention_years: Mapped[int] = mapped_column(Integer, default=5)
+    # IANA time zone for deadlines, agenda and "today" (ADR-P07, migration 0011).
+    timezone: Mapped[str] = mapped_column(
+        String(64), default=DEFAULT_TIMEZONE, server_default=DEFAULT_TIMEZONE
+    )
+    # Whether the management company's manager may review findings (D74). Optional by design:
+    # the condominium is the client and never depends on a management company (D73).
+    management_company_reviews: Mapped[bool] = mapped_column(
+        Boolean, default=False, server_default="false"
+    )
 
 
 class AppUser(IdTimestampMixin, Base):
@@ -107,7 +136,10 @@ class Membership(IdTimestampMixin, Base):
 
     __tablename__ = "membership"
     __table_args__ = (
-        _enum_check("role", Role),
+        CheckConstraint(
+            "role IN (" + ", ".join(f"'{r.value}'" for r in MEMBERSHIP_ROLES) + ")",
+            name="role_valid",
+        ),
         CheckConstraint(
             "(condominium_id IS NULL) <> (management_company_id IS NULL)",
             name="exactly_one_scope",
@@ -125,6 +157,50 @@ class Membership(IdTimestampMixin, Base):
         "management_company.id", nullable=True
     )
     role: Mapped[str] = mapped_column(String(20))
+    # Temporary and revocable access for external participants (D77, migration 0011).
+    # All NULL = permanent access, as before. A revoked row is kept (history) and can be
+    # reactivated by granting the same access again.
+    invited_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    accepted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class PlatformRoleGrant(IdTimestampMixin, Base):
+    """A CondoOS staff role (admin or reviewer). Grants no condominium by itself: access to
+    each condominium needs a ``condo_assignment`` (least privilege, D77)."""
+
+    __tablename__ = "platform_role"
+    __table_args__ = (_enum_check("role", PlatformRole), UniqueConstraint("user_id", "role"))
+
+    user_id: Mapped[uuid.UUID] = _uuid_fk("app_user.id", ondelete="CASCADE")
+    role: Mapped[str] = mapped_column(String(20))
+    granted_by_user_id: Mapped[uuid.UUID | None] = _uuid_fk(
+        "app_user.id", nullable=True, ondelete="SET NULL"
+    )
+    reason: Mapped[str] = mapped_column(String(300))
+    expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class CondoAssignment(IdTimestampMixin, Base):
+    """A CondoOS staff member assigned to one condominium, with an optional end date."""
+
+    __tablename__ = "condo_assignment"
+    __table_args__ = (
+        _enum_check("platform_role", PlatformRole),
+        UniqueConstraint("condominium_id", "user_id", "platform_role"),
+    )
+
+    condominium_id: Mapped[uuid.UUID] = _uuid_fk("condominium.id")
+    user_id: Mapped[uuid.UUID] = _uuid_fk("app_user.id", ondelete="CASCADE")
+    platform_role: Mapped[str] = mapped_column(String(20))
+    granted_by_user_id: Mapped[uuid.UUID | None] = _uuid_fk(
+        "app_user.id", nullable=True, ondelete="SET NULL"
+    )
+    reason: Mapped[str] = mapped_column(String(300))
+    valid_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
 class BoardMember(IdTimestampMixin, Base):
@@ -213,6 +289,13 @@ class Contract(IdTimestampMixin, Base):
     source_document_id: Mapped[uuid.UUID | None] = _uuid_fk(
         "document.id", nullable=True, ondelete="SET NULL"
     )
+    # Termination terms read from the contract text, each with its excerpt (CB-060, D85).
+    notice_days: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    auto_renewal: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    termination_penalty: Mapped[str | None] = mapped_column(String(300), nullable=True)
+    clause_evidence: Mapped[dict[str, Any]] = mapped_column(
+        Json, default=dict, server_default=sql_text("'{}'")
+    )
 
 
 class ContractAmendment(IdTimestampMixin, Base):
@@ -244,6 +327,12 @@ class Document(IdTimestampMixin, Base):
         _enum_check("origin", DocumentOrigin),
         _enum_check("extraction_status", ExtractionStatus),
         UniqueConstraint("condominium_id", "sha256"),
+        Index(
+            "ix_document_supersedes_id",
+            "supersedes_id",
+            unique=True,
+            postgresql_where=sql_text("supersedes_id IS NOT NULL"),
+        ),
     )
 
     condominium_id: Mapped[uuid.UUID] = _uuid_fk("condominium.id")
@@ -258,6 +347,15 @@ class Document(IdTimestampMixin, Base):
     )
     extracted: Mapped[dict[str, Any]] = mapped_column(Json, default=dict)
     field_confidence: Mapped[dict[str, float]] = mapped_column(Json, default=dict)
+    # Per field: {"source": "xml|texto|ia|pessoa", "page": 1, "excerpt": "...", ...} (D85).
+    field_provenance: Mapped[dict[str, Any]] = mapped_column(
+        Json, default=dict, server_default=sql_text("'{}'")
+    )
+    # A new file of the same logical document (D85); the previous one is kept.
+    version: Mapped[int] = mapped_column(Integer, default=1, server_default="1")
+    supersedes_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("document.id", ondelete="SET NULL"), nullable=True
+    )
     needs_review: Mapped[bool] = mapped_column(Boolean, default=False)
     # Why the document is in the exception queue (pt-BR, shown to the analyst).
     review_reasons: Mapped[list[str]] = mapped_column(Json, default=list)
@@ -443,6 +541,32 @@ class Finding(IdTimestampMixin, Base):
     supplier_id: Mapped[uuid.UUID | None] = _uuid_fk("supplier.id", nullable=True)
     # Same rule + same subject => same finding when the pipeline is re-run (idempotency).
     dedupe_key: Mapped[str] = mapped_column(String(200))
+    # Review proportional to risk (D74, migration 0012): what the policy required and which
+    # policy version decided it. ``confidence`` and ``category`` are filled by future rules.
+    review_requirement: Mapped[str] = mapped_column(
+        String(20), default=ReviewRequirement.NONE.value, server_default="none"
+    )
+    review_policy_version: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    confidence: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    category: Mapped[str | None] = mapped_column(String(40), nullable=True)
+
+
+class ReviewPolicy(IdTimestampMixin, Base):
+    """Versioned review policy (D74). ``condominium_id`` NULL = the platform default, which
+    every condominium reads; a condominium row overrides it from ``valid_from`` on. Append
+    only: a change is a new version."""
+
+    __tablename__ = "review_policy"
+    __table_args__ = (UniqueConstraint("condominium_id", "version"),)
+
+    condominium_id: Mapped[uuid.UUID | None] = _uuid_fk("condominium.id", nullable=True)
+    version: Mapped[int] = mapped_column(Integer)
+    valid_from: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    created_by_user_id: Mapped[uuid.UUID | None] = _uuid_fk(
+        "app_user.id", nullable=True, ondelete="SET NULL"
+    )
+    rules: Mapped[list[dict[str, Any]]] = mapped_column(Json, default=list)
+    reason: Mapped[str] = mapped_column(String(300))
 
 
 class Decision(IdTimestampMixin, Base):
@@ -454,7 +578,7 @@ class Decision(IdTimestampMixin, Base):
     condominium_id: Mapped[uuid.UUID] = _uuid_fk("condominium.id")
     finding_id: Mapped[uuid.UUID] = _uuid_fk("finding.id")
     user_id: Mapped[uuid.UUID] = _uuid_fk("app_user.id")
-    action: Mapped[str] = mapped_column(String(10))
+    action: Mapped[str] = mapped_column(String(25))
     comment: Mapped[str | None] = mapped_column(Text, nullable=True)
     decided_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
@@ -574,6 +698,332 @@ class AuditLog(IdTimestampMixin, Base):
     details: Mapped[dict[str, Any]] = mapped_column(Json, default=dict)
 
 
+# --------------------------------------------------------------------------- cases (D75, D80)
+
+
+class CaseRecord(IdTimestampMixin, Base):
+    """Assunto: a situation to organise, follow and close with evidence (spec §8). Linked to
+    findings and other records, never a kind of finding (D75). ``case`` is a reserved SQL
+    word, hence ``case_record``."""
+
+    __tablename__ = "case_record"
+    __table_args__ = (
+        _enum_check("status", CaseStatus),
+        _enum_check("origin", CaseOrigin),
+        _enum_check("severity", CaseSeverity),
+        _enum_check("category", CaseCategory),
+        UniqueConstraint("condominium_id", "number"),
+    )
+
+    condominium_id: Mapped[uuid.UUID] = _uuid_fk("condominium.id")
+    number: Mapped[str] = mapped_column(String(20))  # A-2026-0001, per condominium
+    title: Mapped[str] = mapped_column(String(200))
+    description: Mapped[str] = mapped_column(Text, default="")
+    category: Mapped[str] = mapped_column(String(20))
+    origin: Mapped[str] = mapped_column(String(20))
+    severity: Mapped[str] = mapped_column(String(10))
+    status: Mapped[str] = mapped_column(String(30))
+    owner_user_id: Mapped[uuid.UUID | None] = _uuid_fk(
+        "app_user.id", nullable=True, ondelete="SET NULL"
+    )
+    next_action: Mapped[str | None] = mapped_column(String(300), nullable=True)
+    next_action_due_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    suspended_until: Mapped[date | None] = mapped_column(Date, nullable=True)
+    suspension_reason: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    resolution_criterion: Mapped[str] = mapped_column(String(500))
+    requires_evidence: Mapped[bool] = mapped_column(Boolean, default=True)
+    created_by_user_id: Mapped[uuid.UUID | None] = _uuid_fk(
+        "app_user.id", nullable=True, ondelete="SET NULL"
+    )
+    closed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class CaseEvent(IdTimestampMixin, Base):
+    """Timeline of a case (FR-023). Append only, like ``decision``; details hold ids only."""
+
+    __tablename__ = "case_event"
+
+    condominium_id: Mapped[uuid.UUID] = _uuid_fk("condominium.id")
+    case_id: Mapped[uuid.UUID] = _uuid_fk("case_record.id")
+    actor_user_id: Mapped[uuid.UUID | None] = _uuid_fk(
+        "app_user.id", nullable=True, ondelete="SET NULL"
+    )
+    actor_kind: Mapped[str] = mapped_column(String(10), default="user")  # user | system | ai
+    kind: Mapped[str] = mapped_column(String(30))
+    from_value: Mapped[str | None] = mapped_column(String(300), nullable=True)
+    to_value: Mapped[str | None] = mapped_column(String(300), nullable=True)
+    reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    details: Mapped[dict[str, Any]] = mapped_column(Json, default=dict)
+
+
+class CaseLink(IdTimestampMixin, Base):
+    """N:N between a case and another record. Unlinking only fills ``unlinked_at``."""
+
+    __tablename__ = "case_link"
+    __table_args__ = (_enum_check("target_type", CaseLinkTarget),)
+
+    condominium_id: Mapped[uuid.UUID] = _uuid_fk("condominium.id")
+    case_id: Mapped[uuid.UUID] = _uuid_fk("case_record.id")
+    target_type: Mapped[str] = mapped_column(String(20))
+    target_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), index=True)
+    as_evidence: Mapped[bool] = mapped_column(Boolean, default=False)
+    reason: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    linked_by_user_id: Mapped[uuid.UUID | None] = _uuid_fk(
+        "app_user.id", nullable=True, ondelete="SET NULL"
+    )
+    unlinked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    unlinked_by_user_id: Mapped[uuid.UUID | None] = _uuid_fk(
+        "app_user.id", nullable=True, ondelete="SET NULL"
+    )
+
+
+class CaseTask(IdTimestampMixin, Base):
+    __tablename__ = "case_task"
+    __table_args__ = (_enum_check("status", TaskStatus),)
+
+    condominium_id: Mapped[uuid.UUID] = _uuid_fk("condominium.id")
+    case_id: Mapped[uuid.UUID] = _uuid_fk("case_record.id")
+    title: Mapped[str] = mapped_column(String(200))
+    assignee_user_id: Mapped[uuid.UUID | None] = _uuid_fk(
+        "app_user.id", nullable=True, ondelete="SET NULL"
+    )
+    assignee_label: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    due_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    status: Mapped[str] = mapped_column(String(20), default=TaskStatus.ABERTA.value)
+    blocked_reason: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    requires_evidence: Mapped[bool] = mapped_column(Boolean, default=False)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    completed_by_user_id: Mapped[uuid.UUID | None] = _uuid_fk(
+        "app_user.id", nullable=True, ondelete="SET NULL"
+    )
+
+
+# --------------------------------------------------------------------------- opportunities (D76, D81)
+
+
+class Opportunity(IdTimestampMixin, Base):
+    """A possible benefit drawn from one or more findings (D76). Invisible to the board until a
+    CondoOS reviewer approves it (``presented_at``), FR-046 / OPT-01."""
+
+    __tablename__ = "opportunity"
+    __table_args__ = (
+        _enum_check("status", OpportunityStatus),
+        _enum_check("opportunity_type", OpportunityType),
+        UniqueConstraint("condominium_id", "number"),
+    )
+
+    condominium_id: Mapped[uuid.UUID] = _uuid_fk("condominium.id")
+    number: Mapped[str] = mapped_column(String(20))  # O-2026-0001
+    title: Mapped[str] = mapped_column(String(200))
+    opportunity_type: Mapped[str] = mapped_column(String(30))
+    status: Mapped[str] = mapped_column(String(30))
+    contract_id: Mapped[uuid.UUID | None] = _uuid_fk("contract.id", nullable=True)
+    supplier_id: Mapped[uuid.UUID | None] = _uuid_fk("supplier.id", nullable=True)
+    recommendation: Mapped[str] = mapped_column(Text)
+    operational_impact: Mapped[str] = mapped_column(String(500))
+    legal_contractual_risk: Mapped[str] = mapped_column(String(10))  # baixo | medio | alto
+    implementation_readiness: Mapped[str] = mapped_column(String(30))
+    review_requirement: Mapped[str] = mapped_column(String(20))
+    review_policy_version: Mapped[int] = mapped_column(Integer)
+    presented_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_by_user_id: Mapped[uuid.UUID | None] = _uuid_fk(
+        "app_user.id", nullable=True, ondelete="SET NULL"
+    )
+
+
+class OpportunityFinding(IdTimestampMixin, Base):
+    __tablename__ = "opportunity_finding"
+    __table_args__ = (UniqueConstraint("opportunity_id", "finding_id"),)
+
+    condominium_id: Mapped[uuid.UUID] = _uuid_fk("condominium.id")
+    opportunity_id: Mapped[uuid.UUID] = _uuid_fk("opportunity.id")
+    finding_id: Mapped[uuid.UUID] = _uuid_fk("finding.id")
+
+
+class SavingsRecord(IdTimestampMixin, Base):
+    """One dated photograph of a value at one stage (append only, never summed across stages)."""
+
+    __tablename__ = "savings_record"
+    __table_args__ = (_enum_check("stage", SavingsStage),)
+
+    condominium_id: Mapped[uuid.UUID] = _uuid_fk("condominium.id")
+    opportunity_id: Mapped[uuid.UUID] = _uuid_fk("opportunity.id")
+    stage: Mapped[str] = mapped_column(String(20))
+    amount: Mapped[Decimal] = mapped_column(Money)  # per period below
+    periodicity: Mapped[str] = mapped_column(String(10))  # unica | mensal | anual
+    annualized_amount: Mapped[Decimal] = mapped_column(Money)
+    one_time_cost: Mapped[Decimal] = mapped_column(Money)
+    net_amount: Mapped[Decimal] = mapped_column(Money)  # annualized − one-time cost
+    baseline_period_start: Mapped[date] = mapped_column(Date)
+    baseline_period_end: Mapped[date] = mapped_column(Date)
+    baseline_amount: Mapped[Decimal] = mapped_column(Money)
+    method_code: Mapped[str] = mapped_column(String(40))
+    assumptions: Mapped[list[str]] = mapped_column(Json, default=list)
+    evidence: Mapped[list[dict[str, Any]]] = mapped_column(Json, default=list)
+    confidence: Mapped[str] = mapped_column(String(10))  # alta | media | baixa
+    quality_risks: Mapped[str] = mapped_column(Text, default="")
+    version_hash: Mapped[str] = mapped_column(String(64))
+    recorded_by_user_id: Mapped[uuid.UUID | None] = _uuid_fk(
+        "app_user.id", nullable=True, ondelete="SET NULL"
+    )
+    supersedes_id: Mapped[uuid.UUID | None] = _uuid_fk("savings_record.id", nullable=True)
+
+
+class OpportunityReview(IdTimestampMixin, Base):
+    """Every decision on an opportunity: internal review and the condominium's (append only)."""
+
+    __tablename__ = "opportunity_review"
+    __table_args__ = (_enum_check("action", OpportunityReviewAction),)
+
+    condominium_id: Mapped[uuid.UUID] = _uuid_fk("condominium.id")
+    opportunity_id: Mapped[uuid.UUID] = _uuid_fk("opportunity.id")
+    user_id: Mapped[uuid.UUID] = _uuid_fk("app_user.id")
+    action: Mapped[str] = mapped_column(String(25))
+    comment: Mapped[str | None] = mapped_column(Text, nullable=True)
+    from_status: Mapped[str] = mapped_column(String(30))
+    to_status: Mapped[str] = mapped_column(String(30))
+    reviewed_version_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
+
+
+# --------------------------------------------------------------------------- briefing (D82)
+
+
+class Briefing(IdTimestampMixin, Base):
+    """The day's briefing of one person in one condominium (VS-04, FR-032). Built by code
+    from records only; each item points to its source. A refresh is a new version."""
+
+    __tablename__ = "briefing"
+    __table_args__ = (UniqueConstraint("condominium_id", "user_id", "local_date", "version"),)
+
+    condominium_id: Mapped[uuid.UUID] = _uuid_fk("condominium.id")
+    user_id: Mapped[uuid.UUID] = _uuid_fk("app_user.id", ondelete="CASCADE")
+    local_date: Mapped[date] = mapped_column(Date)
+    version: Mapped[int] = mapped_column(Integer)
+    timezone: Mapped[str] = mapped_column(String(64))
+    period_start: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    period_end: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    content: Mapped[dict[str, Any]] = mapped_column(Json, default=dict)
+    partial_sources: Mapped[list[dict[str, Any]]] = mapped_column(Json, default=list)
+    generated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    read_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+# --------------------------------------------------------------------------- actions (D83)
+
+
+class ActionRequest(IdTimestampMixin, Base):
+    """A request to do something outside the system (VS-05). The payload is frozen by its
+    hash when approved; any change voids the approval. Nothing is sent by the system in the
+    pilot: an approved action waits for a person to carry it out and record it."""
+
+    __tablename__ = "action_request"
+    __table_args__ = (
+        _enum_check("status", ActionStatus),
+        _enum_check("policy_decision", PolicyDecision),
+        UniqueConstraint("condominium_id", "idempotency_key"),
+    )
+
+    condominium_id: Mapped[uuid.UUID] = _uuid_fk("condominium.id")
+    case_id: Mapped[uuid.UUID | None] = _uuid_fk("case_record.id", nullable=True)
+    opportunity_id: Mapped[uuid.UUID | None] = _uuid_fk("opportunity.id", nullable=True)
+    action_type: Mapped[str] = mapped_column(String(60))
+    title: Mapped[str] = mapped_column(String(200))
+    payload: Mapped[dict[str, Any]] = mapped_column(Json, default=dict)
+    payload_hash: Mapped[str] = mapped_column(String(64))
+    cost_cap: Mapped[Decimal] = mapped_column(Money)
+    policy_decision: Mapped[str] = mapped_column(String(20))
+    policy_version: Mapped[int] = mapped_column(Integer)
+    policy_reason: Mapped[str] = mapped_column(String(500))
+    status: Mapped[str] = mapped_column(String(30))
+    idempotency_key: Mapped[str] = mapped_column(String(120))
+    requested_by_user_id: Mapped[uuid.UUID | None] = _uuid_fk(
+        "app_user.id", nullable=True, ondelete="SET NULL"
+    )
+    approved_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    approved_by_user_id: Mapped[uuid.UUID | None] = _uuid_fk(
+        "app_user.id", nullable=True, ondelete="SET NULL"
+    )
+    approval_expires_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    executed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    executed_by_user_id: Mapped[uuid.UUID | None] = _uuid_fk(
+        "app_user.id", nullable=True, ondelete="SET NULL"
+    )
+    execution_note: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+
+class ActionDecision(IdTimestampMixin, Base):
+    """Every step of an action request (append only): who, what, which payload version."""
+
+    __tablename__ = "action_decision"
+    __table_args__ = (_enum_check("kind", ActionDecisionKind),)
+
+    condominium_id: Mapped[uuid.UUID] = _uuid_fk("condominium.id")
+    action_request_id: Mapped[uuid.UUID] = _uuid_fk("action_request.id")
+    user_id: Mapped[uuid.UUID | None] = _uuid_fk("app_user.id", nullable=True, ondelete="SET NULL")
+    kind: Mapped[str] = mapped_column(String(20))
+    comment: Mapped[str | None] = mapped_column(Text, nullable=True)
+    payload_hash: Mapped[str] = mapped_column(String(64))
+    from_status: Mapped[str] = mapped_column(String(30))
+    to_status: Mapped[str] = mapped_column(String(30))
+    policy_version: Mapped[int] = mapped_column(Integer)
+
+
+class OutboxEvent(IdTimestampMixin, Base):
+    """Transactional outbox: one row per approved payload. The unique idempotency key makes a
+    second delivery a no-op (SEC-06, WF-01)."""
+
+    __tablename__ = "outbox_event"
+    __table_args__ = (_enum_check("status", OutboxStatus),)
+
+    condominium_id: Mapped[uuid.UUID] = _uuid_fk("condominium.id")
+    action_request_id: Mapped[uuid.UUID] = _uuid_fk("action_request.id")
+    idempotency_key: Mapped[str] = mapped_column(String(160), unique=True)
+    status: Mapped[str] = mapped_column(String(20), default=OutboxStatus.PENDENTE.value)
+    attempts: Mapped[int] = mapped_column(Integer, default=0)
+    last_error: Mapped[str | None] = mapped_column(Text, nullable=True)
+    dispatched_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class AutomationPause(IdTimestampMixin, Base):
+    """Kill switch (FR-007, US-014): pauses one automation type, or all ("*"), in one
+    condominium until resumed. History is kept: resuming fills ``resumed_at``."""
+
+    __tablename__ = "automation_pause"
+
+    condominium_id: Mapped[uuid.UUID] = _uuid_fk("condominium.id")
+    automation_type: Mapped[str] = mapped_column(String(60))
+    reason: Mapped[str] = mapped_column(String(500))
+    paused_by_user_id: Mapped[uuid.UUID | None] = _uuid_fk(
+        "app_user.id", nullable=True, ondelete="SET NULL"
+    )
+    resumed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    resumed_by_user_id: Mapped[uuid.UUID | None] = _uuid_fk(
+        "app_user.id", nullable=True, ondelete="SET NULL"
+    )
+
+
+class CondominiumSettingsVersion(IdTimestampMixin, Base):
+    """Approval limits and rule parameters as they were from ``valid_from`` on (CB-012, D85).
+    Append only: a change is a new version; rules use the one in force on the audited month."""
+
+    __tablename__ = "condominium_settings_version"
+    __table_args__ = (UniqueConstraint("condominium_id", "version"),)
+
+    condominium_id: Mapped[uuid.UUID] = _uuid_fk("condominium.id")
+    version: Mapped[int] = mapped_column(Integer)
+    approval_limits: Mapped[dict[str, Any]] = mapped_column(Json, default=dict)
+    rule_params: Mapped[dict[str, Any]] = mapped_column(Json, default=dict)
+    changed_by_user_id: Mapped[uuid.UUID | None] = _uuid_fk(
+        "app_user.id", nullable=True, ondelete="SET NULL"
+    )
+    reason: Mapped[str | None] = mapped_column(String(300), nullable=True)
+    valid_from: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
 # Tables protected by Row-Level Security, with the column holding the tenant id.
 RLS_TABLES: dict[str, str] = {
     "condominium": "id",
@@ -593,7 +1043,32 @@ RLS_TABLES: dict[str, str] = {
     "expense_document": "condominium_id",
     "match_issue": "condominium_id",
     "document_chunk": "condominium_id",
+    "condo_assignment": "condominium_id",
+    "review_policy": "condominium_id",
+    "case_record": "condominium_id",
+    "case_event": "condominium_id",
+    "case_link": "condominium_id",
+    "case_task": "condominium_id",
+    "opportunity": "condominium_id",
+    "opportunity_finding": "condominium_id",
+    "savings_record": "condominium_id",
+    "opportunity_review": "condominium_id",
+    "briefing": "condominium_id",
+    "action_request": "condominium_id",
+    "action_decision": "condominium_id",
+    "outbox_event": "condominium_id",
+    "automation_pause": "condominium_id",
+    "condominium_settings_version": "condominium_id",
 }
 
 # Tables the application role may only read and insert into (never update or delete).
-APPEND_ONLY_TABLES: tuple[str, ...] = ("decision", "audit_log")
+APPEND_ONLY_TABLES: tuple[str, ...] = (
+    "decision",
+    "audit_log",
+    "review_policy",
+    "case_event",
+    "savings_record",
+    "opportunity_review",
+    "action_decision",
+    "condominium_settings_version",
+)

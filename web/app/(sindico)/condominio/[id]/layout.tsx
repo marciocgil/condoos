@@ -1,3 +1,5 @@
+import { Settings } from "lucide-react";
+import Link from "next/link";
 import { type ReactNode, Suspense } from "react";
 
 import { AskButton } from "@/components/AskButton";
@@ -21,7 +23,15 @@ export default async function SindicoLayout({
     <div className="mx-auto min-h-dvh max-w-md pb-36">
       <header className="flex items-center justify-between px-4 pt-5 pb-2" data-condo={condo.slug}>
         <Logo />
-        <LogoutButton className="text-[13px] text-fg-2 hover:text-fg" />
+        <span className="flex items-center gap-4">
+          <Link
+            href={`/condominio/${id}/ajustes`}
+            className="inline-flex items-center gap-1 text-[13px] text-fg-2 hover:text-fg"
+          >
+            <Settings size={14} aria-hidden /> Ajustes
+          </Link>
+          <LogoutButton className="text-[13px] text-fg-2 hover:text-fg" />
+        </span>
       </header>
       <main className="space-y-5 px-4 pt-3">{children}</main>
       <Suspense fallback={null}>
