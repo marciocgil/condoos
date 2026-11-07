@@ -49,7 +49,7 @@ Data: 07/11/2026. Atualizar ao fim de cada fatia (CLAUDE.md, item 6). "Entrega" 
 | Caso | Situação | Onde |
 |---|---|---|
 | SEC-01 (tenant A × B) | Coberto; tentativa registrada como evento de segurança (D78) | `test_isolation.py`, `test_access_revocation.py` |
-| SEC-02/AI (PDF adversarial) | Parcial: ferramentas só de leitura; sem teste explícito de injeção | CB-010 |
+| SEC-02/AI (PDF adversarial) | Coberto (D90): contrato em PDF com instrução para a IA passa pela extração real, pela busca do chat e pela política; nada é aprovado nem gravado. Aviso no texto dos prompts pendente de chave (B4) | `test_prompt_injection.py` (LB-021) |
 | SEC-02 Plano (busca entre tenants) | Coberto | `test_isolation.py`, RLS em `document_chunk` |
 | SEC-04/05 (valor/expiração da aprovação) | Coberto (D83): aprovação de outra versão é recusada; custo acima do teto e aprovação vencida devolvem para nova aprovação | `test_actions.py` |
 | SEC-08 Plano (kill switch) | Coberto (D83) | `test_actions.py`, e2e `actions.spec.ts` |
@@ -64,3 +64,15 @@ Data: 07/11/2026. Atualizar ao fim de cada fatia (CLAUDE.md, item 6). "Entrega" 
 | OPS-02, WF-04, WF-10 | Cobertos no assunto: fechar sem evidência é negado; "fornecedor disse que fez" não resolve; reabrir preserva histórico (D80) | `test_cases.py` |
 | OPS-01, WF-01..03, WF-05, WF-07..09 | Inexistentes (sem OS, webhook ou ERP) | — |
 | AI-01 (sem fonte suficiente) | Gabarito existe; ao vivo não rodado | `tests/chat_eval/`; CB-040 |
+
+## CondoOS Launch (LB-xxx)
+
+| Item | Código | Testes | Decisão |
+|---|---|---|---|
+| LB-001 estado da jornada | `db/models.py::LaunchState`, migração 0018, `launch/__init__.py` (`set_goal`, `postpone`, `set_dismissed`), `auth/rbac.py` (`manage_launch`) | `test_launch.py::test_sindico_sets_goal_and_postpones_a_step`, `::test_conselheiro_reads_but_cannot_change`, `::test_other_condominium_is_404_and_recorded`, `::test_launch_state_is_isolated_by_rls` | D89, D90 |
+| LB-002 marcos LM1–LM5 | `launch/journey.py` | `test_launch.py::test_seed_condominium_has_lm1_to_lm3_with_their_facts`, `::test_new_condominium_has_only_lm1_after_the_first_access`, `::test_each_milestone_needs_its_fact`, `::test_no_route_marks_a_milestone` | D90 |
+| LB-010 prontidão C1–C3 | `launch/readiness.py` | `test_launch.py::test_contract_with_field_to_confirm_is_partial`, `::test_contract_without_invoice_then_with_invoice`, `::test_documents_capability_depends_on_the_assistant` | D90 |
+| LB-003 próximo passo | `launch/steps.py` | `test_launch.py::test_steps_follow_the_goal_and_skip_what_was_put_off` | D90 |
+| LB-004 rota de leitura | `routers/launch.py` (`GET /condominiums/{id}/launch`) | `test_launch.py` (API) | D90 |
+| LB-021 SEC-02 | — (prova do comportamento existente) | `test_prompt_injection.py` | D90 |
+

@@ -30,6 +30,7 @@ Legenda: ✅ tem · ◐ condicionado (ver nota) · — não tem. Colunas: Sín =
 | `export` | Relatórios e trilha | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `manage_cases` **(novo)** | Criar/editar assunto, vincular, atribuir tarefa | ✅ | — | — | ◐³ | ◐³ | ✅ | ✅ |
 | `update_task` **(novo)** | Atualizar tarefa atribuída a si | ✅ | — | — | ✅ | ✅ | ✅ | ✅ |
+| `manage_launch` **(D90)** | Escolher o objetivo da jornada, adiar passo, ocultar o cartão (preferências; a leitura da jornada é `view`) | ✅ | — | — | — | — | ✅ | — |
 | `view_opportunity_draft` **(novo)** | Ver oportunidade antes da revisão | — | — | — | — | — | ✅ | ✅ |
 | `review_opportunity` **(novo)** | Aprovar/ajustar/devolver/rejeitar oportunidade; registrar "estimada validada" | — | — | — | — | — | — | ✅ |
 | `review_finding` **(novo)** | Solicitar evidência; revisar achado conforme política | — | — | — | ◐¹ | — | — | ✅ |

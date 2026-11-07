@@ -341,3 +341,12 @@ class OutboxStatus(StrEnum):
     DESPACHADO = "despachado"
     CANCELADO = "cancelado"
     BLOQUEADO = "bloqueado"
+
+
+class LaunchGoal(StrEnum):
+    """The first goal the síndico picks in the Launch journey (D89, ADR-L01)."""
+
+    ECONOMIZAR = "economizar"
+    PENDENCIAS = "pendencias"
+    FORNECEDORES = "fornecedores"
+    PANORAMA = "panorama"

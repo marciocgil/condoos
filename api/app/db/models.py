@@ -55,6 +55,7 @@ from app.db.enums import (
     ExtractionStatus,
     FindingStatus,
     JobStatus,
+    LaunchGoal,
     OpportunityReviewAction,
     OpportunityStatus,
     OpportunityType,
@@ -1024,6 +1025,39 @@ class CondominiumSettingsVersion(IdTimestampMixin, Base):
     valid_from: Mapped[datetime] = mapped_column(DateTime(timezone=True))
 
 
+# --------------------------------------------------------------------------- launch (D89)
+
+
+class LaunchState(IdTimestampMixin, Base):
+    """The human choices of the Launch journey (ADR-L01, D89): first goal, steps put off for
+    later and the card dismissed. Milestones and readiness are never stored: they are computed
+    from the data on every read, so nothing here can mark progress or grant a permission."""
+
+    __tablename__ = "launch_state"
+    __table_args__ = (
+        CheckConstraint(
+            "goal IS NULL OR goal IN (" + ", ".join(f"'{g.value}'" for g in LaunchGoal) + ")",
+            name="goal_valid",
+        ),
+        UniqueConstraint("condominium_id"),
+    )
+
+    condominium_id: Mapped[uuid.UUID] = _uuid_fk("condominium.id")
+    goal: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    # When the síndico answered the goal question (a goal or "decidir depois").
+    goal_answered_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    # Step key -> ISO date until which the step is hidden ("Fazer depois").
+    postponed: Mapped[dict[str, str]] = mapped_column(
+        Json, default=dict, server_default=sql_text("'{}'")
+    )
+    dismissed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    updated_by_user_id: Mapped[uuid.UUID | None] = _uuid_fk(
+        "app_user.id", nullable=True, ondelete="SET NULL"
+    )
+
+
 # Tables protected by Row-Level Security, with the column holding the tenant id.
 RLS_TABLES: dict[str, str] = {
     "condominium": "id",
@@ -1059,6 +1093,7 @@ RLS_TABLES: dict[str, str] = {
     "outbox_event": "condominium_id",
     "automation_pause": "condominium_id",
     "condominium_settings_version": "condominium_id",
+    "launch_state": "condominium_id",
 }
 
 # Tables the application role may only read and insert into (never update or delete).

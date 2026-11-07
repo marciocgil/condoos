@@ -35,6 +35,9 @@ class Permission(StrEnum):
     # UPDATE_TASK: work on what is one's own (tasks assigned to them, cases they own).
     MANAGE_CASES = "manage_cases"
     UPDATE_TASK = "update_task"
+    # Launch (D89): choose the journey's goal, put a step off, hide the journey card.
+    # Preferences only: they change the order of suggestions, never what anyone may do.
+    MANAGE_LAUNCH = "manage_launch"
 
 
 P = Permission
@@ -69,6 +72,7 @@ ROLE_PERMISSIONS: dict[Role, frozenset[Permission]] = {
             P.APPROVE_IN_CONDO,
             P.MANAGE_CASES,
             P.UPDATE_TASK,
+            P.MANAGE_LAUNCH,
         }
     ),
     Role.SUBSINDICO: frozenset({P.VIEW, P.COMMENT_FINDING, P.EXPORT}),
@@ -102,6 +106,7 @@ ROLE_PERMISSIONS: dict[Role, frozenset[Permission]] = {
             P.MANAGE_PLATFORM,
             P.MANAGE_CASES,
             P.UPDATE_TASK,
+            P.MANAGE_LAUNCH,
         }
     ),
     Role.CONDOOS_REVIEWER: frozenset(
