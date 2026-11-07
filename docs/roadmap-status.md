@@ -35,7 +35,7 @@ Detalhe e evidências: `docs/02-gap-matrix.md` e `docs/traceability.md`.
 
 | # | Bloqueio | Bloqueia | Quem destrava |
 |---|---|---|---|
-| B4 | Sem chave de API | FR-031 (avaliação ao vivo), acurácia com LLM, R04/R07 reais | Marcio (chave em ambiente de teste) |
+| B4 | Sem chave de API na sessão. 07/11/2026: o ambiente "CondoOS" já declara `ANTHROPIC_API_KEY`, mas a variável não chegou a esta sessão (vale a partir do próximo início). `LLM_MODE=record make accuracy` rodou sem chamar o modelo (mesmo resultado do replay: 12/30 sem revisão, 0 erro automático); `make chat-eval` foi pulado ("exige ANTHROPIC_API_KEY") | FR-031 (avaliação ao vivo), acurácia com LLM, R04/R07 reais, CB-040 | Marcio: abrir sessão nova no ambiente CondoOS (ou conferir o valor da variável) e rodar de novo |
 | B5 | Sem piloto real nem autorização de dados | G0, baseline | Marcio / pilotos |
 
 ## 5. Próxima fatia e incrementos seguintes
