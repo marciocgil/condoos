@@ -63,22 +63,25 @@ Data: 07/11/2026 (revisado com D73–D77). Prioridade e ordem seguem `docs/produ
 
 ## Épico EP-03 — Assuntos e tarefas (VS-01) · WP-04, WP-07 · P0 · *ADR-P01 aceita (D75); migração 0013 aguarda aprovação*
 
-**CB-020 — Criar e editar assunto** · G · FR-021, FR-023, US-005
+**CB-020 — Criar e editar assunto** · G · FR-021, FR-023, US-005 · ✅ entregue (D80)
 - Aceite: assunto com ID legível, categoria, criticidade, estado, dono, próxima ação e prazo; `case_event` append-only; RLS e migração com política; outro condomínio = 404; edição sem permissão negada; timeline com criação e mudanças (autor, momento, motivo).
-**CB-021 — Tarefas do assunto** · M · FR-022
+**CB-021 — Tarefas do assunto** · M · FR-022 · ✅ entregue (D80)
 - Aceite: tarefa com responsável, prazo, estado, vínculo; mudança de prazo exige motivo (§7.7).
-**CB-022 — Máquina de estados e conclusão com evidência** · M · FR-024, US-007, OPS-02, WF-04
+**CB-022 — Máquina de estados e conclusão com evidência** · M · FR-024, US-007, OPS-02, WF-04 · ✅ entregue (D80)
 - Aceite: transições da §8.2; `resolvido` exige critério do tipo (evidência anexada quando exigida); "concluído pelo fornecedor" não resolve; reabertura preserva histórico.
-**CB-023 — Fila de pendências de assuntos** · M · FR-025
+**CB-023 — Fila de pendências de assuntos** · M · FR-025 · ◐ parcial (D80: falta filtro de categoria/criticidade na tela)
 - Aceite: filtros por pessoa, categoria, prazo, criticidade; assunto sem dono/prazo aparece como antipadrão (§8.4).
-**CB-024 — Vínculos N:N e assunto a partir de achado** · M · FR-014, FR-027 (parcial)
+**CB-024 — Vínculos N:N e assunto a partir de achado** · M · FR-014, FR-027 (parcial) · ✅ entregue (D80)
 - Aceite: ação no detalhe do achado cria assunto ligado ou vincula a um existente; um achado pode estar em mais de um assunto (motivo obrigatório); vínculo com oportunidade, documento, contrato, fornecedor, despesa e outro assunto; desvincular preserva histórico; o achado não muda de status.
-**CB-026 — Duplicidade antes de criar** · M · FR-028 (parcial), D75
+**CB-026 — Duplicidade antes de criar** · M · FR-028 (parcial), D75 · ✅ entregue (D80)
 - Aceite: criação devolve candidatos (vínculos em comum ou mesma categoria recente); seguir exige "vincular ao existente" ou "criar mesmo assim" com motivo; teste positivo e negativo.
-**CB-027 — Assunto sem achado** · P · D75
+**CB-027 — Assunto sem achado** · P · D75 · ✅ entregue (D80)
 - Aceite: síndico ou reviewer cria assunto com origem `human_request` (e as demais origens disponíveis na API), com dono, próxima ação e prazo ou suspensão justificada.
-**CB-025 — Telas Assuntos e Assunto 360° (mínimo)** · G · FR-023, FR-025 · DS v1.0
+**CB-025 — Telas Assuntos e Assunto 360° (mínimo)** · G · FR-023, FR-025 · DS v1.0 · ✅ entregue (D80; vínculo pela tela só a partir do achado → CB-028)
 - Aceite: lista e detalhe com `DataTable`, `Timeline`, `SidePanel`; status sempre com texto e ícone; mobile (síndico) e desktop (administradora); Playwright do fluxo VS-01.
+
+**CB-028 — Vincular registros pela tela do assunto** · M · FR-027 · *novo, sobra da VS-01*
+- Aceite: no Assunto 360°, buscar e vincular contrato, documento, fornecedor, despesa e outro assunto (a API já faz), com motivo quando o registro estiver em outro assunto aberto.
 
 ## Épico EP-04 — Informação confiável (G2) · WP-05 · P0
 

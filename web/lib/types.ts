@@ -439,3 +439,94 @@ export interface ReviewPolicy {
   management_company_reviews: boolean;
   can_configure: boolean;
 }
+
+// --------------------------------------------------------------------------- cases (D75, D80)
+
+export interface Person {
+  id: string;
+  name: string;
+}
+
+export interface CaseRow {
+  id: string;
+  condominium_id: string;
+  condominium_name: string;
+  number: string;
+  title: string;
+  category: string;
+  severity: string;
+  status: string;
+  origin: string;
+  owner: Person | null;
+  next_action: string | null;
+  next_action_due_at: string | null;
+  suspended_until: string | null;
+  open_tasks: number;
+  attention: string[];
+  created_at: string;
+}
+
+export interface CaseTask {
+  id: string;
+  title: string;
+  assignee: Person | null;
+  assignee_label: string | null;
+  due_at: string;
+  status: string;
+  blocked_reason: string | null;
+  requires_evidence: boolean;
+  overdue: boolean;
+  completed_at: string | null;
+  can_update: boolean;
+  allowed_moves: string[];
+}
+
+export interface CaseLink {
+  id: string;
+  target_type: string;
+  target_id: string;
+  label: string;
+  detail: string | null;
+  as_evidence: boolean;
+  reason: string | null;
+  linked_by: string;
+  linked_at: string;
+  unlinked_at: string | null;
+  active: boolean;
+}
+
+export interface CaseEvent {
+  id: string;
+  at: string;
+  who: string;
+  kind: string;
+  from_value: string | null;
+  to_value: string | null;
+  reason: string | null;
+  details: Record<string, unknown>;
+}
+
+export interface CaseDetail extends CaseRow {
+  description: string;
+  resolution_criterion: string;
+  requires_evidence: boolean;
+  suspension_reason: string | null;
+  created_by: string;
+  closed_at: string | null;
+  can_manage: boolean;
+  can_comment: boolean;
+  can_add_evidence: boolean;
+  allowed_transitions: string[];
+  tasks: CaseTask[];
+  links: CaseLink[];
+  cited_by: { id: string; number: string; title: string }[];
+  events: CaseEvent[];
+  people: Person[];
+}
+
+export interface CaseRef {
+  id: string;
+  number: string;
+  title: string;
+  status: string;
+}

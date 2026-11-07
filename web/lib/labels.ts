@@ -64,3 +64,100 @@ export function indexLabel(index: string, other?: string | null): string {
   if (index === "OUTRO") return other ? other : "Outro";
   return INDEX_LABEL[index] ?? index;
 }
+
+// --------------------------------------------------------------------------- cases (D75, D80)
+
+export const CASE_STATUS_LABEL: Record<string, string> = {
+  novo: "Novo",
+  em_triagem: "Em triagem",
+  em_planejamento: "Em planejamento",
+  aguardando_aprovacao: "Aguardando aprovação",
+  em_execucao: "Em execução",
+  aguardando_terceiro: "Aguardando terceiro",
+  aguardando_validacao: "Aguardando validação",
+  resolvido: "Resolvido",
+  cancelado: "Cancelado",
+  reaberto: "Reaberto",
+  suspenso_justificadamente: "Suspenso",
+};
+
+/** Button text for each move (spec §8.2): what the person does, not the state name. */
+export const CASE_MOVE_LABEL: Record<string, string> = {
+  em_triagem: "Iniciar triagem",
+  em_planejamento: "Planejar",
+  aguardando_aprovacao: "Pedir aprovação",
+  em_execucao: "Executar",
+  aguardando_terceiro: "Aguardar terceiro",
+  aguardando_validacao: "Enviar para validação",
+  resolvido: "Resolver",
+  cancelado: "Cancelar",
+  reaberto: "Reabrir",
+  suspenso_justificadamente: "Suspender",
+};
+
+export const CASE_MOVE_NEEDS_REASON = new Set([
+  "cancelado",
+  "suspenso_justificadamente",
+  "reaberto",
+  "resolvido",
+]);
+
+export const CASE_CATEGORY_LABEL: Record<string, string> = {
+  financeiro: "Financeiro",
+  contrato: "Contrato",
+  manutencao: "Manutenção",
+  conformidade: "Conformidade",
+  administrativo: "Administrativo",
+  atendimento: "Atendimento",
+  seguranca: "Segurança",
+  obra: "Obra",
+  outro: "Outro",
+};
+
+export const CASE_SEVERITY_LABEL: Record<string, string> = {
+  baixa: "Baixa",
+  media: "Média",
+  alta: "Alta",
+  critica: "Crítica",
+};
+
+export const CASE_ORIGIN_LABEL: Record<string, string> = {
+  finding: "Achado",
+  opportunity: "Oportunidade",
+  human_request: "Pedido",
+  maintenance: "Manutenção",
+  obligation: "Obrigação",
+  external_event: "Evento externo",
+};
+
+export const CASE_ATTENTION_LABEL: Record<string, string> = {
+  sem_dono: "Sem responsável",
+  sem_prazo: "Sem prazo",
+  atrasado: "Próxima ação atrasada",
+  suspensao_vencida: "Suspensão vencida",
+};
+
+export const TASK_STATUS_LABEL: Record<string, string> = {
+  aberta: "Aberta",
+  em_andamento: "Em andamento",
+  bloqueada: "Bloqueada",
+  concluida: "Concluída",
+  cancelada: "Cancelada",
+};
+
+export const TASK_MOVE_LABEL: Record<string, string> = {
+  em_andamento: "Começar",
+  bloqueada: "Bloquear",
+  concluida: "Concluir",
+  cancelada: "Cancelar",
+};
+
+export const LINK_TYPE_LABEL: Record<string, string> = {
+  finding: "Achado",
+  opportunity: "Oportunidade",
+  document: "Documento",
+  contract: "Contrato",
+  supplier: "Fornecedor",
+  expense: "Despesa",
+  case: "Assunto",
+};

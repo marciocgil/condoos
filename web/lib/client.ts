@@ -23,8 +23,9 @@ const FIELD_LABEL: Record<string, string> = {
 
 type Detail = string | { loc?: (string | number)[]; msg?: string }[] | undefined;
 
-function message(detail: Detail, fallback: string): string {
+function message(detail: Detail | { message?: string }, fallback: string): string {
   if (typeof detail === "string") return detail;
+  if (detail && !Array.isArray(detail) && typeof detail.message === "string") return detail.message;
   if (Array.isArray(detail) && detail.length > 0) {
     return detail
       .map((d) => {
@@ -39,7 +40,7 @@ function message(detail: Detail, fallback: string): string {
 }
 
 export async function send<T = unknown>(
-  method: "POST" | "PUT" | "DELETE",
+  method: "POST" | "PUT" | "PATCH" | "DELETE",
   path: string,
   body?: unknown,
 ): Promise<{ ok: true; data: T } | { ok: false; error: string }> {

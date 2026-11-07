@@ -1,6 +1,6 @@
 # Rastreabilidade — FR ↔ tarefa ↔ código ↔ teste ↔ entrega
 
-Data: 07/11/2026. Atualizar ao fim de cada fatia (CLAUDE.md, item 6). "Entrega" = marco do MVP auditor (Marco 1–6, 05/11/2026) ou decisão pós-piloto (D65–D71) em que o código entrou. Testes citados existem no repositório. Última execução local completa: 07/11/2026, 252 passaram (D79); E2E: 18 fluxos passaram contra a stack local.
+Data: 07/11/2026. Atualizar ao fim de cada fatia (CLAUDE.md, item 6). "Entrega" = marco do MVP auditor (Marco 1–6, 05/11/2026) ou decisão pós-piloto (D65–D71) em que o código entrou. Testes citados existem no repositório. Última execução local completa: 07/11/2026, 263 passaram (D80); E2E: 20 fluxos passaram contra a stack local.
 
 | FR | Tarefa(s) | Código | Teste(s) | Entrega |
 |---|---|---|---|---|
@@ -23,9 +23,10 @@ Data: 07/11/2026. Atualizar ao fim de cada fatia (CLAUDE.md, item 6). "Entrega" 
 | FR-018 | — | `ingestion/documents.py` (hash), `matching/documents.py` (boleto, D63) | `test_ingestion.py`, `test_matching.py` | Marco 2, D63 |
 | FR-019 | — | `reports/pdf.py`, `reports/xlsx.py`, `routers/reports.py` | `test_reports.py` | Marco 5 |
 | FR-020 | — | `core/retention.py` | `test_retention.py` | Marco 6 |
-| FR-021..025 | CB-020..027 | — (achado: `findings/decisions.py`, `routers/findings.py`, `routers/queue.py`, `pending.py`) | — (`test_findings_api.py`, `test_pending.py` cobrem os análogos) | — |
+| FR-021..025 | CB-020..027 | `app/cases/__init__.py` (regras), `routers/cases.py` (API), `db/models.py` (`CaseRecord`, `CaseEvent`, `CaseLink`, `CaseTask`), migração 0013; telas `web/app/(sindico)/condominio/[id]/assuntos/`, `web/app/(admin)/admin/assuntos/`, `components/condoos/Case*.tsx` | `test_cases.py` (9), `test_isolation.py`, e2e `cases.spec.ts` (2) | D80 |
 | FR-026 | CB-023 | `agenda.py` (em atraso, sem alerta) | `test_agenda.py` | D71 |
-| FR-027..030 | — | — | — | — |
+| FR-027, FR-028 | CB-024, CB-026 | `app/cases/__init__.py` (vínculos, duplicidade), `CaseDetailView.tsx` | `test_cases.py` | D80 (parcial) |
+| FR-029, FR-030 | — | — | — | — |
 | FR-031 | CB-040 | `chat/agent.py`, `chat/tools.py`, `chat/service.py`, `prompts/chat_system.md` | `test_chat.py`, `tests/chat_eval/` (ao vivo não rodado) | Marco 5 |
 | FR-032 | CB-041, CB-042 | `routers/findings.py::/summary`, `components/condoos/AgendaPreview.tsx` | — | Marco 4, D71 |
 | FR-033 | CB-041 | `findings/explain.py`, `chat/service.py` (ação sugerida) | `test_explain.py` | Marco 4, Marco 5 |
@@ -57,5 +58,6 @@ Data: 07/11/2026. Atualizar ao fim de cada fatia (CLAUDE.md, item 6). "Entrega" 
 | FIN-01 (reajuste reproduzível) | Coberto | `test_rules.py` (R03) |
 | FIN-02 (escopo não comparável) | Parcial (R04 com IA) | `test_rules.py`; CB-061 |
 | OPT-01 (sem revisão, não publica) | Parcial: só graves | CB-062 |
-| OPS-01/02, WF-01..10 | Inexistentes (sem assunto/OS) | CB-020..022 |
+| OPS-02, WF-04, WF-10 | Cobertos no assunto: fechar sem evidência é negado; "fornecedor disse que fez" não resolve; reabrir preserva histórico (D80) | `test_cases.py` |
+| OPS-01, WF-01..03, WF-05..09 | Inexistentes (sem OS, webhook ou ERP) | — |
 | AI-01 (sem fonte suficiente) | Gabarito existe; ao vivo não rodado | `tests/chat_eval/`; CB-040 |

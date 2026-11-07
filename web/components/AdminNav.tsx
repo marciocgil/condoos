@@ -1,13 +1,14 @@
 "use client";
 
 import {
-  Building2,
-  ChevronsLeft,
   BarChart3,
+  Building2,
   CalendarDays,
+  ChevronsLeft,
   ChevronsRight,
   ClipboardList,
   FileSignature,
+  FolderKanban,
   Inbox,
   LayoutGrid,
   MessageSquare,
@@ -24,6 +25,7 @@ import { cx } from "@/components/ui/cx";
 const ITEMS = [
   { href: "/admin/carteira", label: "Carteira", icon: LayoutGrid },
   { href: "/admin/fila", label: "Fila de exceções", icon: Inbox, counter: true },
+  { href: "/admin/assuntos", label: "Assuntos", icon: FolderKanban },
   { href: "/admin/pendencias", label: "Pendências", icon: ClipboardList },
   { href: "/admin/agenda", label: "Agenda", icon: CalendarDays },
   { href: "/admin/fornecedores", label: "Fornecedores", icon: Store },

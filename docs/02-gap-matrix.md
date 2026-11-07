@@ -38,14 +38,14 @@ Data: 07/11/2026 (FR-046 revisto após D74). Fonte dos requisitos: Especificaç�
 
 | FR | P | WP | Repo | O que existe | Lacuna | Evidência | Status |
 |---|---|---|---|---|---|---|---|
-| FR-021 | P0 | WP-07 | inexistente | (achado tem status e trilha, mas não é assunto) | Entidade Assunto com ID, categoria, estado, dono, próxima ação, prazo | — | nao_iniciado |
-| FR-022 | P0 | WP-07 | inexistente | — | Tarefa com responsável, prazo, status, vínculo | — | nao_iniciado |
-| FR-023 | P0 | WP-07 | parcial | `Timeline` (UI) e trilha de decisões do achado | Timeline do assunto com eventos e anexos por origem | `findings.spec.ts` | em_analise |
-| FR-024 | P0 | WP-07 | parcial | Transições do achado em `findings/decisions.py` (D48) | Máquina de estados do assunto (§8.2) e critério de conclusão | `test_findings_api.py` | em_analise |
-| FR-025 | P0 | WP-07 | parcial | Fila de exceções e Pendências (D70) | Fila por pessoa/categoria/prazo/criticidade de assuntos | `test_queue.py`, `test_pending.py` | em_analise |
+| FR-021 | P0 | WP-07 | real | `case_record` com número, categoria, criticidade, estado, responsável, próxima ação e prazo (D80) | — | `test_cases.py` | pronto_para_validar |
+| FR-022 | P0 | WP-07 | real | `case_task` com responsável (ou nome), prazo, estado, evidência exigida (D80) | — | `test_cases.py` | pronto_para_validar |
+| FR-023 | P0 | WP-07 | real | `case_event` só inclusão, com autor, momento e motivo; linha do tempo no Assunto 360° (D80) | — | `test_cases.py`, `test_isolation.py::test_append_only_tables`, e2e `cases.spec.ts` | pronto_para_validar |
+| FR-024 | P0 | WP-07 | real | Máquina de estados §8.2; resolver exige tarefas fechadas e evidência quando pedida (D80) | — | `test_cases.py` | pronto_para_validar |
+| FR-025 | P0 | WP-07 | parcial | Fila de assuntos (abertos, meus, encerrados), ordenada por alerta e prazo; API filtra por pessoa, categoria e criticidade (D80) | Filtros de categoria/criticidade na tela | `test_cases.py` | em_desenvolvimento |
 | FR-026 | P0 | WP-07/19 | parcial | Agenda mostra "em atraso" (D71) | Alerta registrado com envio e status | `test_agenda.py` | em_analise |
-| FR-027 | P1 | WP-07 | inexistente | — | Dossiê 360° | — | nao_iniciado |
-| FR-028 | P1 | WP-07 | inexistente | — | Agrupamento reversível | — | nao_iniciado |
+| FR-027 | P1 | WP-07 | parcial | Assunto 360° com vínculos clicáveis e "citado por" (D80) | Vincular contrato, documento, fornecedor e despesa pela tela | `test_cases.py`, e2e `cases.spec.ts` | em_desenvolvimento |
+| FR-028 | P1 | WP-07 | parcial | Duplicidade oferecida antes de criar; vínculo entre assuntos reversível com histórico (D80) | Agrupamento explícito de relatos | `test_cases.py` | em_analise |
 | FR-029 | P1 | WP-19 | inexistente | Jobs idempotentes (base) | Workflow condicionado à política | `test_jobs.py` (base) | nao_iniciado |
 | FR-030 | P1 | WP-19 | inexistente | — | Escalonamento | — | nao_iniciado |
 
@@ -105,13 +105,13 @@ Data: 07/11/2026 (FR-046 revisto após D74). Fonte dos requisitos: Especificaç�
 |---|---|---|---|---|
 | Plataforma (001–010) | 10 | 3 | 4 | 3 |
 | Documentos (011–020) | 10 | 3 | 7 | 0 |
-| Workflow (021–030) | 10 | 0 | 4 | 6 |
+| Workflow (021–030) | 10 | 4 | 4 | 2 |
 | Advisor (031–040) | 10 | 1 | 3 | 6 |
 | Optimize (041–050) | 10 | 3 | 4 | 3 |
 | Operate etc. (051–065) | 15 | 0 | 1 | 14 |
-| **Total** | **65** | **10** | **23** | **32** |
+| **Total** | **65** | **14** | **23** | **28** |
 
-P0 (29 FRs): 8 real, 18 parcial, 3 inexistentes (FR-007 kill switch, FR-021 assunto, FR-022 tarefa). FR-045 (oportunidade) e FR-046 (revisão interna) são parciais, mas centrais ao Optimize, e FR-046 foi decidido em D74 (revisão proporcional ao risco).
+P0 (29 FRs): 12 real, 16 parcial, 1 inexistente (FR-007 kill switch). FR-021 e FR-022 entraram com a VS-01 (D80). FR-045 (oportunidade) e FR-046 (revisão interna) são parciais, mas centrais ao Optimize, e FR-046 foi decidido em D74 (revisão proporcional ao risco).
 
 ## 8. Cobertura por CAP
 
