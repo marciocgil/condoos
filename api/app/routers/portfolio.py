@@ -12,7 +12,7 @@ from pydantic import BaseModel
 from sqlalchemy import func, select
 
 from app.auth.deps import CurrentPrincipal, access_for
-from app.auth.rbac import Permission
+from app.auth.rbac import CondoAccess, Permission
 from app.core.br import format_cnpj
 from app.core.time import add_months, local_today
 from app.db.enums import UNDER_REVIEW, FindingStatus
