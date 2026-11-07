@@ -15,7 +15,7 @@ from app.auth.deps import CurrentPrincipal, access_for
 from app.auth.rbac import CondoAccess, Permission
 from app.core.br import format_cnpj
 from app.core.time import add_months, local_today
-from app.db.enums import UNDER_REVIEW, FindingStatus
+from app.db.enums import UNDER_REVIEW, FindingStatus, Role
 from app.db.models import (
     Competence,
     Condominium,
@@ -27,6 +27,7 @@ from app.db.models import (
     Supplier,
 )
 from app.db.session import DbSession
+from app.launch.metrics import implementation
 from app.metrics import Bucket as MetricBucket
 from app.metrics import compute as compute_metrics
 from app.pending import month_pending
@@ -392,3 +393,22 @@ async def pending(
         months=[{"month": m.isoformat(), "open": per_month[m]} for m in recent],
         condominiums=out,
     )
+
+
+STAFF_ROLES = frozenset({Role.CONDOOS_ADMIN, Role.CONDOOS_REVIEWER})
+
+
+@router.get("/launch")
+async def launch_implementations(
+    db: DbSession, principal: CurrentPrincipal
+) -> list[dict[str, Any]]:
+    """Implementations per condominium (LB-012, LB-090), for the CondoOS team only: the
+    journey is CondoOS's own work, so a management company's roles do not see it (D92).
+    In-progress implementations first, the longest without activity on top."""
+    rows = [
+        (await implementation(db, c)).as_dict()
+        for c, access in await _manager_access(db, principal)
+        if access.roles & STAFF_ROLES
+    ]
+    rows.sort(key=lambda r: (not r["in_progress"], -(r["days_without_activity"] or 0), r["name"]))
+    return rows

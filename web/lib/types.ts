@@ -790,7 +790,8 @@ export interface Launch {
   done_for_you: { key: string; count: number; label: string }[];
 }
 
-export type FirstValueStatus = "lendo" | "lido" | "lido_parcial" | "nao_contrato" | "falhou";
+export type FirstValueStatus =
+  "lendo" | "lido" | "lido_parcial" | "nao_contrato" | "nao_identificado" | "falhou";
 
 export interface FirstValueField {
   name: string;
@@ -812,4 +813,24 @@ export interface FirstValue {
   fields: FirstValueField[];
   limits: string[];
   next_step: { key: string; title: string } | null;
+}
+
+export interface LaunchImplementation {
+  id: string;
+  name: string;
+  in_progress: boolean;
+  milestones_done: number;
+  milestones_total: number;
+  next_milestone: string | null;
+  first_access_at: string | null;
+  first_value_at: string | null;
+  hours_to_first_value: number | null;
+  last_activity_at: string | null;
+  days_without_activity: number | null;
+  postponed_steps: number;
+  review_queue: number;
+  documents: number;
+  corrections_per_document: number | null;
+  llm_cost_per_document_usd: string | null;
+  readiness: Record<string, ReadinessState>;
 }

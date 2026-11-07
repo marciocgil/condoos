@@ -66,7 +66,7 @@ class CardField:
 class FirstValue:
     document_id: str
     filename: str
-    status: str  # lendo | lido | lido_parcial | nao_contrato | falhou
+    status: str  # lendo | lido | lido_parcial | nao_contrato | nao_identificado | falhou
     message: str
     doc_type: str
     fields: list[CardField] = field(default_factory=list)
@@ -139,6 +139,13 @@ def build(doc: Document) -> FirstValue:
         return card(
             "falhou",
             "Não consegui ler este arquivo. Tente o PDF original ou uma foto mais nítida.",
+        )
+    if doc.doc_type == DocumentType.OUTRO.value and not (doc.text_content or "").strip():
+        # Nothing readable: "outro" here means "not identified", not another kind of document.
+        return card(
+            "nao_identificado",
+            "Não consegui identificar este arquivo. Ele ficou guardado e uma pessoa vai olhar. "
+            "Se for um contrato, tente o PDF original ou uma foto mais nítida.",
         )
     if doc.doc_type != DocumentType.CONTRATO.value:
         what = DOC_TYPE_LABEL.get(doc.doc_type, "um documento de outro tipo")

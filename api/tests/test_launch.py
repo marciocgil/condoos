@@ -22,6 +22,7 @@ from sqlalchemy.ext.asyncio import AsyncEngine
 
 import app.launch.readiness as readiness_mod
 from app.auth.mailer import MemoryMailer
+from app.config import get_settings
 from app.core.br import generate_cnpj
 from app.core.time import local_today, utcnow
 from app.db.enums import PlatformRole
@@ -36,13 +37,18 @@ from app.db.models import (
     Document,
     DocumentChunk,
     Expense,
+    ExtractionCorrection,
     LaunchState,
+    LlmCall,
+    Membership,
     Supplier,
 )
 from app.db.session import sessionmaker_for, set_tenant_scope
+from app.extraction.pipeline import process_document
 from app.launch import overview
 from app.launch.first_value import build as build_first_value
 from app.launch.journey import milestones
+from app.launch.metrics import implementation
 from app.launch.readiness import readiness
 from app.launch.steps import CATALOGUE, choose
 from app.main import create_app
@@ -51,6 +57,7 @@ from app.routers import launch as launch_router
 from tests.helpers import (
     ADMIN_CONDOOS,
     CONSELHEIRO_ACACIAS,
+    GERENTE,
     REVISORA,
     SINDICA_ACACIAS,
     SINDICA_MIRANTE,
@@ -577,6 +584,10 @@ def test_first_value_for_other_documents_and_failures() -> None:
     assert build_first_value(_doc(extraction_status="pending")).status == "lendo"
     failed = build_first_value(_doc(extraction_status="failed"))
     assert failed.status == "falhou" and "Não consegui ler" in failed.message
+    unreadable = build_first_value(_doc(doc_type="outro", text_content=None, needs_review=True))
+    assert unreadable.status == "nao_identificado"
+    other = build_first_value(_doc(doc_type="outro"))  # readable text of another kind
+    assert other.status == "nao_contrato"
     nf = build_first_value(_doc(doc_type="nfse"))
     assert nf.status == "nao_contrato" and "nota fiscal" in nf.message and nf.fields == []
 
@@ -609,3 +620,140 @@ async def test_done_for_you_counts_facts_only(admin_engine: AsyncEngine) -> None
     assert items["documentos_lidos"]["count"] > 0
     assert items["contratos_organizados"]["label"].endswith("contratos organizados")
     assert all(i["count"] > 0 for i in items.values())
+
+
+# --------------------------------------------------------------------------- upload edges (LB-022)
+
+
+async def test_upload_edges_leave_no_phantom_document(
+    mailer: MemoryMailer, admin_engine: AsyncEngine, worker_engine: AsyncEngine
+) -> None:
+    condo, email = await _new_condo(admin_engine)
+    docs = f"/condominiums/{condo.id}/documents"
+    corrupt = b"%PDF-1.7\n" + b"\x00garbage, not a real PDF\x00" * 40
+    limit = get_settings().max_upload_mb * 1024 * 1024
+    async with _client() as c:
+        await login(c, mailer, email)
+        r = await c.post(
+            docs,
+            files=[
+                ("files", ("vazio.pdf", b"", "application/pdf")),
+                ("files", ("grande.pdf", b"%PDF" + b"0" * limit, "application/pdf")),
+                ("files", ("planilha.xlsx", b"PK\x03\x04xl/", "application/zip")),
+                ("files", ("contrato.pdf", corrupt, "application/pdf")),
+            ],
+        )
+        assert r.status_code == 201, r.text
+        out = r.json()
+        assert out[0]["error"] == "Arquivo vazio."
+        assert out[1]["error"] == f"Arquivo maior que {get_settings().max_upload_mb} MB."
+        assert "Tipo de arquivo não aceito" in out[2]["error"]
+        assert all(o["document_id"] is None for o in out[:3])
+        corrupt_id = out[3]["document_id"]
+        assert corrupt_id and out[3]["error"] is None
+
+        # The same file again: the existing document, not a second one.
+        again = await c.post(docs, files=[("files", ("copia.pdf", corrupt, "application/pdf"))])
+        assert again.json()[0] == {
+            "filename": "copia.pdf",
+            "document_id": corrupt_id,
+            "duplicate": True,
+            "error": None,
+        }
+
+    async with sessionmaker_for(worker_engine)() as s, s.begin():
+        await process_document(s, {"document_id": corrupt_id})
+    async with _client() as c:
+        await login(c, mailer, email)
+        card = (await c.get(f"/condominiums/{condo.id}/launch/first-value/{corrupt_id}")).json()
+    assert card["status"] == "nao_identificado"  # never "parece outro tipo" for unreadable
+    assert "PDF original" in card["message"]
+    assert card["fields"] == []  # nothing invented from an unreadable file
+    async with sessionmaker_for(admin_engine)() as s:
+        stored = (
+            await s.scalars(select(Document.id).where(Document.condominium_id == condo.id))
+        ).all()
+    assert [str(d) for d in stored] == [corrupt_id]  # only the file that was accepted
+
+
+# --------------------------------------------------------------------------- instrumentation
+
+
+async def test_implementation_metrics_come_from_records(admin_engine: AsyncEngine) -> None:
+    condo, email = await _new_condo(admin_engine)
+    start = utcnow() - timedelta(days=10)
+    did = await _contract_doc(admin_engine, condo.id, needs_review=True)
+    async with sessionmaker_for(admin_engine)() as s, s.begin():
+        user = await s.scalar(select(AppUser).where(AppUser.email == email))
+        assert user is not None
+        m = await s.scalar(select(Membership).where(Membership.user_id == user.id))
+        assert m is not None
+        m.accepted_at = start
+        for action, at in (
+            ("launch.first_value_shown", start + timedelta(hours=3)),
+            ("launch.step_postponed", start + timedelta(hours=4)),
+            ("launch.step_postponed", start + timedelta(days=6)),
+        ):
+            s.add(
+                AuditLog(
+                    action=action,
+                    object_type="launch_state",
+                    actor_user_id=user.id,
+                    condominium_id=condo.id,
+                    created_at=at,
+                )
+            )
+        for name in ("valor_mensal", "data_inicio"):
+            s.add(
+                ExtractionCorrection(
+                    condominium_id=condo.id,
+                    document_id=did,
+                    user_id=user.id,
+                    doc_type="contrato",
+                    field_name=name,
+                )
+            )
+        s.add(
+            LlmCall(
+                purpose="extract",
+                model="modelo-teste",
+                cost_usd=Decimal("0.0120"),
+                condominium_id=condo.id,
+            )
+        )
+    async with sessionmaker_for(admin_engine)() as s:
+        stored = await s.get(Condominium, condo.id)
+        assert stored is not None
+        row = (await implementation(s, stored)).as_dict(now=start + timedelta(days=9))
+    assert row["in_progress"] and row["milestones_done"] == 1
+    assert row["next_milestone"] == "Seu condomínio ganhou memória"
+    assert row["hours_to_first_value"] == 3.0
+    assert row["postponed_steps"] == 2
+    assert row["days_without_activity"] == 3  # the latest person's event was on day 6
+    assert row["review_queue"] == 1
+    assert row["documents"] == 1
+    assert row["corrections_per_document"] == 2.0
+    assert row["llm_cost_per_document_usd"] == "0.0120"
+    assert row["readiness"] == {
+        "C1": "nao_configurado",  # the only document still waits for review
+        "C2": "analise_parcial",
+        "C3": "nao_configurado",
+    }
+    assert email not in str(row)  # ids and counts only
+
+
+async def test_implementations_are_for_the_condoos_team_only(
+    mailer: MemoryMailer, admin_engine: AsyncEngine
+) -> None:
+    async with _client() as c:
+        await login(c, mailer, ADMIN_CONDOOS)
+        rows = (await c.get("/portfolio/launch")).json()
+        assert {r["name"] for r in rows} >= {
+            "Condomínio Residencial Jardim das Acácias",
+            "Condomínio Edifício Mirante do Vale",
+        }
+        assert all(set(r["readiness"]) == {"C1", "C2", "C3"} for r in rows)
+    for email in (GERENTE, SINDICA_ACACIAS):  # management company and board: not theirs
+        async with _client() as c:
+            await login(c, mailer, email)
+            assert (await c.get("/portfolio/launch")).json() == []

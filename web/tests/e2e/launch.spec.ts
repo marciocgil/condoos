@@ -100,3 +100,34 @@ test("síndica nova escolhe o objetivo, envia o contrato e vê a leitura", async
   await expect(again.getByText(/Um revisor vai confirmar os campos do contrato/)).toBeVisible();
   await other.close();
 });
+
+// LB-011 and LB-012 (LF2-c, D92): readiness per capability and implementations in progress.
+test("síndica vê em Ajustes o que o CondoOS já consegue fazer", async ({ page }) => {
+  test.skip(test.info().project.name !== "sindico-mobile", "fluxo do celular");
+  await loginAs(page, "ana.sindica@acacias.example.com");
+  await page.getByRole("link", { name: "Ajustes" }).click();
+  const card = page.getByTestId("readiness");
+  await expect(card.getByText("O que o CondoOS já consegue fazer")).toBeVisible();
+  for (const name of [
+    "Perguntas sobre documentos",
+    "Leitura de contrato",
+    "Confronto de cobranças",
+  ])
+    await expect(card.getByText(name, { exact: true })).toBeVisible();
+  // Without an API key the assistant is unavailable: said in text, never hidden.
+  await expect(card.getByText("Falta: Assistente disponível")).toBeVisible();
+});
+
+test("equipe CondoOS acompanha as implantações; gerente não vê", async ({ page }) => {
+  test.skip(test.info().project.name !== "admin-desktop", "fluxo do desktop");
+  await loginAs(page, "fabio.admin@condoos.example.com");
+  const section = page.getByRole("region", { name: "Implantações em andamento" });
+  await expect(section).toBeVisible();
+  await expect(section.getByRole("cell", { name: /Jardim das Acácias/ })).toBeVisible();
+  await page.getByRole("link", { name: "Configurações" }).first().click();
+  await expect(page.getByTestId("readiness")).toBeVisible();
+
+  await loginAs(page, "diego.gerente@atlantida.example.com");
+  await expect(page.getByRole("heading", { name: "Carteira" })).toBeVisible();
+  await expect(page.getByRole("region", { name: "Implantações em andamento" })).toHaveCount(0);
+});

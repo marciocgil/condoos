@@ -11,7 +11,7 @@ import { DataTable } from "@/components/ui/DataTable";
 import { KpiCard } from "@/components/ui/KpiCard";
 import { apiGet } from "@/lib/api";
 import { competenceParam, formatBRLShort, formatMonth } from "@/lib/format";
-import type { Me, Portfolio, PortfolioRow, QueueItem } from "@/lib/types";
+import type { LaunchImplementation, Me, Portfolio, PortfolioRow, QueueItem } from "@/lib/types";
 
 function StatusCell({ row }: { row: PortfolioRow }) {
   if (row.status === "revisar")
@@ -34,11 +34,15 @@ function StatusCell({ row }: { row: PortfolioRow }) {
 }
 
 export default async function CarteiraPage() {
-  const [p, queue, me] = await Promise.all([
+  const [p, queue, me, launch] = await Promise.all([
     apiGet<Portfolio>("/portfolio"),
     apiGet<QueueItem[]>("/queue"),
     apiGet<Me>("/me"),
+    apiGet<LaunchImplementation[]>("/portfolio/launch"),
   ]);
+  // Implementations in progress (LB-012, D92): the CondoOS team's own work; the API returns
+  // nothing to other roles, and the section is then not shown.
+  const implementations = launch.filter((r) => r.in_progress);
   // The manager registers in its company; a CondoOS admin registers a condominium that
   // contracts directly, without a management company (D73).
   const isManager =
@@ -115,6 +119,88 @@ export default async function CarteiraPage() {
           ]}
         />
       </div>
+
+      {implementations.length > 0 && (
+        <section className="mt-8" aria-labelledby="implantacoes-titulo">
+          <CardTitle>
+            <span id="implantacoes-titulo">Implantações em andamento</span>
+          </CardTitle>
+          <DataTable<LaunchImplementation>
+            caption="Implantações em andamento"
+            rows={implementations}
+            rowKey={(r) => r.id}
+            rowHref={(r) => `/admin/configuracoes?condominio=${r.id}`}
+            columns={[
+              { key: "name", header: "Condomínio", cell: (r) => r.name },
+              {
+                key: "milestones",
+                header: "Marcos",
+                cell: (r) => (
+                  <span>
+                    {r.milestones_done} de {r.milestones_total}
+                    {r.next_milestone && (
+                      <span className="block text-[12px] text-muted">
+                        Próximo: {r.next_milestone}
+                      </span>
+                    )}
+                  </span>
+                ),
+              },
+              {
+                key: "value",
+                header: "Até o primeiro valor",
+                cell: (r) =>
+                  r.hours_to_first_value === null
+                    ? "—"
+                    : `${r.hours_to_first_value.toLocaleString("pt-BR")} h`,
+                align: "right",
+              },
+              {
+                key: "idle",
+                header: "Sem atividade",
+                cell: (r) =>
+                  r.days_without_activity === null ? (
+                    "—"
+                  ) : r.days_without_activity >= 7 ? (
+                    <Badge tone="warning" icon={<AlertTriangle size={12} />}>
+                      {r.days_without_activity} dias
+                    </Badge>
+                  ) : (
+                    `${r.days_without_activity} ${r.days_without_activity === 1 ? "dia" : "dias"}`
+                  ),
+                align: "right",
+              },
+              { key: "queue", header: "Na fila", cell: (r) => r.review_queue, align: "right" },
+              {
+                key: "postponed",
+                header: "Adiados",
+                cell: (r) => r.postponed_steps,
+                align: "right",
+              },
+              {
+                key: "corrections",
+                header: "Correções por doc.",
+                cell: (r) =>
+                  r.corrections_per_document === null
+                    ? "—"
+                    : r.corrections_per_document.toLocaleString("pt-BR"),
+                align: "right",
+              },
+              {
+                key: "cost",
+                header: "IA por doc. (US$)",
+                cell: (r) =>
+                  r.llm_cost_per_document_usd === null
+                    ? "—"
+                    : Number(r.llm_cost_per_document_usd).toLocaleString("pt-BR", {
+                        minimumFractionDigits: 4,
+                      }),
+                align: "right",
+              },
+            ]}
+          />
+        </section>
+      )}
 
       <section className="mt-8" aria-labelledby="fila-titulo">
         <CardTitle

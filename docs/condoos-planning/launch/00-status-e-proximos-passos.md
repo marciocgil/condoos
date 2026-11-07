@@ -8,7 +8,7 @@
 |---|---|---|
 | LF0 Diagnóstico | ✅ concluída (gate LG0 verificado) | `01-diagnostico-as-is.md` |
 | LF1 Blueprint | ✅ aprovado pelo Marcio (gate LG1, D89) | `02`–`06` deste diretório |
-| LF2 Primeiro valor | **em_desenvolvimento**: LF2-a (D90) e LF2-b (D91) entregues; próxima LF2-c | `05-backlog.md`, D90, D91 |
+| LF2 Primeiro valor | **em_desenvolvimento**: LF2-a (D90), LF2-b (D91) e LF2-c (D92) entregues; próxima LF2-d (gate LG2) | `05-backlog.md`, D90–D92 |
 | LF3–LF8 | nao_iniciado | `05-backlog.md` |
 
 Código do Launch: `api/app/launch/`, `api/app/routers/launch.py`, migração 0018; testes `api/tests/test_launch.py` e `api/tests/test_prompt_injection.py` (D90).
@@ -41,16 +41,16 @@ Ainda pedem aprovação própria, quando chegar a vez: migração de tipos docum
 
 ## Próximos incrementos (LF2, nesta ordem)
 
-LF2-a entregue em 07/11/2026 (D90; escolhas registradas lá, entre elas LM1 sem exigir objetivo e C1 dependente do assistente). LF2-b entregue em 07/11/2026 (D91): cartão da jornada em "Hoje", leitura do contrato e envio com retorno, com E2E do F01. Próximo: **LF2-c**.
+LF2-a entregue em 07/11/2026 (D90; escolhas registradas lá, entre elas LM1 sem exigir objetivo e C1 dependente do assistente). LF2-b entregue em 07/11/2026 (D91): cartão da jornada em "Hoje", leitura do contrato e envio com retorno, com E2E do F01. LF2-c entregue em 07/11/2026 (D92): medição do Launch, prontidão em Ajustes e Configurações, implantações em andamento na Carteira e bordas do envio. Próximo: **LF2-d**.
 
 | Incremento | Itens | Migração | Aceite principal |
 |---|---|---|---|
 | ~~LF2-a — fundação da jornada~~ **entregue (D90)** | LB-021 (teste SEC-02, PDF com instrução maliciosa), LB-001 (`launch_state`, rotas de objetivo e "fazer depois"), LB-002 (marcos LM1–LM5 derivados), LB-010 (prontidão C1–C3), LB-003 (próximo passo), LB-004 (`GET /condominiums/{id}/launch`) | 0018 (aprovada) | Positivo e negativo por marco e capacidade; seed Acácias com LM1–LM3, condomínio novo só LM1; conselheiro 403 na escrita, outro condomínio 404 + evento; migração ida e volta; `make lint` e `make test` verdes |
 | ~~LF2-b — primeiro valor na tela~~ **entregue (D91)** | LB-006 (cartão de primeiro valor), LB-007 (upload com retorno), LB-005 (cartão da jornada em "Hoje"), LB-008 ("o que o CondoOS já fez") | — | Nenhum número fora de `extracted`; campo < 0,9 rotulado "a confirmar"; 390 px; E2E do F01 com contrato do corpus |
-| **LF2-c — medição e visão da equipe** | LB-090 (eventos `launch.*` e métricas), LB-011 (prontidão em Ajustes e Configurações), LB-012 (implantações na Carteira), LB-022 (bordas do upload) | — | Tempo até primeiro valor medido; mensagens de borda em PT-BR sem documento fantasma |
+| ~~LF2-c — medição e visão da equipe~~ **entregue (D92)** | LB-090 (eventos `launch.*` e métricas), LB-011 (prontidão em Ajustes e Configurações), LB-012 (implantações na Carteira), LB-022 (bordas do upload) | — | Tempo até primeiro valor medido; mensagens de borda em PT-BR sem documento fantasma |
 | **LF2-d — cadastro assistido e tipos** | LB-009 (alçadas opcionais, D89), LB-020 (tipos documentais) | LB-020: **pedir aprovação** | Condomínio sem alçada: política nega pedido de ação com motivo; gate **LG2** (E2E completo do síndico novo) |
 
-Arquivos do LF2-c: `api/app/metrics.py` (tempo até o primeiro valor a partir de `launch.first_value_shown`, passos adiados, dias sem evento, custo de IA e correções por documento; LB-090), prontidão em `web/app/(sindico)/condominio/[id]/ajustes/` e `web/app/(admin)/admin/configuracoes/` (LB-011, com `GET /condominiums/{id}/launch`), implantações em andamento na Carteira (`api/app/routers/portfolio.py` + `web/app/(admin)/admin/carteira/`, LB-012), bordas do upload (`api/app/ingestion/documents.py`, `tests/test_ingestion.py`, LB-022). Rotas do Launch hoje: `GET /launch`, `PUT /launch/goal`, `POST /launch/postpone`, `POST /launch/dismiss`, `GET /launch/first-value/{document_id}` e `POST .../shown`.
+Arquivos do LF2-d: LB-009 em `api/app/routers/registry.py` (`POST /portfolio/condominiums` com alçada opcional) e `api/app/onboarding/`, `web/components/condoos/NewCondoForm.tsx`; C7 em `api/app/launch/readiness.py` e a política consultando a prontidão (ADR-L03) em `api/app/policy/__init__.py` (sem alçada: nega pedido de ação com motivo); LB-020 precisa de **migração própria (aprovação do Marcio)** para o CHECK de `document.doc_type` (apólice, balancete, regimento, laudo, plano de manutenção, aditivo). Fecha o gate **LG2** com o E2E completo do síndico novo (já coberto em parte por `web/tests/e2e/launch.spec.ts`).
 
 ## Ritual de cada incremento
 

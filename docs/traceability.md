@@ -79,4 +79,7 @@ Data: 07/11/2026. Atualizar ao fim de cada fatia (CLAUDE.md, item 6). "Entrega" 
 | LB-007 envio com retorno | `components/condoos/FirstContractUpload.tsx` | e2e `launch.spec.ts` | D91 |
 | LB-005 cartão da jornada | `components/condoos/JourneyCard.tsx`, `app/(sindico)/condominio/[id]/resumo/page.tsx` | e2e `launch.spec.ts` | D91 |
 | LB-008 o que já fiz | `launch/__init__.py::done_for_you` | `test_launch.py::test_done_for_you_counts_facts_only` | D91 |
-
+| LB-090 medição | `launch/metrics.py` | `test_launch.py::test_implementation_metrics_come_from_records` | D92 |
+| LB-011 prontidão nas telas | `components/condoos/ReadinessCard.tsx`, `app/(sindico)/condominio/[id]/ajustes/page.tsx`, `app/(admin)/admin/configuracoes/page.tsx` | e2e `launch.spec.ts` (Ajustes, Configurações) | D92 |
+| LB-012 implantações na Carteira | `routers/portfolio.py` (`GET /portfolio/launch`), `app/(admin)/admin/carteira/page.tsx` | `test_launch.py::test_implementations_are_for_the_condoos_team_only`, e2e `launch.spec.ts` | D92 |
+| LB-022 bordas do envio | `ingestion/documents.py` (existente), `launch/first_value.py` (`nao_identificado`) | `test_launch.py::test_upload_edges_leave_no_phantom_document`, `::test_first_value_for_other_documents_and_failures` | D92 |

@@ -78,7 +78,11 @@ export function FirstValueCard({ card }: { card: FirstValue }) {
       </Card>
     );
   }
-  if (card.status === "falhou" || card.status === "nao_contrato") {
+  if (
+    card.status === "falhou" ||
+    card.status === "nao_contrato" ||
+    card.status === "nao_identificado"
+  ) {
     const failed = card.status === "falhou";
     return (
       <Card aria-label="Leitura do documento">
