@@ -419,6 +419,16 @@ async def _link_labels(
     if ids := by_type.get("supplier"):
         for s in await db.scalars(select(Supplier).where(Supplier.id.in_(ids))):
             labels[("supplier", s.id)] = (s.legal_name, None)
+    if ids := by_type.get("opportunity"):
+        from app.db.models import Opportunity
+
+        drafts = access.can(Permission.VIEW_OPPORTUNITY_DRAFT)
+        for o in await db.scalars(
+            select(Opportunity).where(Opportunity.id.in_(ids), Opportunity.condominium_id == cid)
+        ):
+            labels[("opportunity", o.id)] = (
+                (f"{o.number} — {o.title}", o.status) if drafts or o.presented_at else None
+            )
     if ids := by_type.get("case"):
         for c in await db.scalars(
             select(CaseRecord).where(CaseRecord.id.in_(ids), CaseRecord.condominium_id == cid)
@@ -623,13 +633,15 @@ async def create_case_route(
 ) -> Any:
     if not access.can(Permission.MANAGE_CASES):
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Seu papel não permite abrir assuntos.")
-    if body.origin == CaseOrigin.FINDING and not any(
-        link.target_type == CaseLinkTarget.FINDING for link in body.links
+    for origin, target, label in (
+        (CaseOrigin.FINDING, CaseLinkTarget.FINDING, "achado"),
+        (CaseOrigin.OPPORTUNITY, CaseLinkTarget.OPPORTUNITY, "oportunidade"),
     ):
-        raise HTTPException(
-            status.HTTP_422_UNPROCESSABLE_CONTENT,
-            "Assunto aberto a partir de achado precisa do achado.",
-        )
+        if body.origin == origin and not any(link.target_type == target for link in body.links):
+            raise HTTPException(
+                status.HTTP_422_UNPROCESSABLE_CONTENT,
+                f"Assunto aberto a partir de {label} precisa do vínculo com ele.",
+            )
     condo = await _condo(db, access)
     try:
         case = await create_case(

@@ -178,9 +178,19 @@ async def check_target(
     cid = access.condominium_id
     t, tid = target.target_type, target.target_id
     found: Any = None
-    if t == CaseLinkTarget.OPPORTUNITY:
-        raise CaseError("Oportunidades ainda não podem ser vinculadas (próxima fatia).")
-    if t == CaseLinkTarget.FINDING:
+    if t == CaseLinkTarget.OPPORTUNITY:  # visible only once the CondoOS review approved it
+        from app.db.models import Opportunity
+
+        o = await session.scalar(
+            select(Opportunity).where(Opportunity.id == tid, Opportunity.condominium_id == cid)
+        )
+        found = (
+            o
+            if o is not None
+            and (o.presented_at is not None or access.can(Permission.VIEW_OPPORTUNITY_DRAFT))
+            else None
+        )
+    elif t == CaseLinkTarget.FINDING:
         f = await session.scalar(
             select(Finding).where(Finding.id == tid, Finding.condominium_id == cid)
         )

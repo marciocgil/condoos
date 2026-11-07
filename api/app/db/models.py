@@ -50,8 +50,12 @@ from app.db.enums import (
     ExtractionStatus,
     FindingStatus,
     JobStatus,
+    OpportunityReviewAction,
+    OpportunityStatus,
+    OpportunityType,
     PlatformRole,
     ReviewRequirement,
+    SavingsStage,
     Severity,
     TaskStatus,
 )
@@ -767,6 +771,93 @@ class CaseTask(IdTimestampMixin, Base):
     )
 
 
+# --------------------------------------------------------------------------- opportunities (D76, D81)
+
+
+class Opportunity(IdTimestampMixin, Base):
+    """A possible benefit drawn from one or more findings (D76). Invisible to the board until a
+    CondoOS reviewer approves it (``presented_at``), FR-046 / OPT-01."""
+
+    __tablename__ = "opportunity"
+    __table_args__ = (
+        _enum_check("status", OpportunityStatus),
+        _enum_check("opportunity_type", OpportunityType),
+        UniqueConstraint("condominium_id", "number"),
+    )
+
+    condominium_id: Mapped[uuid.UUID] = _uuid_fk("condominium.id")
+    number: Mapped[str] = mapped_column(String(20))  # O-2026-0001
+    title: Mapped[str] = mapped_column(String(200))
+    opportunity_type: Mapped[str] = mapped_column(String(30))
+    status: Mapped[str] = mapped_column(String(30))
+    contract_id: Mapped[uuid.UUID | None] = _uuid_fk("contract.id", nullable=True)
+    supplier_id: Mapped[uuid.UUID | None] = _uuid_fk("supplier.id", nullable=True)
+    recommendation: Mapped[str] = mapped_column(Text)
+    operational_impact: Mapped[str] = mapped_column(String(500))
+    legal_contractual_risk: Mapped[str] = mapped_column(String(10))  # baixo | medio | alto
+    implementation_readiness: Mapped[str] = mapped_column(String(30))
+    review_requirement: Mapped[str] = mapped_column(String(20))
+    review_policy_version: Mapped[int] = mapped_column(Integer)
+    presented_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_by_user_id: Mapped[uuid.UUID | None] = _uuid_fk(
+        "app_user.id", nullable=True, ondelete="SET NULL"
+    )
+
+
+class OpportunityFinding(IdTimestampMixin, Base):
+    __tablename__ = "opportunity_finding"
+    __table_args__ = (UniqueConstraint("opportunity_id", "finding_id"),)
+
+    condominium_id: Mapped[uuid.UUID] = _uuid_fk("condominium.id")
+    opportunity_id: Mapped[uuid.UUID] = _uuid_fk("opportunity.id")
+    finding_id: Mapped[uuid.UUID] = _uuid_fk("finding.id")
+
+
+class SavingsRecord(IdTimestampMixin, Base):
+    """One dated photograph of a value at one stage (append only, never summed across stages)."""
+
+    __tablename__ = "savings_record"
+    __table_args__ = (_enum_check("stage", SavingsStage),)
+
+    condominium_id: Mapped[uuid.UUID] = _uuid_fk("condominium.id")
+    opportunity_id: Mapped[uuid.UUID] = _uuid_fk("opportunity.id")
+    stage: Mapped[str] = mapped_column(String(20))
+    amount: Mapped[Decimal] = mapped_column(Money)  # per period below
+    periodicity: Mapped[str] = mapped_column(String(10))  # unica | mensal | anual
+    annualized_amount: Mapped[Decimal] = mapped_column(Money)
+    one_time_cost: Mapped[Decimal] = mapped_column(Money)
+    net_amount: Mapped[Decimal] = mapped_column(Money)  # annualized − one-time cost
+    baseline_period_start: Mapped[date] = mapped_column(Date)
+    baseline_period_end: Mapped[date] = mapped_column(Date)
+    baseline_amount: Mapped[Decimal] = mapped_column(Money)
+    method_code: Mapped[str] = mapped_column(String(40))
+    assumptions: Mapped[list[str]] = mapped_column(Json, default=list)
+    evidence: Mapped[list[dict[str, Any]]] = mapped_column(Json, default=list)
+    confidence: Mapped[str] = mapped_column(String(10))  # alta | media | baixa
+    quality_risks: Mapped[str] = mapped_column(Text, default="")
+    version_hash: Mapped[str] = mapped_column(String(64))
+    recorded_by_user_id: Mapped[uuid.UUID | None] = _uuid_fk(
+        "app_user.id", nullable=True, ondelete="SET NULL"
+    )
+    supersedes_id: Mapped[uuid.UUID | None] = _uuid_fk("savings_record.id", nullable=True)
+
+
+class OpportunityReview(IdTimestampMixin, Base):
+    """Every decision on an opportunity: internal review and the condominium's (append only)."""
+
+    __tablename__ = "opportunity_review"
+    __table_args__ = (_enum_check("action", OpportunityReviewAction),)
+
+    condominium_id: Mapped[uuid.UUID] = _uuid_fk("condominium.id")
+    opportunity_id: Mapped[uuid.UUID] = _uuid_fk("opportunity.id")
+    user_id: Mapped[uuid.UUID] = _uuid_fk("app_user.id")
+    action: Mapped[str] = mapped_column(String(25))
+    comment: Mapped[str | None] = mapped_column(Text, nullable=True)
+    from_status: Mapped[str] = mapped_column(String(30))
+    to_status: Mapped[str] = mapped_column(String(30))
+    reviewed_version_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
+
+
 # Tables protected by Row-Level Security, with the column holding the tenant id.
 RLS_TABLES: dict[str, str] = {
     "condominium": "id",
@@ -792,7 +883,18 @@ RLS_TABLES: dict[str, str] = {
     "case_event": "condominium_id",
     "case_link": "condominium_id",
     "case_task": "condominium_id",
+    "opportunity": "condominium_id",
+    "opportunity_finding": "condominium_id",
+    "savings_record": "condominium_id",
+    "opportunity_review": "condominium_id",
 }
 
 # Tables the application role may only read and insert into (never update or delete).
-APPEND_ONLY_TABLES: tuple[str, ...] = ("decision", "audit_log", "review_policy", "case_event")
+APPEND_ONLY_TABLES: tuple[str, ...] = (
+    "decision",
+    "audit_log",
+    "review_policy",
+    "case_event",
+    "savings_record",
+    "opportunity_review",
+)

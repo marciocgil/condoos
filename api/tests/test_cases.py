@@ -504,7 +504,7 @@ async def test_links_respect_tenant_and_visibility(
                 links=[{"target_type": "opportunity", "target_id": str(uuid.uuid4())}],
             ),
         )
-        assert r.status_code == 422
+        assert r.status_code == 404  # enabled by the VS-03 (D81); this one does not exist
 
 
 # --------------------------------------------------------------------------- duplicates

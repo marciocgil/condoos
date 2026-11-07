@@ -241,3 +241,51 @@ class TaskStatus(StrEnum):
 
 
 CLOSED_TASK: frozenset[TaskStatus] = frozenset({TaskStatus.CONCLUIDA, TaskStatus.CANCELADA})
+
+
+# --------------------------------------------------------------------------- opportunities (D76, D81)
+
+
+class OpportunityStatus(StrEnum):
+    IDENTIFICADA = "identificada"
+    EM_REVISAO_INTERNA = "em_revisao_interna"
+    DEVOLVIDA = "devolvida"
+    REJEITADA = "rejeitada"
+    APROVADA_PARA_CLIENTE = "aprovada_para_cliente"
+    APROVADA_PELO_CONDOMINIO = "aprovada_pelo_condominio"
+    RECUSADA_PELO_CONDOMINIO = "recusada_pelo_condominio"
+    EM_EXECUCAO = "em_execucao"
+    IMPLEMENTADA = "implementada"
+    RESULTADO_MEDIDO = "resultado_medido"
+    ENCERRADA = "encerrada"
+
+
+class OpportunityType(StrEnum):
+    REAJUSTE = "reajuste"
+    COBRANCA_INCONSISTENTE = "cobranca_inconsistente"
+    RENEGOCIACAO = "renegociacao"
+    RACIONALIZACAO_ESCOPO = "racionalizacao_escopo"
+    RECUPERACAO = "recuperacao"
+    COMPRA_ALTERNATIVA = "compra_alternativa"
+    EFICIENCIA_OPERACIONAL = "eficiencia_operacional"
+
+
+class SavingsStage(StrEnum):
+    """Never summed with each other (D76): each is a separate, dated photograph."""
+
+    POTENCIAL = "potencial"
+    ESTIMADA_VALIDADA = "estimada_validada"
+    APROVADA = "aprovada"
+    CONTRATADA = "contratada"
+    REALIZADA = "realizada"
+
+
+class OpportunityReviewAction(StrEnum):
+    APROVAR = "aprovar"
+    AJUSTAR = "ajustar"
+    DEVOLVER = "devolver"
+    REJEITAR = "rejeitar"
+    REABRIR_REVISAO = "reabrir_revisao"
+    # The condominium's own decision (approve_in_condo), recorded in the same trail.
+    CONDOMINIO_APROVAR = "condominio_aprovar"
+    CONDOMINIO_RECUSAR = "condominio_recusar"
