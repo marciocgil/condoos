@@ -436,3 +436,47 @@ O CondoOS não move dinheiro: a agenda não tem ação de pagar nem de agendar p
   - sem envio por e-mail ou WhatsApp;
   - sem horário configurável por pessoa (FR-009);
   - sem digest semanal (FR-038).
+
+## VS-05 — Pedido de ação com aprovação, política mínima e kill switch (migração 0016)
+
+**D83 — Ação aprovada com escopo congelado, sem envio externo** (CB-010, CB-011, CB-050; 07/11/2026; migração 0016 aprovada pelo Marcio no mesmo dia).
+- **Tabelas** (todas com RLS):
+  - `action_request`: tipo da ação, assunto e oportunidade opcionais, conteúdo congelado com hash (efeito exato, motivo, quem executa, fornecedor, prazo, riscos), teto de custo, decisão e versão da política, estado, chave de idempotência (única por condomínio), quem aprovou e até quando vale a aprovação, execução registrada;
+  - `action_decision`: cada passo (pedir, ajustar, aprovar, recusar, cancelar, anular, encaminhar, bloquear, aprovação vencida, executar), com a versão do conteúdo; **só inclusão**;
+  - `outbox_event`: um evento por aprovação, com chave de idempotência única: reprocessar a mesma aprovação não duplica;
+  - `automation_pause`: o kill switch, por condomínio e por tipo (ou "todas"); retomar preenche `resumed_at` e mantém o histórico.
+- **Motor de política mínimo** (`app/policy/`, código tipado, versão 1, sem avaliação de texto):
+  - tipo desconhecido → **nega**;
+  - pagamento, contratação, multa e alteração de dados bancários → **nega sempre** (decisão humana fora do sistema);
+  - pedir orçamento sem compromisso → só com teto R$ 0,00;
+  - cobrar fornecedor, pedir orçamento e agendar visita técnica → **exige aprovação** do síndico;
+  - teto acima da alçada do síndico → **nega** ("leve ao conselho ou à assembleia");
+  - custo sem alçada configurada → **exige revisão** (configurar a alçada antes);
+  - automação pausada → **pausa**.
+  - Nenhuma regra desta versão responde "permite": nada roda sem uma pessoa.
+  - A negativa fica registrada em `audit_log` (`action.denied_by_policy`), sem criar pedido.
+- **Ciclo** (Especificação §9.5):
+  - quem trata assuntos (`manage_cases`: síndico, Admin e Reviewer CondoOS) pede;
+  - só quem aprova pelo condomínio (`approve_in_condo`: síndico) aprova, recusa ou pede ajustes;
+  - a aprovação vale para o hash da versão que estava na tela. Versão diferente → 409 (SEC-04);
+  - a aprovação vale por 7 dias;
+  - ajustar depois de aprovado anula a aprovação e cancela o evento pendente;
+  - recusa exige motivo e nunca gera evento (WF-06).
+- **Despacho** (job `action.dispatch`, worker): confere de novo o estado, o hash do conteúdo (recalculado), a validade e a política.
+  - Conteúdo alterado por fora → `bloqueada`.
+  - Aprovação vencida ou política mudada → volta para aprovação.
+  - Sem conector no piloto, **nada é enviado**: a ação passa a "aprovada, aguardando execução" e uma pessoa executa e registra.
+- **Execução registrada:** confere a validade de novo (SEC-05). Custo final acima do teto anula a aprovação, atualiza o teto e devolve para nova aprovação (SEC-04). Não existem estados "expirada" ou "invalidada": o pedido volta para aprovação, e a trilha registra "aprovação vencida" ou "anulou a aprovação".
+- **Kill switch** (FR-007): `configure_policy` (síndico, Admin CondoOS) pausa e retoma. Tipos pausáveis: despacho de ações e reescrita das explicações por IA.
+  - O worker não roda job pausado: devolve para a fila sem gastar tentativa e tenta de novo em 1 minuto.
+  - Pedidos novos recebem 409 enquanto houver pausa.
+  - Pausar e retomar ficam em `audit_log`.
+- **Assunto:** cada passo de uma ação vinculada entra na linha do tempo do assunto (`case_event` tipo `acao`).
+- **Hoje:** o briefing mostra ao síndico as ações aguardando aprovação e, a quem trata assuntos, as aguardando execução.
+- **Telas:**
+  - "Aprovações" no celular, com pedidos, aprovação contextual e o card de pausa (acesso pelo Hoje e pelo assunto);
+  - item "Aprovações" no menu do desktop;
+  - "Pedir ação com aprovação" no assunto;
+  - card "Pausar automações" em Configurações.
+  - A tela de aprovação mostra o que a §7.5 pede: o que será autorizado, por quê, o que acontece depois do clique, custo e teto, quem executa, fontes, riscos, alçada e vigência.
+- **Fora do escopo:** autenticação reforçada (§7.5 item 10; depende de MFA, excluído), "Escalar" e delegação, aprovação pelo conselho, conectores de envio, política configurável pelo condomínio (CB-012).

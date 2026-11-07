@@ -2,6 +2,7 @@
 
 import {
   BarChart3,
+  CheckSquare,
   Building2,
   CalendarDays,
   ChevronsLeft,
@@ -30,6 +31,7 @@ const ITEMS = [
   { href: "/admin/fila", label: "Fila de exceções", icon: Inbox, counter: true },
   { href: "/admin/assuntos", label: "Assuntos", icon: FolderKanban },
   { href: "/admin/oportunidades", label: "Oportunidades", icon: PiggyBank },
+  { href: "/admin/aprovacoes", label: "Aprovações", icon: CheckSquare },
   { href: "/admin/pendencias", label: "Pendências", icon: ClipboardList },
   { href: "/admin/agenda", label: "Agenda", icon: CalendarDays },
   { href: "/admin/fornecedores", label: "Fornecedores", icon: Store },

@@ -21,6 +21,10 @@ from app.db.models import Job
 logger = logging.getLogger(__name__)
 
 Handler = Callable[[AsyncSession, dict[str, Any]], Awaitable[None]]
+# Kill switch (FR-007, D83): answers whether a job type is paused for a condominium.
+PauseCheck = Callable[[AsyncSession, str, uuid.UUID | None], Awaitable[bool]]
+
+PAUSED_RETRY = timedelta(minutes=1)
 
 STALE_AFTER = timedelta(minutes=15)
 # Light, follow-up jobs (e.g. matching a document a person just corrected) must not wait
@@ -89,12 +93,26 @@ def backoff_seconds(attempts: int) -> int:
     return int(min(2**attempts * 5, MAX_BACKOFF_SECONDS))
 
 
-async def run_one(maker: async_sessionmaker[AsyncSession], handlers: dict[str, Handler]) -> bool:
-    """Claim and execute one job. Returns False when the queue had nothing ready."""
+async def run_one(
+    maker: async_sessionmaker[AsyncSession],
+    handlers: dict[str, Handler],
+    paused: PauseCheck | None = None,
+) -> bool:
+    """Claim and execute one job. Returns False when the queue had nothing ready.
+
+    A paused job is not run: it goes back to the queue without spending an attempt."""
     async with maker() as session, session.begin():
         job = await claim_next(session)
         if job is None:
             return False
+        if paused is not None and await paused(session, job.job_type, job.condominium_id):
+            job.status = JobStatus.QUEUED.value
+            job.attempts -= 1
+            job.locked_at = None
+            job.last_error = "pausado (kill switch)"
+            job.run_after = utcnow() + PAUSED_RETRY
+            logger.info("job paused id=%s type=%s", job.id, job.job_type)
+            return True
         job_id, job_type, payload = job.id, job.job_type, dict(job.payload)
         attempts, max_attempts = job.attempts, job.max_attempts
 

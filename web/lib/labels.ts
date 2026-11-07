@@ -235,3 +235,37 @@ export const CONFIDENCE_LABEL: Record<string, string> = {
   media: "Confiança média",
   baixa: "Confiança baixa",
 };
+
+// --------------------------------------------------------------------------- actions (D83)
+
+export const ACTION_STATUS_LABEL: Record<string, string> = {
+  aguardando_aprovacao: "Aguardando aprovação",
+  enfileirada: "Aprovada, na fila",
+  aguardando_execucao_manual: "Aprovada, aguardando execução",
+  executada: "Executada",
+  recusada: "Recusada",
+  cancelada: "Cancelada",
+  bloqueada: "Bloqueada na conferência",
+};
+
+export const ACTION_BUTTON_LABEL: Record<string, string> = {
+  aprovar: "Aprovar",
+  pedir_ajustes: "Pedir ajustes",
+  recusar: "Recusar",
+  ajustar: "Ajustar pedido",
+  cancelar: "Cancelar pedido",
+  registrar_execucao: "Registrar execução",
+};
+
+export const ACTION_DECISION_VERB: Record<string, string> = {
+  solicitar: "pediu a ação",
+  ajustar: "ajustou o pedido",
+  aprovar: "aprovou",
+  recusar: "recusou",
+  cancelar: "cancelou",
+  invalidar: "anulou a aprovação",
+  despachar: "encaminhou para execução",
+  bloquear: "bloqueou na conferência",
+  expirar: "aprovação vencida",
+  executar: "registrou a execução",
+};

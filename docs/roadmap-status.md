@@ -1,25 +1,25 @@
 # Estado do roadmap
 
-Atualizado em 07/11/2026: prompt 01, decisões DV-01..DV-05 (D73–D77), plano de migração 0011–0014 aprovado, incremento 1 (fechar G1, D78), incremento 2 (acesso e revisão proporcional, D79), VS-01 (Assunto, D80), VS-03 (Oportunidade, D81) e VS-04 (Briefing e Hoje, D82) entregues.
+Atualizado em 07/11/2026: prompt 01, decisões DV-01..DV-05 (D73–D77), plano de migração 0011–0014 aprovado, incremento 1 (fechar G1, D78), incremento 2 (acesso e revisão proporcional, D79), VS-01 (Assunto, D80), VS-03 (Oportunidade, D81), VS-04 (Briefing e Hoje, D82) e VS-05 (pedido de ação com aprovação, política mínima e kill switch, D83) entregues.
 
 Estados: `nao_iniciado`, `em_analise`, `em_desenvolvimento`, `em_teste`, `bloqueado`, `pronto_para_validar`, `validado`, `adiado`. `validado` só com link a teste, PR, demo ou aceite contra a Especificação.
 
 ## 1. Situação geral
 
 - **Marco atual:** M1 — Core confiável (M0 concluído em 07/11/2026: inventário, decisões D73–D77 e plano de migração aprovado). MVP auditor (Marcos 1–6) concluído em 05/11/2026; base reaproveitada integralmente.
-- **Cobertura dos 65 FR** (`docs/02-gap-matrix.md`): 17 real, 20 parcial, 28 inexistentes. P0: 15 real, 13 parcial, 1 inexistente (FR-007).
-- **Gates:** G0 aberto · **G1 fechado** (CI, SEC-10 e evento de segurança, D78; CI verde no GitHub: https://github.com/marciocgil/marcio-linkedin-skills/actions/runs/42322097954) · G2 parcial · G3 atendido no código: cálculo reproduzível e revisão interna obrigatória antes do condomínio (D81); falta validação com dados de piloto · G4 e G5 não iniciados.
+- **Cobertura dos 65 FR** (`docs/02-gap-matrix.md`): 19 real, 20 parcial, 26 inexistentes. P0: 17 real, 12 parcial, nenhum inexistente (FR-007 entrou com a VS-05).
+- **Gates:** G0 aberto · **G1 fechado** (CI, SEC-10 e evento de segurança, D78; CI verde no GitHub: https://github.com/marciocgil/marcio-linkedin-skills/actions/runs/42322097954) · G2 parcial · G3 atendido no código: cálculo reproduzível e revisão interna obrigatória antes do condomínio (D81); falta validação com dados de piloto · G4: pré-requisitos no código (política que nega por padrão, aprovação com escopo congelado, outbox idempotente, kill switch, D83); nenhuma automação externa habilitada · G5 não iniciado.
 
 ## 2. Estado por requisito (resumo)
 
 | Estado | FRs |
 |---|---|
 | validado | — |
-| pronto_para_validar | 001, 003, 004, 011, 013, 020, 021, 022, 023, 024, 032, 043, 044, 045, 046, 048 |
-| em_desenvolvimento | 025 (fila por pessoa e alertas prontos; faltam filtros de categoria e criticidade na tela), 027 (Assunto 360° com vínculos clicáveis; falta vincular pela tela) |
-| em_analise | 002, 005, 006, 008, 012, 014, 015, 016, 017, 018, 019, 026, 028, 033, 034, 041, 042 |
+| pronto_para_validar | 001, 003, 004, 007, 011, 013, 020, 021, 022, 023, 024, 032, 034, 043, 044, 045, 046, 048 |
+| em_desenvolvimento | 058 (aprovação com escopo congelado; a contratação em si segue fora do sistema), 025 (fila por pessoa e alertas prontos; faltam filtros de categoria e criticidade na tela), 027 (Assunto 360° com vínculos clicáveis; falta vincular pela tela) |
+| em_analise | 002, 005, 006, 008, 012, 014, 015, 016, 017, 018, 019, 026, 028, 033, 041, 042 |
 | bloqueado | 031 (avaliação ao vivo: falta `ANTHROPIC_API_KEY`) |
-| nao_iniciado | 007, 009, 010, 029, 030, 035, 036, 037, 038, 047, 049, 050, 051–058 |
+| nao_iniciado | 009, 010, 029, 030, 035, 036, 037, 038, 047, 049, 050, 051–058 |
 | adiado (P2/P3) | 039, 040, 059–065 |
 
 Detalhe e evidências: `docs/02-gap-matrix.md` e `docs/traceability.md`.
@@ -29,7 +29,7 @@ Detalhe e evidências: `docs/02-gap-matrix.md` e `docs/traceability.md`.
 | Item | Estado | Evidência |
 |---|---|---|
 | WP-00 Inventário e ADRs | em_desenvolvimento | `docs/01-repo-audit.md`, `docs/02-gap-matrix.md`, `docs/03-decisions-register.md` |
-| Modelo de dados pós-decisões (D73–D77) | 0011–0014 entregues (D79–D81); 0015 (briefing) aprovada e entregue (D82) | `docs/data-model.md`, `docs/authorization-matrix.md`, `docs/flows.md` |
+| Modelo de dados pós-decisões (D73–D77) | 0011–0014 entregues (D79–D81); 0015 (briefing, D82) e 0016 (ações e kill switch, D83) aprovadas e entregues | `docs/data-model.md`, `docs/authorization-matrix.md`, `docs/flows.md` |
 
 ## 4. Bloqueios
 
@@ -40,7 +40,7 @@ Detalhe e evidências: `docs/02-gap-matrix.md` e `docs/traceability.md`.
 
 ## 5. Próxima fatia e incrementos seguintes
 
-**Decisão:** com VS-01, VS-03 e VS-04 entregues, a próxima fatia do caminho crítico é a **VS-05 (pedido de ação com aprovação e escopo congelado, sem envio externo)**, junto com o motor de política mínimo e o kill switch (CB-010..012), que o gate G4 exige antes de qualquer automação com efeito. As sobras pequenas (CB-018, CB-019, CB-023, CB-028) e o Optimize (CB-060, CB-063) seguem disponíveis.
+**Decisão:** com VS-01, VS-03, VS-04 e VS-05 entregues, o caminho crítico do Plano leva à **VS-06 (Operate controlado)**, que depende do gate G4 e de dados reais de piloto (B5): **não começar sem decisão do Marcio.** Disponíveis sem bloqueio: CB-012 (política de alçadas versionada), sobras pequenas (CB-018, CB-019, CB-023, CB-028) e Optimize (CB-060, CB-063).
 
 | Ordem | Incremento | Pacotes / histórias | Critério de conclusão | Depende de |
 |---|---|---|---|---|
@@ -48,8 +48,10 @@ Detalhe e evidências: `docs/02-gap-matrix.md` e `docs/traceability.md`.
 | 2 | ~~Acesso e revisão proporcional~~ **entregue** (D79) | EP-09: CB-002, CB-013..017 (migrações 0011, 0012) | 252 testes do backend (22 novos) e 18 fluxos E2E (2 novos) passando; casos plantados exatos; migração ida e volta verificada | — |
 | 3 | ~~VS-01~~ **entregue** (D80) | WP-04, WP-07: CB-020..027 (migração 0013) | 263 testes do backend (11 novos), 20 fluxos E2E (2 novos), aceite VS-01 | — |
 | 4 | ~~VS-03~~ **entregue** (D81) | CB-061, CB-062, CB-064 (migração 0014) | 271 testes do backend (8 novos), 21 fluxos E2E (1 novo); revisão interna antes do condomínio | — |
+| 5 | ~~VS-04~~ **entregue** (D82) | CB-041, CB-042 (migração 0015) | 278 testes, 23 fluxos E2E | — |
+| 6 | ~~VS-05~~ **entregue** (D83) | CB-010, CB-011, CB-050 (migração 0016) | 292 testes do backend (14 novos), 25 fluxos E2E (2 novos); SEC-04, SEC-05, WF-06, kill switch, outbox idempotente | — |
 
-Política mínima e kill switch (CB-010..012) entram entre os incrementos 2 e 3 se houver automação nova com efeito; hoje o produto não envia nada para fora.
+Política mínima e kill switch entregues com a VS-05 (D83); o produto continua sem enviar nada para fora.
 
 **Escopo excluído:** envio externo (e-mail, WhatsApp) além do link mágico; interfaces de zelador, fornecedor e morador (papéis só reservados); MFA; P2/P3; dados reais.
 
@@ -63,3 +65,4 @@ Política mínima e kill switch (CB-010..012) entram entre os incrementos 2 e 3 
 - 07/11/2026 — VS-01 entregue (D80): assunto com responsável, próxima ação e prazo, máquina de estados, tarefas, evidência, vínculos N:N com histórico, duplicidade antes de criar; telas no celular e no desktop. Verificação local: 263 testes do backend, lint, 20 fluxos E2E contra a stack local. O E2E encontrou e corrigiu um defeito de fuso na exibição de datas. FR-021..024 passam a `pronto_para_validar`.
 - 07/11/2026 — VS-03 entregue (D81): oportunidade a partir de R02/R03 com economia calculada por código, revisão interna CondoOS antes do condomínio, decisão do síndico, estágios de economia lado a lado. Verificação local: 271 testes, lint, 21 fluxos E2E. FR-045 e FR-046 passam a `pronto_para_validar`. Plano de migração 0011–0014 completo.
 - 07/11/2026 — VS-04 entregue (D82): briefing do dia por pessoa e condomínio, versionado, com período, fontes parciais e leitura registrada; aba "Hoje" no celular e item "Hoje" no desktop. Verificação local: 278 testes do backend, lint, 23 fluxos E2E. FR-032 passa a `pronto_para_validar`.
+- 07/11/2026 — VS-05 entregue (D83): pedido de ação com escopo congelado por hash, aprovação do síndico com validade, outbox idempotente e despacho que confere tudo de novo e não envia nada (a ação espera uma pessoa executar e registrar); motor de política tipado que nega por padrão; kill switch por condomínio e tipo. Migração 0016 com ida e volta verificada. Verificação local: 292 testes do backend, lint, 25 fluxos E2E. FR-007 e FR-034 passam a `pronto_para_validar`; FR-058 a `em_desenvolvimento`.

@@ -612,3 +612,82 @@ export interface Briefing {
   sections: { key: string; title: string; count: number; items: BriefingItem[] }[];
   partial_sources: { source: string; label: string; reason: string }[];
 }
+
+// --------------------------------------------------------------------------- actions (D83)
+
+export interface ActionRow {
+  id: string;
+  condominium_id: string;
+  condominium_name: string;
+  title: string;
+  action_type: string;
+  type_label: string;
+  status: string;
+  cost_cap: string;
+  case_id: string | null;
+  case_number: string | null;
+  requested_by: string;
+  created_at: string;
+  approval_expires_at: string | null;
+}
+
+export interface ActionPayload {
+  effect: string;
+  reason: string;
+  executor: string;
+  supplier_id?: string | null;
+  due_date?: string | null;
+  risks?: string;
+  evidence?: Record<string, string>[];
+}
+
+export interface ActionDetail extends ActionRow {
+  level: string;
+  payload: ActionPayload;
+  payload_hash: string;
+  supplier_name: string | null;
+  policy_decision: string;
+  policy_version: number;
+  policy_reason: string;
+  approval_limit: string | null;
+  approval_valid_days: number;
+  case_title: string | null;
+  opportunity_id: string | null;
+  approved_by: string | null;
+  executed_at: string | null;
+  executed_by: string | null;
+  execution_note: string | null;
+  history: {
+    at: string;
+    who: string;
+    kind: string;
+    from_status: string;
+    to_status: string;
+    comment: string | null;
+    payload_hash: string;
+  }[];
+  allowed_actions: string[];
+}
+
+export interface ActionTypes {
+  policy_version: number;
+  types: { code: string; label: string; level: string; zero_cost_only: boolean }[];
+}
+
+export interface AutomationPause {
+  id: string;
+  automation_type: string;
+  label: string;
+  reason: string;
+  paused_by: string;
+  paused_at: string;
+  resumed_at: string | null;
+  resumed_by: string | null;
+}
+
+export interface AutomationPauses {
+  can_pause: boolean;
+  types: { code: string; label: string }[];
+  active: AutomationPause[];
+  history: AutomationPause[];
+}

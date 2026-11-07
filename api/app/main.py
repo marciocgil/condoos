@@ -8,6 +8,7 @@ from fastapi import FastAPI
 
 from app.config import get_settings
 from app.routers import (
+    actions,
     agenda,
     approvals,
     auth,
@@ -65,6 +66,7 @@ def create_app() -> FastAPI:
     app.include_router(cases.router)
     app.include_router(opportunities.router)
     app.include_router(briefing.router)
+    app.include_router(actions.router)
 
     @app.get("/health", tags=["health"])
     async def health() -> dict[str, str]:

@@ -1,6 +1,6 @@
 # Rastreabilidade — FR ↔ tarefa ↔ código ↔ teste ↔ entrega
 
-Data: 07/11/2026. Atualizar ao fim de cada fatia (CLAUDE.md, item 6). "Entrega" = marco do MVP auditor (Marco 1–6, 05/11/2026) ou decisão pós-piloto (D65–D71) em que o código entrou. Testes citados existem no repositório. Última execução local completa: 07/11/2026, 278 passaram (D82); E2E: 23 fluxos passaram contra a stack local.
+Data: 07/11/2026. Atualizar ao fim de cada fatia (CLAUDE.md, item 6). "Entrega" = marco do MVP auditor (Marco 1–6, 05/11/2026) ou decisão pós-piloto (D65–D71) em que o código entrou. Testes citados existem no repositório. Última execução local completa: 07/11/2026, 292 passaram (D83); E2E: 25 fluxos passaram contra a stack local.
 
 | FR | Tarefa(s) | Código | Teste(s) | Entrega |
 |---|---|---|---|---|
@@ -10,7 +10,7 @@ Data: 07/11/2026. Atualizar ao fim de cada fatia (CLAUDE.md, item 6). "Entrega" 
 | FR-004 | CB-004 | `auth/rbac.py`, `auth/deps.py::require` | `test_rbac.py`, `test_findings_api.py`, `test_access_revocation.py` (revogação e desativação) | Marco 1, D78 |
 | FR-005 | CB-010, CB-012 | `core/audit.py`, `models.AuditLog`, `models.Decision` | `test_isolation.py::test_append_only_tables`, `test_auth.py::test_login_is_audited` | Marco 1, Marco 4 |
 | FR-006 | CB-010, CB-012, CB-015 | `routers/settings.py` (alçadas, parâmetros), `app/review/` e `routers/review_policy.py` (política de revisão versionada), migração 0012 | `test_registry.py` (parcial), `test_review_policy.py` | Marco 4, D79 |
-| FR-007 | CB-011 | — | — | — |
+| FR-007 | CB-011 | `app/policy/__init__.py` (`active_pause`, `job_paused`), `core/jobs.py::run_one` (job pausado volta à fila), `routers/actions.py` (pausas), `db/models.py::AutomationPause`, migração 0016; `components/condoos/AutomationPausesCard.tsx` | `test_actions.py::test_kill_switch_stops_requests_and_the_worker`, e2e `actions.spec.ts` | D83 |
 | FR-008 | — | `routers/portfolio.py`, filtro `?condominio=` | `test_isolation.py::test_gerente_sees_whole_portfolio` | Marco 1, D69 |
 | FR-009 / FR-010 | — | — | — | — |
 | FR-011 | — | `ingestion/documents.py`, `ingestion/filetypes.py`, `ingestion/email.py`, `storage/s3.py`, `routers/documents.py` | `test_ingestion.py` | Marco 2 |
@@ -30,7 +30,7 @@ Data: 07/11/2026. Atualizar ao fim de cada fatia (CLAUDE.md, item 6). "Entrega" 
 | FR-031 | CB-040 | `chat/agent.py`, `chat/tools.py`, `chat/service.py`, `prompts/chat_system.md` | `test_chat.py`, `tests/chat_eval/` (ao vivo não rodado) | Marco 5 |
 | FR-032 | CB-041, CB-042 | `app/briefing/__init__.py` (montagem por fonte, savepoint por seção, retenção), `routers/briefing.py`, `db/models.py::Briefing`, migração 0015; telas `web/app/(sindico)/condominio/[id]/resumo/page.tsx` (aba Hoje), `web/app/(admin)/admin/hoje/page.tsx`, `components/condoos/BriefingView.tsx` | `test_briefing.py` (7), e2e `briefing.spec.ts` (2) | D82 |
 | FR-033 | CB-041 | `findings/explain.py`, `chat/service.py` (ação sugerida) | `test_explain.py` | Marco 4, Marco 5 |
-| FR-034 | CB-010, CB-050 | (ausência de efeitos externos) | — | — |
+| FR-034 | CB-010, CB-050 | `app/policy/__init__.py` (nega por padrão), `app/actions/__init__.py` (aprovação, outbox, despacho sem envio), `routers/actions.py`, migração 0016; telas `aprovacoes/` (celular e desktop), `ActionDetailView.tsx`, `ActionForm.tsx` | `test_actions.py` (10), `test_isolation.py` (só inclusão em `action_decision`), e2e `actions.spec.ts` (2) | D83 |
 | FR-035..040 | — | — | — | — |
 | FR-041 | CB-060 | `extraction/fields.py` (contrato), `matching/documents.py`, `routers/registry.py` (contratos) | `test_contract_reading.py`, `test_onboarding.py`, `test_registry.py` | Marco 6, D59, D66–D68, D70 |
 | FR-042 | CB-060 | `agenda.py`, `rules/contracts.py` | `test_agenda.py` | D71 |
@@ -41,7 +41,8 @@ Data: 07/11/2026. Atualizar ao fim de cada fatia (CLAUDE.md, item 6). "Entrega" 
 | FR-047 | — | — | — | — |
 | FR-048 | — | `matching/bank.py`, `models.MatchIssue` | `test_matching.py` | Marco 3 |
 | FR-049 / FR-050 | CB-063 (050) | — | — | — |
-| FR-051..065 | — | — (FR-059: atas indexadas em `chat/search.py`) | — | — |
+| FR-058 | CB-050 | `app/actions/__init__.py` (escopo, teto, versão e validade congelados) | `test_actions.py` | D83 (parcial: contratar continua fora do sistema) |
+| FR-051..065 (exceto 058) | — | — (FR-059: atas indexadas em `chat/search.py`) | — | — |
 
 ## Testes da Especificação §21 e do Plano §11.2
 
@@ -50,8 +51,10 @@ Data: 07/11/2026. Atualizar ao fim de cada fatia (CLAUDE.md, item 6). "Entrega" 
 | SEC-01 (tenant A × B) | Coberto; tentativa registrada como evento de segurança (D78) | `test_isolation.py`, `test_access_revocation.py` |
 | SEC-02/AI (PDF adversarial) | Parcial: ferramentas só de leitura; sem teste explícito de injeção | CB-010 |
 | SEC-02 Plano (busca entre tenants) | Coberto | `test_isolation.py`, RLS em `document_chunk` |
-| SEC-04/05 (valor/expiração da aprovação) | Não há aprovação de ação | CB-050 |
-| SEC-08 (kill switch) | Inexistente | CB-011 |
+| SEC-04/05 (valor/expiração da aprovação) | Coberto (D83): aprovação de outra versão é recusada; custo acima do teto e aprovação vencida devolvem para nova aprovação | `test_actions.py` |
+| SEC-08 Plano (kill switch) | Coberto (D83) | `test_actions.py`, e2e `actions.spec.ts` |
+| WF-06 (rejeitada não dispara) | Coberto (D83): recusa não cria evento no outbox | `test_actions.py::test_rejected_action_is_never_dispatched` |
+| Outbox idempotente | Coberto (D83): despacho repetido da mesma aprovação não duplica | `test_actions.py` |
 | SEC-10 (revogado com sessão antiga) | Coberto (D78) | `test_access_revocation.py` |
 | DOC-01 (campo ausente) | Parcial: obrigatório < 0,9 vai para fila | `test_extraction.py`; CB-030 |
 | DOC-02 (versão vigente) | Parcial (aditivos) | CB-031 |
@@ -59,5 +62,5 @@ Data: 07/11/2026. Atualizar ao fim de cada fatia (CLAUDE.md, item 6). "Entrega" 
 | FIN-02 (escopo não comparável) | Parcial (R04 com IA) | `test_rules.py`; CB-061 |
 | OPT-01 (sem revisão, não publica) | Coberto: oportunidade 404 para o condomínio antes da revisão (D81) | `test_opportunities.py` |
 | OPS-02, WF-04, WF-10 | Cobertos no assunto: fechar sem evidência é negado; "fornecedor disse que fez" não resolve; reabrir preserva histórico (D80) | `test_cases.py` |
-| OPS-01, WF-01..03, WF-05..09 | Inexistentes (sem OS, webhook ou ERP) | — |
+| OPS-01, WF-01..03, WF-05, WF-07..09 | Inexistentes (sem OS, webhook ou ERP) | — |
 | AI-01 (sem fonte suficiente) | Gabarito existe; ao vivo não rodado | `tests/chat_eval/`; CB-040 |

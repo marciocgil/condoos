@@ -8,6 +8,7 @@ from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.actions import DISPATCH_JOB, dispatch_job
 from app.chat.search import INDEX_JOB, index_job
 from app.config import get_settings
 from app.core.jobs import Handler, run_one
@@ -21,6 +22,7 @@ from app.ingestion.documents import PROCESS_JOB
 from app.ingestion.email import FolderEmailProvider, poll_provider
 from app.matching.bank import match_bank_job
 from app.matching.documents import match_document_job
+from app.policy import job_paused
 from app.rules.engine import evaluate_job
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
@@ -44,6 +46,7 @@ HANDLERS: dict[str, Handler] = {
     "finding.explain": explain_job,
     INDEX_JOB: index_job,
     RETENTION_JOB: purge_job,
+    DISPATCH_JOB: dispatch_job,
 }
 
 
@@ -93,7 +96,7 @@ async def main() -> None:
             except Exception:
                 logger.exception("inbound email poll failed")
         try:
-            worked = await run_one(maker, HANDLERS)
+            worked = await run_one(maker, HANDLERS, job_paused)
         except Exception:
             logger.exception("worker loop error")
             worked = False

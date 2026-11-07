@@ -14,7 +14,7 @@ Data: 07/11/2026 (FR-046 revisto após D74). Fonte dos requisitos: Especificaç�
 | FR-004 | P0 | WP-02 | real | `rbac.py` (5 papéis × 11 permissões), `require()` no backend | Papéis futuros (zelador, fornecedor…) | `test_rbac.py`, `test_findings_api.py` | pronto_para_validar |
 | FR-005 | P0 | WP-03 | parcial | `audit_log` e `decision` append-only (D14) | Versão de política/aplicação e motivo em todas as mudanças críticas; estado anterior/novo | `test_isolation.py::test_append_only_tables` | em_analise |
 | FR-006 | P0 | WP-03 | parcial | Alçadas e parâmetros de regra por condomínio (`settings.py`) | Política versionada, com responsável e vigência; níveis L1–L5 | `test_registry.py` (parcial) | em_analise |
-| FR-007 | P0 | WP-03 | inexistente | Orçamento mensal de LLM por condomínio (não é kill switch) | Desligar automações por tenant/tipo; cancelar jobs pendentes | — | nao_iniciado |
+| FR-007 | P0 | WP-03 | real (D83) | Pausa por condomínio e tipo (`automation_pause`); o worker não roda job pausado; pedidos novos recusados | Pausa global da plataforma | `test_actions.py::test_kill_switch_stops_requests_and_the_worker`, e2e `actions.spec.ts` | pronto_para_validar |
 | FR-008 | P1 | WP-02 | parcial | Carteira multi-condomínio do gerente, filtro `?condominio=` (D69) | Síndico profissional com vários condomínios sem administradora (D3 cobre via `gerente`) | `test_isolation.py::test_gerente_sees_whole_portfolio` | em_analise |
 | FR-009 | P1 | WP-19 | inexistente | — | Preferências de canal/horário | — | nao_iniciado |
 | FR-010 | P1 | WP-03 | inexistente | — | MFA para ação sensível | — | nao_iniciado |
@@ -56,7 +56,7 @@ Data: 07/11/2026 (FR-046 revisto após D74). Fonte dos requisitos: Especificaç�
 | FR-031 | P0 | WP-06 | real (não medido ao vivo) | Chat com 9 ferramentas de leitura, citações e números conferidos (D55) | Avaliação ao vivo (≥ 90 %, zero vazamento) | `test_chat.py`, `chat_eval/` (gabarito) | bloqueado (falta `ANTHROPIC_API_KEY`) |
 | FR-032 | P0 | WP-09 | real | Briefing do dia por pessoa e condomínio: riscos, decisões, andamento, concluído (só com registro), agenda, oportunidades e qualidade dos dados, com fonte, período, fuso, versão, leitura e aviso de dados parciais (D82) | Envio por canal externo; horário configurável (FR-009) | `test_briefing.py`, e2e `briefing.spec.ts` | pronto_para_validar |
 | FR-033 | P0 | WP-09 | parcial | Achado com explicação e evidências; ação sugerida do chat (lista fechada) | Próxima ação + estado de autorização | `test_explain.py` | em_analise |
-| FR-034 | P0 | WP-10 | parcial | Nenhum efeito externo existe (seguro por ausência) | Separação garantida por política quando houver efeito | — | em_analise |
+| FR-034 | P0 | WP-10 | real (D83) | Motor de política nega por padrão; ação só com aprovação do síndico; nenhum efeito externo | Conectores reais ainda inexistentes | `test_actions.py` | pronto_para_validar |
 | FR-035 | P1 | WP-20 | inexistente | — | WhatsApp oficial | — | nao_iniciado |
 | FR-036 | P1 | WP-20 | inexistente | (chat interno responde sobre convenção) | FAQ ao morador | — | nao_iniciado |
 | FR-037 | P1 | WP-20 | inexistente | — | Atualização ao morador | — | nao_iniciado |
@@ -90,7 +90,7 @@ Data: 07/11/2026 (FR-046 revisto após D74). Fonte dos requisitos: Especificaç�
 | FR-055 | P1 | WP-21 | inexistente | RFQ | nao_iniciado |
 | FR-056 | P1 | WP-21 | inexistente | Comparador de propostas | nao_iniciado |
 | FR-057 | P1 | WP-16 | inexistente | Conformidade e vencimentos | nao_iniciado |
-| FR-058 | P1 | WP-21/10 | inexistente (há registro de aprovação passada, D65) | Aprovação com escopo congelado | nao_iniciado |
+| FR-058 | P1 | WP-21/10 | parcial (D83) | Aprovação com escopo, valor e versão congelados (hash), validade e alçada | Contratação em si continua proibida pelo sistema; aprovação pelo conselho | em_desenvolvimento |
 | FR-059 | P2 | WP-23 | parcial (ata indexada e ligada a aprovação) | Deliberação → tarefas | adiado |
 | FR-060 | P2 | WP-23 | inexistente | Obras e medição | adiado |
 | FR-061 | P2 | WP-23 | inexistente | Reservas | adiado |
@@ -111,7 +111,7 @@ Data: 07/11/2026 (FR-046 revisto após D74). Fonte dos requisitos: Especificaç�
 | Operate etc. (051–065) | 15 | 0 | 1 | 14 |
 | **Total** | **65** | **17** | **20** | **28** |
 
-P0 (29 FRs): 15 real, 13 parcial, 1 inexistente (FR-007 kill switch). FR-021 e FR-022 entraram com a VS-01 (D80). FR-045 (oportunidade) e FR-046 (revisão interna) são parciais, mas centrais ao Optimize, e FR-046 foi decidido em D74 (revisão proporcional ao risco).
+P0 (29 FRs): 17 real, 12 parcial, 0 inexistente (FR-007 e FR-034 entraram com a VS-05, D83). FR-021 e FR-022 entraram com a VS-01 (D80). FR-045 (oportunidade) e FR-046 (revisão interna) são parciais, mas centrais ao Optimize, e FR-046 foi decidido em D74 (revisão proporcional ao risco).
 
 ## 8. Cobertura por CAP
 

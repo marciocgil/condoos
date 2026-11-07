@@ -34,6 +34,8 @@ from app.core.time import DEFAULT_TIMEZONE
 from app.db.base import Base, IdTimestampMixin
 from app.db.enums import (
     MEMBERSHIP_ROLES,
+    ActionDecisionKind,
+    ActionStatus,
     AdjustmentIndex,
     BankTransactionOrigin,
     BoardPosition,
@@ -53,7 +55,9 @@ from app.db.enums import (
     OpportunityReviewAction,
     OpportunityStatus,
     OpportunityType,
+    OutboxStatus,
     PlatformRole,
+    PolicyDecision,
     ReviewRequirement,
     SavingsStage,
     Severity,
@@ -881,6 +885,102 @@ class Briefing(IdTimestampMixin, Base):
     read_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
+# --------------------------------------------------------------------------- actions (D83)
+
+
+class ActionRequest(IdTimestampMixin, Base):
+    """A request to do something outside the system (VS-05). The payload is frozen by its
+    hash when approved; any change voids the approval. Nothing is sent by the system in the
+    pilot: an approved action waits for a person to carry it out and record it."""
+
+    __tablename__ = "action_request"
+    __table_args__ = (
+        _enum_check("status", ActionStatus),
+        _enum_check("policy_decision", PolicyDecision),
+        UniqueConstraint("condominium_id", "idempotency_key"),
+    )
+
+    condominium_id: Mapped[uuid.UUID] = _uuid_fk("condominium.id")
+    case_id: Mapped[uuid.UUID | None] = _uuid_fk("case_record.id", nullable=True)
+    opportunity_id: Mapped[uuid.UUID | None] = _uuid_fk("opportunity.id", nullable=True)
+    action_type: Mapped[str] = mapped_column(String(60))
+    title: Mapped[str] = mapped_column(String(200))
+    payload: Mapped[dict[str, Any]] = mapped_column(Json, default=dict)
+    payload_hash: Mapped[str] = mapped_column(String(64))
+    cost_cap: Mapped[Decimal] = mapped_column(Money)
+    policy_decision: Mapped[str] = mapped_column(String(20))
+    policy_version: Mapped[int] = mapped_column(Integer)
+    policy_reason: Mapped[str] = mapped_column(String(500))
+    status: Mapped[str] = mapped_column(String(30))
+    idempotency_key: Mapped[str] = mapped_column(String(120))
+    requested_by_user_id: Mapped[uuid.UUID | None] = _uuid_fk(
+        "app_user.id", nullable=True, ondelete="SET NULL"
+    )
+    approved_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    approved_by_user_id: Mapped[uuid.UUID | None] = _uuid_fk(
+        "app_user.id", nullable=True, ondelete="SET NULL"
+    )
+    approval_expires_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    executed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    executed_by_user_id: Mapped[uuid.UUID | None] = _uuid_fk(
+        "app_user.id", nullable=True, ondelete="SET NULL"
+    )
+    execution_note: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+
+class ActionDecision(IdTimestampMixin, Base):
+    """Every step of an action request (append only): who, what, which payload version."""
+
+    __tablename__ = "action_decision"
+    __table_args__ = (_enum_check("kind", ActionDecisionKind),)
+
+    condominium_id: Mapped[uuid.UUID] = _uuid_fk("condominium.id")
+    action_request_id: Mapped[uuid.UUID] = _uuid_fk("action_request.id")
+    user_id: Mapped[uuid.UUID | None] = _uuid_fk("app_user.id", nullable=True, ondelete="SET NULL")
+    kind: Mapped[str] = mapped_column(String(20))
+    comment: Mapped[str | None] = mapped_column(Text, nullable=True)
+    payload_hash: Mapped[str] = mapped_column(String(64))
+    from_status: Mapped[str] = mapped_column(String(30))
+    to_status: Mapped[str] = mapped_column(String(30))
+    policy_version: Mapped[int] = mapped_column(Integer)
+
+
+class OutboxEvent(IdTimestampMixin, Base):
+    """Transactional outbox: one row per approved payload. The unique idempotency key makes a
+    second delivery a no-op (SEC-06, WF-01)."""
+
+    __tablename__ = "outbox_event"
+    __table_args__ = (_enum_check("status", OutboxStatus),)
+
+    condominium_id: Mapped[uuid.UUID] = _uuid_fk("condominium.id")
+    action_request_id: Mapped[uuid.UUID] = _uuid_fk("action_request.id")
+    idempotency_key: Mapped[str] = mapped_column(String(160), unique=True)
+    status: Mapped[str] = mapped_column(String(20), default=OutboxStatus.PENDENTE.value)
+    attempts: Mapped[int] = mapped_column(Integer, default=0)
+    last_error: Mapped[str | None] = mapped_column(Text, nullable=True)
+    dispatched_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class AutomationPause(IdTimestampMixin, Base):
+    """Kill switch (FR-007, US-014): pauses one automation type, or all ("*"), in one
+    condominium until resumed. History is kept: resuming fills ``resumed_at``."""
+
+    __tablename__ = "automation_pause"
+
+    condominium_id: Mapped[uuid.UUID] = _uuid_fk("condominium.id")
+    automation_type: Mapped[str] = mapped_column(String(60))
+    reason: Mapped[str] = mapped_column(String(500))
+    paused_by_user_id: Mapped[uuid.UUID | None] = _uuid_fk(
+        "app_user.id", nullable=True, ondelete="SET NULL"
+    )
+    resumed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    resumed_by_user_id: Mapped[uuid.UUID | None] = _uuid_fk(
+        "app_user.id", nullable=True, ondelete="SET NULL"
+    )
+
+
 # Tables protected by Row-Level Security, with the column holding the tenant id.
 RLS_TABLES: dict[str, str] = {
     "condominium": "id",
@@ -911,6 +1011,10 @@ RLS_TABLES: dict[str, str] = {
     "savings_record": "condominium_id",
     "opportunity_review": "condominium_id",
     "briefing": "condominium_id",
+    "action_request": "condominium_id",
+    "action_decision": "condominium_id",
+    "outbox_event": "condominium_id",
+    "automation_pause": "condominium_id",
 }
 
 # Tables the application role may only read and insert into (never update or delete).
@@ -921,4 +1025,5 @@ APPEND_ONLY_TABLES: tuple[str, ...] = (
     "case_event",
     "savings_record",
     "opportunity_review",
+    "action_decision",
 )

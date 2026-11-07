@@ -1,6 +1,7 @@
 import { Download, Upload } from "lucide-react";
 import Link from "next/link";
 
+import { ActionsPreview } from "@/components/condoos/ActionsPreview";
 import { AgendaPreview } from "@/components/condoos/AgendaPreview";
 import { BriefingView } from "@/components/condoos/BriefingView";
 import { OpportunitiesPreview } from "@/components/condoos/OpportunitiesPreview";
@@ -46,6 +47,7 @@ export default async function ResumoPage({
         finding: `/condominio/${id}/achados/{id}`,
         case: `/condominio/${id}/assuntos/{id}`,
         opportunity: `/condominio/${id}/oportunidades/{id}`,
+        action: `/condominio/${id}/aprovacoes/{id}`,
         agenda: `/condominio/${id}/agenda`,
       }}
     />
@@ -126,6 +128,12 @@ export default async function ResumoPage({
           </div>
         )}
       </section>
+
+      <ActionsPreview
+        condominiumId={id}
+        detailPath={`/condominio/${id}/aprovacoes/{id}`}
+        listHref={`/condominio/${id}/aprovacoes`}
+      />
 
       <OpportunitiesPreview condominiumId={id} />
 

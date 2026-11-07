@@ -33,11 +33,11 @@ Data: 07/11/2026 (revisado com D73–D77). Prioridade e ordem seguem `docs/produ
 
 ## Épico EP-02 — Política e kill switch · WP-03 · P0
 
-**CB-010 — Motor de política mínimo, nega por padrão** (ADR-P03) · M · FR-006, FR-034, NFR-009
+**CB-010 — Motor de política mínimo, nega por padrão** (ADR-P03) · M · FR-006, FR-034, NFR-009 · ✅ entregue (D83; sem o teste de PDF adversarial, que segue em SEC-02)
 - Aceite: `app/policy/` com decisão tipada (`ALLOW/REQUIRE_APPROVAL/REQUIRE_REVIEW/DENY/PAUSE`); ação desconhecida → `DENY`; toda avaliação auditada com versão da política; testes positivo e negativo por tipo de ação; texto de documento nunca é entrada de autorização (teste SEC-02/SEC-05 com PDF adversarial).
 - Fora do escopo: nenhuma ação externa nova.
 
-**CB-011 — Kill switch por condomínio e tipo** · M · FR-007, US-014, SEC-08
+**CB-011 — Kill switch por condomínio e tipo** · M · FR-007, US-014, SEC-08 · ✅ entregue (D83; quem pausa é `configure_policy`: síndico e Admin CondoOS; o job pausado volta para a fila em vez de um estado `paused`)
 - Aceite: gerente pausa/retoma tipos de automação (ex.: `finding.explain`, `rules.evaluate` automático, futuros envios); worker consulta antes de executar; jobs pendentes do tipo ficam `paused` (não executam); auditoria de quem pausou/retomou; tela de Configurações mostra "automação pausada" com texto e ícone.
 
 **CB-012 — Política versionada de alçadas** · P · FR-006
@@ -101,7 +101,7 @@ Data: 07/11/2026 (revisado com D73–D77). Prioridade e ordem seguem `docs/produ
 
 ## Épico EP-06 — Aprovações com escopo congelado · WP-10 · P0
 
-**CB-050 — Pedido de aprovação contextual (VS-05 sem envio)** · G · FR-034, FR-058, US-013, SEC-04/05
+**CB-050 — Pedido de aprovação contextual (VS-05 sem envio)** · G · FR-034, FR-058, US-013, SEC-04/05 · ✅ entregue (D83; tabela `action_request`)
 - Aceite: `approval_request` com efeito exato, valor e teto, executor, prazo, evidências, versão e hash do payload; alteração material invalida; expiração impede execução; rejeição bloqueia; tela §7.5.
 
 ## Épico EP-07 — Optimize com revisão interna (VS-03) · WP-11, WP-13, WP-14 · P0 · *D73, D74, D76 aceitas; migração 0014 aguarda aprovação*

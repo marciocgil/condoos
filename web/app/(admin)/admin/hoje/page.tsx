@@ -37,6 +37,7 @@ export default async function HojePage({
                 finding: `/admin/achados/${b.condominium_id}/{id}`,
                 case: `/admin/assuntos/${b.condominium_id}/{id}`,
                 opportunity: `/admin/oportunidades/${b.condominium_id}/{id}`,
+                action: `/admin/aprovacoes/${b.condominium_id}/{id}`,
                 agenda: `/admin/agenda?condominio=${b.condominium_id}`,
                 queue: `/admin/fila?condominio=${b.condominium_id}`,
               }}

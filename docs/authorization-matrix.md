@@ -34,7 +34,7 @@ Legenda: ✅ tem · ◐ condicionado (ver nota) · — não tem. Colunas: Sín =
 | `review_opportunity` **(novo)** | Aprovar/ajustar/devolver/rejeitar oportunidade; registrar "estimada validada" | — | — | — | — | — | — | ✅ |
 | `review_finding` **(novo)** | Solicitar evidência; revisar achado conforme política | — | — | — | ◐¹ | — | — | ✅ |
 | `approve_in_condo` **(novo)** | Aprovar decisão do condomínio dentro da alçada (ex.: avançar com oportunidade) | ✅⁴ | — | — | — | — | — | — |
-| `configure_policy` **(novo)** | Política de revisão e autorizações operacionais do condomínio | ✅⁵ | — | — | — | — | ✅ | — |
+| `configure_policy` **(novo)** | Política de revisão, autorizações operacionais e pausa de automações (kill switch, D83) do condomínio | ✅⁵ | — | — | — | — | ✅ | — |
 | `manage_platform` **(novo)** | Onboarding, atribuições de reviewer, integrações, suporte | — | — | — | — | — | ✅ | — |
 
 Notas:
@@ -52,7 +52,11 @@ Notas:
 | Publicar oportunidade ao condomínio | Reviewer | Revisão aprovada da versão atual (hash) | Proposta (VS-03) |
 | Aprovar avanço de oportunidade no condomínio | Síndico | Alçada; revisão aprovada | Proposta |
 | Validar achado grave | Reviewer; gerente se permitido | Política vigente | Hoje: só gerente |
-| Pagamento, contratação, multa, envio externo | **Ninguém pelo sistema** | — | Proibido (CLAUDE.md) |
+| Pedir ação (cobrar fornecedor, orçamento sem custo, visita técnica) | `manage_cases` (síndico, Admin, Reviewer) | Política v1 aceita o tipo e o teto | Entregue (D83) |
+| Aprovar, recusar ou pedir ajuste de ação | Síndico (`approve_in_condo`) | Hash da versão na tela; teto dentro da alçada; vale 7 dias | Entregue (D83) |
+| Registrar execução de ação aprovada | `manage_cases` | Aprovação válida; custo final dentro do teto | Entregue (D83) |
+| Pausar/retomar automações | `configure_policy` (síndico, Admin) | Motivo; auditado | Entregue (D83) |
+| Pagamento, contratação, multa, envio externo | **Ninguém pelo sistema** | — | Proibido (CLAUDE.md); a política nega (D83) |
 | Dar acesso a condomínio | Gerente (como hoje) ou Admin | Auditado; externo com prazo | Parcial |
 | Atribuir reviewer a condomínio | Admin | Motivo, prazo opcional, auditado | Proposta |
 | Acesso de suporte | Admin | Atribuição temporária com motivo | Proposta |

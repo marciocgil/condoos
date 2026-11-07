@@ -289,3 +289,55 @@ class OpportunityReviewAction(StrEnum):
     # The condominium's own decision (approve_in_condo), recorded in the same trail.
     CONDOMINIO_APROVAR = "condominio_aprovar"
     CONDOMINIO_RECUSAR = "condominio_recusar"
+
+
+# --------------------------------------------------------------------------- actions and policy (D83)
+
+
+class PolicyDecision(StrEnum):
+    """Spec §9.2: only the policy engine authorises; the model never does."""
+
+    ALLOW = "allow"
+    REQUIRE_APPROVAL = "require_approval"
+    REQUIRE_REVIEW = "require_review"
+    DENY = "deny"
+    PAUSE = "pause"
+
+
+class ActionStatus(StrEnum):
+    AGUARDANDO_APROVACAO = "aguardando_aprovacao"
+    ENFILEIRADA = "enfileirada"  # approved, waiting for the dispatcher (outbox)
+    AGUARDANDO_EXECUCAO_MANUAL = "aguardando_execucao_manual"  # no connector: a person acts
+    EXECUTADA = "executada"
+    RECUSADA = "recusada"
+    CANCELADA = "cancelada"
+    BLOQUEADA = "bloqueada"  # failed the re-check at dispatch: terminal
+
+
+OPEN_ACTION: frozenset[ActionStatus] = frozenset(
+    {
+        ActionStatus.AGUARDANDO_APROVACAO,
+        ActionStatus.ENFILEIRADA,
+        ActionStatus.AGUARDANDO_EXECUCAO_MANUAL,
+    }
+)
+
+
+class ActionDecisionKind(StrEnum):
+    SOLICITAR = "solicitar"
+    AJUSTAR = "ajustar"
+    APROVAR = "aprovar"
+    RECUSAR = "recusar"
+    CANCELAR = "cancelar"
+    INVALIDAR = "invalidar"
+    DESPACHAR = "despachar"
+    BLOQUEAR = "bloquear"
+    EXPIRAR = "expirar"
+    EXECUTAR = "executar"
+
+
+class OutboxStatus(StrEnum):
+    PENDENTE = "pendente"
+    DESPACHADO = "despachado"
+    CANCELADO = "cancelado"
+    BLOQUEADO = "bloqueado"

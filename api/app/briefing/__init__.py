@@ -31,10 +31,12 @@ from app.db.enums import (
     CLOSED_TASK,
     UNDER_REVIEW,
     VISIBLE_TO_BOARD,
+    ActionStatus,
     CaseSeverity,
     FindingStatus,
 )
 from app.db.models import (
+    ActionRequest,
     AppUser,
     BankTransaction,
     Briefing,
@@ -281,6 +283,29 @@ class Builder:
                         tone="info",
                     )
                 )
+        if a.can(Permission.APPROVE_IN_CONDO) or a.can(Permission.MANAGE_CASES):
+            for req in await self.s.scalars(
+                select(ActionRequest)
+                .where(
+                    ActionRequest.condominium_id == self.cid,
+                    ActionRequest.status.in_(
+                        [
+                            ActionStatus.AGUARDANDO_APROVACAO.value,
+                            ActionStatus.AGUARDANDO_EXECUCAO_MANUAL.value,
+                        ]
+                    ),
+                )
+                .order_by(ActionRequest.created_at)
+                .limit(MAX_ITEMS)
+            ):
+                waiting = req.status == ActionStatus.AGUARDANDO_APROVACAO.value
+                if waiting and a.can(Permission.APPROVE_IN_CONDO):
+                    detail = f"Ação aguardando sua aprovação · teto {_brl(req.cost_cap)}"
+                elif not waiting and a.can(Permission.MANAGE_CASES):
+                    detail = "Ação aprovada: executar fora do sistema e registrar"
+                else:
+                    continue
+                out.append(_item("action", req.title, detail, ref=("action", req.id), tone="info"))
         if a.can(Permission.VALIDATE_FINDING):
             for f in await self.s.scalars(
                 select(Finding)

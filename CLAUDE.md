@@ -60,6 +60,8 @@ api/            FastAPI + SQLAlchemy 2 (async) + Alembic; worker da fila de jobs
   app/pending.py  cockpit de pendências: faturamento dos contratos e aprovação dos avulsos (D70)
   app/agenda.py   agenda: vencimentos, NF prevista, reajustes e fim de contrato (D71)
   app/core/retention.py  política de retenção (job diário retention.purge)
+  app/policy/     motor de política das ações (nega por padrão) e kill switch (D83)
+  app/actions/    pedido de ação com aprovação, outbox e despacho sem envio (D83)
   scripts/pilot_run.py   aceite do Marco 6: condomínio fictício do upload ao relatório
   app/prompts/    prompts versionados (*.md)
   app/db/         models.py, enums.py, session.py, migrations/
@@ -132,6 +134,7 @@ make pilot         # aceite do Marco 6 (após reset + up) → docs/pilot/run.md
 - **Assuntos** (D80): regras em `app/cases/` (estados, "sem próxima ação, sem controle", resolução com tarefas fechadas e evidência, vínculos que nunca se apagam, duplicidade antes de criar). `case_event` só aceita inclusão. Evidência enviada pelo assunto não vai para a extração (`ingest_file(process=False)`). Datas na tela em horário de Brasília (`lib/format.ts`); prazo só com a data vale até 23h59 do fuso do condomínio.
 - **Oportunidades** (D81): economia só calculada por código (`app/opportunities/`, método versionado), uma linha por estágio em `savings_record` (só inclusão), estágios nunca somados e sempre com o nome próprio. Antes da aprovação da revisora CondoOS a oportunidade responde 404 para o condomínio; o corpo diretivo vê só a estimativa validada. Revisar e aprovar pelo condomínio são papéis diferentes.
 - **Briefing** (D82): montado por código em `app/briefing/` só a partir de registros; cada seção roda num savepoint e, se falhar, vira "dados parciais" (o teste exige que em uso normal só dados desatualizados sejam parciais). Um por pessoa, condomínio e dia; "atualizar" cria versão nova. Só dentro do app, sem e-mail. Na tela do síndico a aba "Resumo" se chama "Hoje" (rota `/resumo`).
+- **Ações e kill switch** (D83): só `app/policy/` autoriza (código tipado, versionado, nega por padrão; pagamento, contratação, multa e dados bancários negados sempre; nenhuma regra responde "permite"). Pedido em `app/actions/`: conteúdo congelado por hash, o síndico aprova a versão que viu, a aprovação vale 7 dias, mudança depois de aprovada anula. O despacho (`action.dispatch`) confere tudo de novo e **não envia nada**: a ação espera uma pessoa executar e registrar. Custo acima do teto ou aprovação vencida voltam para aprovação. `action_decision` só aceita inclusão; outbox com chave única. Tipo de job novo que tenha efeito entra em `PAUSABLE_JOBS` (o worker não roda job pausado).
 - **Revisão** (D74, D79): o status inicial de um achado vem da política (`app/review/`), não da severidade direto. Status novo precisa entrar em `NOT_AT_RISK`/`UNDER_REVIEW` (`db/enums.py`) quando couber.
 - **Telas da administradora** aceitam `?condominio=<id>` (filtro por condomínio, D69); o menu lateral mantém a escolha.
 - **Interface:** use os tokens e os componentes de `components/ui` e `components/condoos`; status sempre com texto e ícone, nunca só cor; verde-lima só em ação primária e item ativo.
