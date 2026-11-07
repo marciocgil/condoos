@@ -137,6 +137,10 @@ A interface mostra cada estágio com rótulo próprio e **nunca** soma estágios
 ### 5.4 Revisão interna
 Reaproveita o padrão de `decision`: tabela `opportunity_review` (RLS, só inclusão) `id, condominium_id, opportunity_id, reviewer_user_id, action ∈ {aprovar, ajustar, devolver, rejeitar}, reason_code, comment, reviewed_version_hash, reviewed_at`. Qualquer mudança material depois de `aprovar` (valor, premissa, evidência) muda o hash e devolve a oportunidade para `em_revisao_interna`.
 
+### 5.5 `data_issue` (RLS, migração 0020, D95)
+
+Conflito de dados: tipo (`conflito_documentos`, `documento_esperado_ausente`, `dado_vencido`, `duplicidade_suspeita`), estado (`aberto`, `resolvido`, `descartado`), capacidade afetada, objeto (`subject_type`, `subject_id`), campo, versões lado a lado em `sources` (rótulo, valor, documento, página, trecho), `dedupe_key` única por condomínio (inclui os valores: a decisão de uma pessoa vale para aqueles valores), resolução (`prevailing`, valor, motivo, `applied` quando o valor foi aplicado ao contrato; `auto` quando o sistema fechou porque os dados deixaram de divergir). Nunca é apagado; o histórico fica em `audit_log` (`data_issue.*`).
+
 ## 6. O que não muda
 
 `finding` (exceto 4 colunas novas e 1 status), `decision`, `finding_comment`, `approval` (R12), `contract`, `contract_amendment`, `expense`, `document`, `bank_transaction`, `match_issue`, `competence`, `job`, `llm_calls`, `document_chunk`, `audit_log`; as 12 regras; os relatórios (que passam apenas a excluir também `pendente_evidencia`).

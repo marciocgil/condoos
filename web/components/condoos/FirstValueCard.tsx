@@ -1,4 +1,13 @@
-import { AlertTriangle, CheckCircle2, FileQuestion, Info, Loader2, XCircle } from "lucide-react";
+import {
+  AlertTriangle,
+  CheckCircle2,
+  FileQuestion,
+  GitCompare,
+  Info,
+  Loader2,
+  Sparkles,
+  XCircle,
+} from "lucide-react";
 
 import { Badge } from "@/components/ui/Badge";
 import { Card, CardTitle } from "@/components/ui/Card";
@@ -50,6 +59,18 @@ function StateBadge({ state }: { state: FirstValueField["state"] }) {
     return (
       <Badge tone="success" icon={<CheckCircle2 size={12} />}>
         Lido no documento
+      </Badge>
+    );
+  if (state === "conflitante")
+    return (
+      <Badge tone="danger" icon={<GitCompare size={12} />}>
+        Conflita com o cadastro
+      </Badge>
+    );
+  if (state === "inferido")
+    return (
+      <Badge tone="info" icon={<Sparkles size={12} />}>
+        Inferido
       </Badge>
     );
   if (state === "a_confirmar")
@@ -120,7 +141,11 @@ export function FirstValueCard({ card }: { card: FirstValue }) {
                 <span className="tabular font-medium">
                   {f.state === "a_confirmar"
                     ? `Li ${show(f)}, mas um revisor vai conferir`
-                    : show(f)}
+                    : f.state === "conflitante"
+                      ? `O documento diz ${show(f)}, mas o cadastro tem outro valor`
+                      : f.state === "inferido"
+                        ? `${show(f)} (o texto não mostra este valor; confira)`
+                        : show(f)}
                 </span>
                 {(f.excerpt || f.source) && (
                   <span className="mt-1 block text-[13px] text-muted">

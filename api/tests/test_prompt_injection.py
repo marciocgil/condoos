@@ -150,7 +150,7 @@ async def test_instruction_in_a_document_is_only_data(
 
     # 3. Policy: it never sees document text, and a payment is denied whatever the context.
     params = set(inspect.signature(evaluate).parameters)
-    assert params == {"session", "condo", "action_type", "cost_cap", "category"}
+    assert params == {"session", "condo", "action_type", "cost_cap", "category", "contract_ids"}
     async with sessionmaker_for(admin_engine)() as s:
         stored_condo = await s.get(Condominium, condo.id)
         assert stored_condo is not None

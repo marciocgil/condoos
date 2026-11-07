@@ -13,6 +13,7 @@ from app.chat.search import INDEX_JOB, index_job
 from app.config import get_settings
 from app.core.jobs import Handler, run_one
 from app.core.retention import RETENTION_JOB, purge_job
+from app.data_issues import SCAN_JOB, scan_job
 from app.db.session import get_worker_engine, sessionmaker_for
 from app.enrichment.indices import refresh_indices_job
 from app.enrichment.suppliers import enrich_job
@@ -47,6 +48,7 @@ HANDLERS: dict[str, Handler] = {
     INDEX_JOB: index_job,
     RETENTION_JOB: purge_job,
     DISPATCH_JOB: dispatch_job,
+    SCAN_JOB: scan_job,
 }
 
 
@@ -70,6 +72,8 @@ async def _schedule_daily(maker: Any) -> None:
             {},
             dedupe_key=f"retention:{date.today().isoformat()}",
         )
+        # Data conflicts of every condominium (D95), in case a change bypassed the pipeline.
+        await enqueue(session, SCAN_JOB, {}, dedupe_key=f"data-issues:{date.today().isoformat()}")
 
 
 async def main() -> None:

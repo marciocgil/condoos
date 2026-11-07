@@ -18,17 +18,18 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.auth.rbac import CondoAccess
 from app.core.audit import record_audit
 from app.core.time import local_today, utcnow
-from app.db.enums import VISIBLE_TO_BOARD, ExtractionStatus, LaunchGoal
+from app.db.enums import VISIBLE_TO_BOARD, DataIssueStatus, ExtractionStatus, LaunchGoal
 from app.db.models import (
     AuditLog,
     CaseRecord,
     Condominium,
     Contract,
+    DataIssue,
     Document,
     Finding,
     LaunchState,
 )
-from app.launch.first_value import FirstValue
+from app.launch.first_value import CONFLICT_FIELDS, FirstValue
 from app.launch.first_value import build as build_first_value
 from app.launch.journey import milestones
 from app.launch.readiness import STATE_LABELS
@@ -184,7 +185,24 @@ async def first_value(
     doc = await session.scalar(
         select(Document).where(Document.id == document_id, Document.condominium_id == condo.id)
     )
-    return build_first_value(doc) if doc is not None else None
+    if doc is None:
+        return None
+    # Open data issues about the contract registered from this document (D95).
+    by_attr = {attr: field for field, attr in CONFLICT_FIELDS.items()}
+    conflicts: dict[str, str] = {}
+    for title, field_name in await session.execute(
+        select(DataIssue.title, DataIssue.field_name).where(
+            DataIssue.condominium_id == condo.id,
+            DataIssue.subject_type == "contract",
+            DataIssue.status == DataIssueStatus.ABERTO.value,
+            DataIssue.subject_id.in_(
+                select(Contract.id).where(Contract.source_document_id == doc.id)
+            ),
+        )
+    ):
+        if field_name in by_attr:
+            conflicts[by_attr[field_name]] = title
+    return build_first_value(doc, conflicts)
 
 
 async def first_value_shown(

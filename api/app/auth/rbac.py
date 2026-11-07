@@ -38,6 +38,8 @@ class Permission(StrEnum):
     # Launch (D89): choose the journey's goal, put a step off, hide the journey card.
     # Preferences only: they change the order of suggestions, never what anyone may do.
     MANAGE_LAUNCH = "manage_launch"
+    # Data issues (D95): choose the prevailing version of a conflicting fact, with a reason.
+    RESOLVE_DATA_ISSUE = "resolve_data_issue"
 
 
 P = Permission
@@ -47,6 +49,10 @@ P = Permission
 REVIEW_PERMISSIONS: frozenset[Permission] = frozenset(
     {P.VALIDATE_FINDING, P.REVIEW_FINDING, P.REVIEW_OPPORTUNITY}
 )
+# What the management company's roles hold only when the condominium lets it review (D74).
+# Resolving data issues is not a review of findings (the síndico, who approves, may do it),
+# so it is gated here but kept out of REVIEW_PERMISSIONS (D95).
+COMPANY_GATED: frozenset[Permission] = REVIEW_PERMISSIONS | {P.RESOLVE_DATA_ISSUE}
 
 _MANAGEMENT_COMPANY = frozenset(
     {
@@ -73,6 +79,7 @@ ROLE_PERMISSIONS: dict[Role, frozenset[Permission]] = {
             P.MANAGE_CASES,
             P.UPDATE_TASK,
             P.MANAGE_LAUNCH,
+            P.RESOLVE_DATA_ISSUE,
         }
     ),
     Role.SUBSINDICO: frozenset({P.VIEW, P.COMMENT_FINDING, P.EXPORT}),
@@ -88,6 +95,7 @@ ROLE_PERMISSIONS: dict[Role, frozenset[Permission]] = {
         P.CONFIGURE,
         P.CLOSE_COMPETENCE,
         P.DECIDE_FINDING,
+        P.RESOLVE_DATA_ISSUE,
     },
     # Reserved roles (D77): accepted in memberships, no permission until activated.
     Role.ZELADOR: frozenset(),
@@ -107,6 +115,7 @@ ROLE_PERMISSIONS: dict[Role, frozenset[Permission]] = {
             P.MANAGE_CASES,
             P.UPDATE_TASK,
             P.MANAGE_LAUNCH,
+            P.RESOLVE_DATA_ISSUE,
         }
     ),
     Role.CONDOOS_REVIEWER: frozenset(
@@ -125,6 +134,7 @@ ROLE_PERMISSIONS: dict[Role, frozenset[Permission]] = {
             P.REVIEW_OPPORTUNITY,
             P.MANAGE_CASES,
             P.UPDATE_TASK,
+            P.RESOLVE_DATA_ISSUE,
         }
     ),
 }
@@ -147,7 +157,7 @@ class CondoAccess:
         for role in self.roles:
             granted = ROLE_PERMISSIONS[role]
             if role in MANAGEMENT_COMPANY_ROLES and not self.company_reviews:
-                granted = granted - REVIEW_PERMISSIONS
+                granted = granted - COMPANY_GATED
             perms |= granted
         return frozenset(perms)
 

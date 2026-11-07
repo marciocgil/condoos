@@ -797,7 +797,7 @@ export interface FirstValueField {
   name: string;
   label: string;
   kind: string;
-  state: "lido" | "a_confirmar" | "nao_encontrado";
+  state: "lido" | "inferido" | "a_confirmar" | "conflitante" | "nao_encontrado";
   value: string | number | string[] | null;
   source: string | null;
   page: number | null;
@@ -854,4 +854,28 @@ export interface Reconciliation {
     months: string[];
     label: string;
   }[];
+}
+
+export interface DataIssueSource {
+  label: string;
+  value: string;
+  document_id?: string | null;
+  page?: number | null;
+  excerpt?: string | null;
+}
+
+export interface DataIssue {
+  id: string;
+  kind: string;
+  status: "aberto" | "resolvido" | "descartado";
+  capability: string;
+  subject_type: string;
+  subject_id: string;
+  field_name: string | null;
+  title: string;
+  sources: DataIssueSource[];
+  detected_at: string;
+  resolved_at: string | null;
+  resolution: Record<string, unknown> | null;
+  can_resolve: boolean;
 }

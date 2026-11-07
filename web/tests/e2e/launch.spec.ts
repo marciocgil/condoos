@@ -77,7 +77,8 @@ test("síndica nova escolhe o objetivo, envia o contrato e vê a leitura", async
     .locator("[data-state]")
     .evaluateAll((els) => els.map((e) => e.getAttribute("data-state")));
   expect(states.length).toBeGreaterThan(0);
-  for (const s of states) expect(["lido", "a_confirmar", "nao_encontrado"]).toContain(s);
+  for (const s of states)
+    expect(["lido", "inferido", "a_confirmar", "conflitante", "nao_encontrado"]).toContain(s);
   await expect(reading.getByText("O que esta leitura não cobre")).toBeVisible();
   await expect(reading.getByText(/não uma auditoria/)).toBeVisible();
 

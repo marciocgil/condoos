@@ -7,6 +7,7 @@ carry it out outside the system and record it (no connector exists yet).
 """
 
 import uuid
+from collections.abc import Iterable
 from dataclasses import dataclass
 from decimal import Decimal
 from typing import Any, Literal
@@ -15,12 +16,14 @@ from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.enums import PolicyDecision
-from app.db.models import AutomationPause, Condominium
+from app.db.enums import DataIssueStatus, PolicyDecision
+from app.db.models import AutomationPause, Condominium, DataIssue
 
 # Version 2 (D89, D93): a condominium without the síndico's approval limit configured gets
 # no action request at all (capability C7 "nao_configurado"), whatever the cost.
-POLICY_VERSION = 2
+# Version 3 (D95, LB-035): an action tied to a contract with an open data conflict is denied
+# until a person resolves the conflict.
+POLICY_VERSION = 3
 ALL_AUTOMATIONS = "*"
 # How long an approval is valid (spec §9.5: the executor checks it again at the moment of
 # the action). Expired approvals need a new decision.
@@ -116,6 +119,7 @@ async def evaluate(
     action_type: str,
     cost_cap: Decimal,
     category: str | None = None,
+    contract_ids: Iterable[uuid.UUID] = (),
 ) -> PolicyResult:
     """Decide what an action needs. Deny by default; never ``ALLOW`` in this version: every
     allowed action needs a person's approval (no automation has an external effect)."""
@@ -139,6 +143,24 @@ async def evaluate(
             PolicyDecision.DENY,
             "A alçada do síndico ainda não foi configurada: configure-a antes de pedir ações.",
         )
+    ids = list(contract_ids)
+    if ids:
+        conflict = await session.scalar(
+            select(DataIssue.title)
+            .where(
+                DataIssue.condominium_id == condo.id,
+                DataIssue.subject_type == "contract",
+                DataIssue.subject_id.in_(ids),
+                DataIssue.status == DataIssueStatus.ABERTO.value,
+            )
+            .limit(1)
+        )
+        if conflict is not None:
+            return PolicyResult(
+                PolicyDecision.DENY,
+                f"Há um conflito de dados aberto neste contrato ({conflict}): "
+                "resolva-o antes de pedir a ação.",
+            )
     if await active_pause(session, condo.id, "action.dispatch") is not None:
         return PolicyResult(
             PolicyDecision.PAUSE, "As ações estão pausadas neste condomínio (kill switch)."

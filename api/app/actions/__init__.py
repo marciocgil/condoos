@@ -36,6 +36,7 @@ from app.db.models import (
     ActionRequest,
     CaseRecord,
     Condominium,
+    Contract,
     Opportunity,
     OutboxEvent,
     Supplier,
@@ -161,10 +162,53 @@ async def _check_payload(
     return payload.model_dump(mode="json")
 
 
+async def related_contracts(
+    session: AsyncSession,
+    condo: Condominium,
+    *,
+    opportunity_id: uuid.UUID | None,
+    supplier_id: Any,
+) -> list[uuid.UUID]:
+    """Contracts an action is about (LB-035, D95): the opportunity's contract and the
+    contracts of the supplier named in the payload. The policy denies the action while one
+    of them has an open data conflict."""
+    ids: set[uuid.UUID] = set()
+    if opportunity_id is not None:
+        opp = await session.get(Opportunity, opportunity_id)
+        if opp is not None and opp.condominium_id == condo.id and opp.contract_id:
+            ids.add(opp.contract_id)
+    if supplier_id:
+        ids.update(
+            await session.scalars(
+                select(Contract.id).where(
+                    Contract.condominium_id == condo.id,
+                    Contract.supplier_id == uuid.UUID(str(supplier_id)),
+                )
+            )
+        )
+    return sorted(ids, key=str)
+
+
 async def _policy_or_raise(
-    session: AsyncSession, condo: Condominium, action_type: str, cost_cap: Decimal
+    session: AsyncSession,
+    condo: Condominium,
+    action_type: str,
+    cost_cap: Decimal,
+    req: ActionRequest | None = None,
 ) -> Any:
-    result = await evaluate(session, condo, action_type=action_type, cost_cap=cost_cap)
+    contracts = (
+        await related_contracts(
+            session,
+            condo,
+            opportunity_id=req.opportunity_id,
+            supplier_id=(req.payload or {}).get("supplier_id"),
+        )
+        if req is not None
+        else []
+    )
+    result = await evaluate(
+        session, condo, action_type=action_type, cost_cap=cost_cap, contract_ids=contracts
+    )
     if result.decision == PolicyDecision.PAUSE:
         raise ActionError(result.reason, 409)
     if result.decision != PolicyDecision.REQUIRE_APPROVAL:
@@ -209,7 +253,12 @@ async def create_request(
         if opp is None or opp.condominium_id != condo.id or opp.presented_at is None:
             raise ActionError("Oportunidade não encontrada.", 404)
     frozen = await _check_payload(session, condo, payload)
-    policy = await evaluate(session, condo, action_type=action_type, cost_cap=cost_cap)
+    contracts = await related_contracts(
+        session, condo, opportunity_id=opportunity_id, supplier_id=frozen.get("supplier_id")
+    )
+    policy = await evaluate(
+        session, condo, action_type=action_type, cost_cap=cost_cap, contract_ids=contracts
+    )
     if policy.decision != PolicyDecision.REQUIRE_APPROVAL:
         # Denials are recorded (who asked for what) but no request is created.
         await record_audit(
@@ -304,7 +353,7 @@ async def adjust(
     new_hash = payload_hash(req.action_type, title, frozen, cost_cap)
     if new_hash == req.payload_hash:
         raise ActionError("Nada mudou no pedido.")
-    policy = await _policy_or_raise(session, condo, req.action_type, cost_cap)
+    policy = await _policy_or_raise(session, condo, req.action_type, cost_cap, req)
     was_approved = req.approved_hash is not None
     req.title, req.payload, req.cost_cap, req.payload_hash = title, frozen, cost_cap, new_hash
     req.policy_decision, req.policy_version = policy.decision.value, policy.version
@@ -347,7 +396,7 @@ async def approve(
             "O pedido mudou depois que você abriu a tela. Confira a versão atual antes de aprovar.",
             409,
         )
-    policy = await _policy_or_raise(session, condo, req.action_type, Decimal(req.cost_cap))
+    policy = await _policy_or_raise(session, condo, req.action_type, Decimal(req.cost_cap), req)
     req.policy_version, req.policy_reason = policy.version, policy.reason
     req.approved_hash = req.payload_hash
     req.approved_by_user_id = access.user_id
@@ -552,7 +601,16 @@ async def dispatch_job(session: AsyncSession, payload: dict[str, Any]) -> None:
         event.last_error = blocked
         return
     policy = await evaluate(
-        session, condo, action_type=req.action_type, cost_cap=Decimal(req.cost_cap)
+        session,
+        condo,
+        action_type=req.action_type,
+        cost_cap=Decimal(req.cost_cap),
+        contract_ids=await related_contracts(
+            session,
+            condo,
+            opportunity_id=req.opportunity_id,
+            supplier_id=(req.payload or {}).get("supplier_id"),
+        ),
     )
     if policy.decision == PolicyDecision.PAUSE:
         # Paused after this job was claimed: keep the event pending; the job retries later.

@@ -15,8 +15,8 @@ Estados: `nao_iniciado`, `em_analise`, `em_desenvolvimento`, `em_teste`, `bloque
 | Estado | FRs |
 |---|---|
 | validado | — |
-| pronto_para_validar | 001, 003, 004, 006, 007, 011, 012, 013, 015, 020, 021, 022, 023, 024, 025, 027, 032, 034, 041, 042, 043, 044, 045, 046, 048, 050 |
-| em_desenvolvimento | 058 (aprovação com escopo congelado; a contratação em si segue fora do sistema), 016 (faltam as classes "inferido" e "conflitante") |
+| pronto_para_validar | 001, 003, 004, 006, 007, 011, 012, 013, 015, 016, 020, 021, 022, 023, 024, 025, 027, 032, 034, 041, 042, 043, 044, 045, 046, 048, 050 |
+| em_desenvolvimento | 058 (aprovação com escopo congelado; a contratação em si segue fora do sistema) |
 | em_analise | 002, 005, 008, 014, 017, 018, 019, 026, 028, 033 |
 | bloqueado | 031 (avaliação ao vivo: falta `ANTHROPIC_API_KEY`) |
 | nao_iniciado | 009, 010, 029, 030, 035, 036, 037, 038, 047, 049, 051–057 |
@@ -75,3 +75,4 @@ Política mínima e kill switch entregues com a VS-05 (D83); o produto continua 
 - 07/11/2026 — Launch LF2-c entregue (D92): medição da implantação por condomínio (tempo até o primeiro valor, dias sem atividade, adiados, fila, correções e custo de IA por documento), prontidão C1–C3 em Ajustes e Configurações, "Implantações em andamento" na Carteira só para a equipe CondoOS, bordas do envio. Verificação local: 331 testes do backend, lint completo, 32 fluxos E2E em banco recriado (stack direto na máquina).
 - 07/11/2026 — Launch LF2-d entregue (D93, migração 0019 aprovada): alçada opcional no cadastro assistido, política v2 (sem alçada nenhum pedido de ação), capacidade C7, tipos apólice, balancete, regimento, laudo e plano de manutenção (só texto pesquisável; termo aditivo segue como contrato, D66). LF2 completa; gate LG2 atendido no código e no E2E local, aguarda validação. Verificação local: 340 testes do backend, lint completo, migração ida e volta, 32 fluxos E2E.
 - 07/11/2026 — Launch LF3-a entregue (D94), sem migração: cobertura do mês no relatório, no briefing e nas pendências (nunca "completo"), reconciliação nos dois sentidos com cobranças recorrentes sem contrato, prontidão C4, C8 e C9. Verificação local: 347 testes do backend, lint completo, 33 fluxos E2E. LF3-b aguarda aprovação da migração 0020 (`data_issue`).
+- 07/11/2026 — Launch LF3-b entregue (D95, migração 0020 aprovada): conflitos de dados como objeto (`data_issue`), detectados ao casar documentos de contrato, ao salvar contrato e uma vez por dia; versões lado a lado com trecho, resolução com versão prevalente e motivo ou descarte, nada apagado; C2 parcial e política v3 negando ação sobre contrato com conflito aberto; classes "inferido" e "conflitante" na leitura do contrato. Permissão `resolve_data_issue` (síndico, gerente quando a administradora revisa, equipe CondoOS). FR-016 passa a `pronto_para_validar`. Verificação local: 360 testes do backend, lint completo, migração ida e volta, 34 fluxos E2E.

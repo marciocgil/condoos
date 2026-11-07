@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { BoardCard, MembersCard, ProfileCard } from "@/components/condoos/RegistryCards";
 import { AutomationPausesCard } from "@/components/condoos/AutomationPausesCard";
+import { DataIssuesCard } from "@/components/condoos/DataIssuesCard";
 import { ReadinessCard } from "@/components/condoos/ReadinessCard";
 import { ReviewPolicyCard } from "@/components/condoos/ReviewPolicyCard";
 import { SettingsForm } from "@/components/condoos/SettingsForm";
@@ -12,6 +13,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { apiGet } from "@/lib/api";
 import type {
   AutomationPauses,
+  DataIssue,
   Launch,
   Me,
   ReviewPolicy,
@@ -38,11 +40,12 @@ export default async function ConfiguracoesPage({
     );
   }
   const current = condos.find((c) => c.id === condominio) ?? condos[0]!;
-  const [settings, policy, pauses, launch] = await Promise.all([
+  const [settings, policy, pauses, launch, issues] = await Promise.all([
     apiGet<Settings>(`/condominiums/${current.id}/settings`),
     apiGet<ReviewPolicy>(`/condominiums/${current.id}/review-policy`),
     apiGet<AutomationPauses>(`/condominiums/${current.id}/automation-pauses`),
     apiGet<Launch>(`/condominiums/${current.id}/launch`),
+    apiGet<DataIssue[]>(`/condominiums/${current.id}/data-issues`),
   ]);
   const send = { href: `/admin/enviar?condominio=${current.id}`, label: "Enviar documentos" };
   const queue = { href: `/admin/fila?condominio=${current.id}`, label: "Abrir a fila" };
@@ -96,12 +99,14 @@ export default async function ConfiguracoesPage({
                 label: "Ver as pendências",
               },
               fila_do_mes_vazia: queue,
+              sem_conflito_aberto: { href: "#conflitos", label: "Ver os conflitos" },
               alcada_configurada: {
                 href: `/admin/configuracoes?condominio=${current.id}#limit-default`,
                 label: "Configurar a alçada",
               },
             }}
           />
+          <DataIssuesCard key={`d-${current.id}`} condominiumId={current.id} issues={issues} />
           <ReviewPolicyCard key={`r-${current.id}`} condominiumId={current.id} policy={policy} />
           {staff && (
             <StaffAssignmentsCard

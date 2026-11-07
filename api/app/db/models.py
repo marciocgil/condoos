@@ -49,6 +49,8 @@ from app.db.enums import (
     CaseStatus,
     ChatRole,
     CompetenceStatus,
+    DataIssueKind,
+    DataIssueStatus,
     DecisionAction,
     DocumentOrigin,
     DocumentType,
@@ -1058,6 +1060,39 @@ class LaunchState(IdTimestampMixin, Base):
     )
 
 
+class DataIssue(IdTimestampMixin, Base):
+    """A data conflict (ADR-L05, D95): two sources of the same fact disagree, an expected
+    document is missing, a datum is stale or a duplicate is suspected. Never deleted: it is
+    resolved (with the prevailing version and a reason) or dismissed. History in
+    ``audit_log`` (``data_issue.*``)."""
+
+    __tablename__ = "data_issue"
+    __table_args__ = (
+        _enum_check("kind", DataIssueKind),
+        _enum_check("status", DataIssueStatus),
+        UniqueConstraint("condominium_id", "dedupe_key"),
+    )
+
+    condominium_id: Mapped[uuid.UUID] = _uuid_fk("condominium.id")
+    kind: Mapped[str] = mapped_column(String(30))
+    status: Mapped[str] = mapped_column(String(15), default=DataIssueStatus.ABERTO.value)
+    capability: Mapped[str] = mapped_column(String(5))  # the capability it lowers (C2, C3...)
+    subject_type: Mapped[str] = mapped_column(String(30))  # contract | document | ...
+    subject_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), index=True)
+    field_name: Mapped[str | None] = mapped_column(String(60), nullable=True)
+    title: Mapped[str] = mapped_column(String(300))
+    # Each version side by side: {"label", "value", "document_id", "page", "excerpt"}.
+    sources: Mapped[list[dict[str, Any]]] = mapped_column(Json, default=list)
+    dedupe_key: Mapped[str] = mapped_column(String(200))
+    detected_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    resolved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    resolved_by_user_id: Mapped[uuid.UUID | None] = _uuid_fk(
+        "app_user.id", nullable=True, ondelete="SET NULL"
+    )
+    # {"prevailing": index in sources | null, "value": ..., "reason": "...", "auto": bool}
+    resolution: Mapped[dict[str, Any] | None] = mapped_column(Json, nullable=True)
+
+
 # Tables protected by Row-Level Security, with the column holding the tenant id.
 RLS_TABLES: dict[str, str] = {
     "condominium": "id",
@@ -1094,6 +1129,7 @@ RLS_TABLES: dict[str, str] = {
     "automation_pause": "condominium_id",
     "condominium_settings_version": "condominium_id",
     "launch_state": "condominium_id",
+    "data_issue": "condominium_id",
 }
 
 # Tables the application role may only read and insert into (never update or delete).

@@ -22,6 +22,7 @@ from app.config import get_settings
 from app.core.time import local_today, month_start, utcnow
 from app.db.enums import (
     AdjustmentIndex,
+    DataIssueStatus,
     DocumentOrigin,
     DocumentType,
     ExtractionStatus,
@@ -33,6 +34,7 @@ from app.db.models import (
     CondoAssignment,
     Condominium,
     Contract,
+    DataIssue,
     Document,
     DocumentChunk,
     Expense,
@@ -186,6 +188,16 @@ async def c2_contracts(session: AsyncSession, condo: Condominium) -> Readiness:
         ).all()
     )
     no_source = [c for c in active if c.source_document_id not in with_source]
+    conflicts = int(
+        await session.scalar(
+            select(func.count()).where(
+                DataIssue.condominium_id == condo.id,
+                DataIssue.capability == "C2",
+                DataIssue.status == DataIssueStatus.ABERTO.value,
+            )
+        )
+        or 0
+    )
     return Readiness(
         "C2",
         "Leitura de contrato",
@@ -214,6 +226,12 @@ async def c2_contracts(session: AsyncSession, condo: Condominium) -> Readiness:
                 "Contratos vigentes com o documento de origem",
                 not no_source,
                 f"{len(no_source)} contrato(s) vigente(s) sem o documento" if no_source else "",
+            ),
+            Requirement(
+                "sem_conflito_aberto",
+                "Nenhum conflito de dados aberto",
+                conflicts == 0,
+                f"{conflicts} conflito(s) entre o cadastro e os documentos" if conflicts else "",
             ),
         ],
     )

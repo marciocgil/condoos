@@ -532,6 +532,11 @@ async def match_document_job(session: AsyncSession, payload: dict[str, Any]) -> 
     if doc is None:
         return
     outcome = await match_document(session, doc)
+    if doc.doc_type == DocumentType.CONTRATO.value:
+        # A contract or an amendment may now disagree with what was registered (D95).
+        from app.data_issues import scan
+
+        await scan(session, doc.condominium_id)
     if outcome.expense_id is None:
         return
     expense = await session.get(Expense, outcome.expense_id)

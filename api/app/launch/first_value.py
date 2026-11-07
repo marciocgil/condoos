@@ -53,6 +53,15 @@ LIMITS = (
 )
 
 LIDO, A_CONFIRMAR, NAO_ENCONTRADO = "lido", "a_confirmar", "nao_encontrado"
+# FR-016 classes (LB-036, D95): read with confidence but the text does not show the value
+# (no excerpt to point to), and in conflict with the registered contract (open data issue).
+INFERIDO, CONFLITANTE = "inferido", "conflitante"
+# Document field -> contract attribute compared by app.data_issues.
+CONFLICT_FIELDS = {
+    "valor_mensal": "monthly_value",
+    "data_inicio": "start_date",
+    "data_fim": "end_date",
+}
 
 
 @dataclass(frozen=True)
@@ -86,14 +95,25 @@ def _empty(value: Any) -> bool:
     return value is None or value == "" or value == []
 
 
-def _field(doc: Document, name: str, label: str, kind: str) -> CardField:
+def _field(
+    doc: Document, name: str, label: str, kind: str, conflict: str | None = None
+) -> CardField:
     value = (doc.extracted or {}).get(name)
     prov = (doc.field_provenance or {}).get(name) or {}
     if _empty(value):
         return CardField(name, label, kind, NAO_ENCONTRADO)
     confirmed = doc.reviewed_at is not None or prov.get("source") == "pessoa"
     conf = float((doc.field_confidence or {}).get(name, 0.0))
-    state = LIDO if confirmed or conf >= REVIEW_THRESHOLD else A_CONFIRMAR
+    if conflict is not None:
+        state = CONFLITANTE
+    elif confirmed:
+        state = LIDO
+    elif conf < REVIEW_THRESHOLD:
+        state = A_CONFIRMAR
+    elif not prov.get("excerpt") and prov.get("source") != "xml":
+        state = INFERIDO  # confident, but there is no excerpt showing the value
+    else:
+        state = LIDO
     page = prov.get("page")
     return CardField(
         name,
@@ -124,8 +144,10 @@ def _notice(doc: Document) -> CardField:
     )
 
 
-def build(doc: Document) -> FirstValue:
-    """The card for one document, from what is stored. Pure: no query, no write."""
+def build(doc: Document, conflicts: dict[str, str] | None = None) -> FirstValue:
+    """The card for one document, from what is stored. Pure: no query, no write.
+    ``conflicts``: document field -> title of the open data issue about it (D95)."""
+    conflicts = conflicts or {}
 
     def card(status: str, message: str, **more: Any) -> FirstValue:
         return FirstValue(
@@ -160,7 +182,7 @@ def build(doc: Document) -> FirstValue:
         )
 
     specs = {s.name: s for s in specs_for(DocumentType.CONTRATO)}
-    fields = [_field(doc, n, specs[n].label, specs[n].kind) for n in CARD_FIELDS]
+    fields = [_field(doc, n, specs[n].label, specs[n].kind, conflicts.get(n)) for n in CARD_FIELDS]
     fields.append(_notice(doc))
     to_confirm = [f.label for f in fields if f.state == A_CONFIRMAR]
     missing_required = [
@@ -169,7 +191,19 @@ def build(doc: Document) -> FirstValue:
         if f.state == NAO_ENCONTRADO and f.name in specs and specs[f.name].required
     ]
     pending = to_confirm + missing_required
-    if pending:
+    in_conflict = [f.label for f in fields if f.state == CONFLITANTE]
+    if in_conflict:
+        status_out = "lido_parcial"
+        message = (
+            "O documento e o contrato cadastrado não batem em: "
+            + ", ".join(in_conflict).lower()
+            + ". Até alguém escolher a versão certa, nada é conferido com esses campos."
+        )
+        next_step = {
+            "key": "resolver_conflito",
+            "title": "Escolha a versão certa em Conflitos de dados",
+        }
+    elif pending:
         status_out = "lido_parcial"
         message = (
             "Li parte do contrato. Um revisor vai confirmar: " + ", ".join(pending).lower() + "."

@@ -356,3 +356,18 @@ class LaunchGoal(StrEnum):
     PENDENCIAS = "pendencias"
     FORNECEDORES = "fornecedores"
     PANORAMA = "panorama"
+
+
+class DataIssueKind(StrEnum):
+    """A problem with the data itself (ADR-L05, D95). Not a finding: it accuses no one."""
+
+    CONFLITO_DOCUMENTOS = "conflito_documentos"
+    DOCUMENTO_ESPERADO_AUSENTE = "documento_esperado_ausente"
+    DADO_VENCIDO = "dado_vencido"
+    DUPLICIDADE_SUSPEITA = "duplicidade_suspeita"
+
+
+class DataIssueStatus(StrEnum):
+    ABERTO = "aberto"
+    RESOLVIDO = "resolvido"
+    DESCARTADO = "descartado"
