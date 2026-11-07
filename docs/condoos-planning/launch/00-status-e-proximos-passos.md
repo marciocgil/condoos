@@ -7,10 +7,13 @@
 | Fase | Estado | Evidência |
 |---|---|---|
 | LF0 Diagnóstico | ✅ concluída (gate LG0 verificado) | `01-diagnostico-as-is.md` |
-| LF1 Blueprint | **pronto_para_validar** — aguarda revisão do Marcio (gate LG1) | `02`–`06` deste diretório |
-| LF2–LF8 | nao_iniciado | `05-backlog.md` |
+| LF1 Blueprint | ✅ aprovada pelo Marcio (gate LG1, D89) | `02`–`06` deste diretório |
+| LF2 Primeiro valor | **em_desenvolvimento** — LF2-a entregue (D89) | ver abaixo |
+| LF3–LF8 | nao_iniciado | `05-backlog.md` |
 
-Nenhum código, migração ou teste foi alterado no Launch até aqui.
+**LF2-a entregue (D89):** LB-001 (`launch_state`, migração 0018), LB-002 (marcos por fatos), LB-003 (próximos passos), LB-004 (rotas), LB-005 (cartão de jornada no Hoje), LB-006/007 (cartão de primeiro valor no envio), LB-008 ("o que já fiz por você"), LB-010 (prontidão C1–C3), LB-021 (SEC-02), LB-090 parcial (eventos `launch.*`). Verificação: 322 testes do backend, lint backend e frontend, migração ida e volta, E2E `launch.spec.ts` passando numa stack local sem Docker (API e worker num processo, armazenamento em memória, `next dev`, substituto do Mailpit). Na suíte E2E inteira nessa stack, só `correction.spec.ts` falhou, e falha igual sem as mudanças desta fatia (efeito da stack local); **rodar `make e2e` na stack do docker** para confirmar.
+
+Código: `api/app/launch/` (`journey`, `readiness`, `first_value`, `steps`, `state`), `api/app/routers/launch.py`, `web/components/condoos/JourneyCard.tsx`, `FirstValueCard.tsx`.
 
 ## Nomes (sem colisão, D88)
 
@@ -27,7 +30,9 @@ Marcos do Launch **LM1–LM5** · fases **LF0–LF8** · gates **LG0–LG8** · 
 | `05-backlog.md` | LB-xxx por fase, gates, ordem de LF2 |
 | `06-testes-pilotos-metricas.md` | Cenários, métricas, experimentos |
 
-## Perguntas para o Marcio (bloqueiam partes específicas)
+## Perguntas para o Marcio — respondidas em 07/11/2026 (D89)
+
+Q-L01 assistida pelo Admin · Q-L02 síndico envia o link/texto · Q-L03 LF2 antes da VS-06 · Q-L04 migração 0018 e alçadas opcionais aprovadas. Tabela original mantida abaixo como histórico.
 
 | # | Pergunta | Bloqueia | Hipótese se não houver resposta |
 |---|---|---|---|
@@ -36,12 +41,9 @@ Marcos do Launch **LM1–LM5** · fases **LF0–LF8** · gates **LG0–LG8** · 
 | Q-L03 | Ordem: Launch LF2 antes da VS-06 (Operate controlado, aguardando decisão)? | Sequência | LF2 primeiro: não depende de piloto real e alimenta a VS-06 |
 | Q-L04 | Aprovar migração 0018 (`launch_state`, ADR-L01) e a mudança de API de LB-009 (alçadas opcionais no cadastro)? | LF2 | Sem aprovação, LF2 começa pelas partes sem migração (LB-021, LB-002, LB-010, LB-006) |
 
-## Próximo incremento recomendado (após LG1)
+## Próximo incremento recomendado (LF2-b)
 
-**LF2-a — primeiro valor sem migração:** LB-021 (teste de injeção), LB-002 (marcos derivados), LB-010 (prontidão C1–C3), LB-006 (cartão de primeiro valor) e LB-004 (rota de leitura).
-- Arquivos: `api/app/launch/{__init__,journey,readiness,first_value}.py`, `api/app/routers/launch.py`, `api/app/main.py` (registrar rota), `api/tests/test_launch_*.py`, `web/components/condoos/FirstValueCard.tsx`, `web/app/(sindico)/condominio/[id]/resumo/page.tsx`, `web/lib/types.ts`.
-- Aceite: testes positivos/negativos de cada marco e capacidade; cartão de primeiro valor sem número fora de `extracted`; isolamento; `make lint` e `make test` verdes; E2E do F01 com contrato do corpus.
-- Evidência: saída de testes, E2E, atualização deste arquivo, `docs/roadmap-status.md`, `docs/traceability.md` e `docs/decisions.md`.
+LB-009 (alçadas opcionais no cadastro; política nega ação sem alçada, aprovado em Q-L04), LB-011 (prontidão em Ajustes e Configurações), LB-012 (implantações em andamento na Carteira da equipe CondoOS), LB-022 (bordas do upload no cartão: vazio, grande, duplicado), LB-090 (tempo até primeiro valor em Métricas). Depois, LB-020 (tipos documentais, migração do CHECK) e o gate LG2 com `make e2e` na stack do docker.
 
 ## Ritual de cada incremento
 

@@ -6,6 +6,7 @@ import { AgendaPreview } from "@/components/condoos/AgendaPreview";
 import { BriefingView } from "@/components/condoos/BriefingView";
 import { OpportunitiesPreview } from "@/components/condoos/OpportunitiesPreview";
 import { InsightCard } from "@/components/condoos/InsightCard";
+import { JourneyCard, JourneyReopen } from "@/components/condoos/JourneyCard";
 import { SEVERITY_DOT } from "@/components/condoos/SeverityBadge";
 import { MonthSelect } from "@/components/MonthSelect";
 import { buttonClass } from "@/components/ui/Button";
@@ -14,7 +15,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { apiGet } from "@/lib/api";
 import { competenceParam, formatBRL, formatBRLShort, formatMonth } from "@/lib/format";
 import { SEVERITY_PLURAL } from "@/lib/labels";
-import type { Briefing, Competence, Condominium, Severity, Summary } from "@/lib/types";
+import type { Briefing, Competence, Condominium, Launch, Severity, Summary } from "@/lib/types";
 
 const SEVERITIES: Severity[] = ["alta", "media", "baixa"];
 const CHIP_BORDER: Record<Severity, string> = {
@@ -32,25 +33,39 @@ export default async function ResumoPage({
 }) {
   const { id } = await params;
   const { mes } = await searchParams;
-  const [condo, competences, summary, briefing] = await Promise.all([
+  const [condo, competences, summary, briefing, launch] = await Promise.all([
     apiGet<Condominium>(`/condominiums/${id}`),
     apiGet<Competence[]>(`/condominiums/${id}/competences`),
     apiGet<Summary>(`/condominiums/${id}/summary${mes ? `?competence=${mes}` : ""}`),
     apiGet<Briefing>(`/condominiums/${id}/briefing`),
+    apiGet<Launch>(`/condominiums/${id}/launch`),
   ]);
+  // Launch (D89): the implementation journey above the briefing while it is not hidden.
+  const journey = launch.dismissed ? (
+    launch.can_manage ? (
+      <div className="flex justify-end">
+        <JourneyReopen condominiumId={id} />
+      </div>
+    ) : null
+  ) : (
+    <JourneyCard condominiumId={id} launch={launch} />
+  );
   // Hoje (VS-04): the day's briefing first; the month's audit summary follows, unchanged.
   const today = (
-    <BriefingView
-      compact
-      briefing={briefing}
-      paths={{
-        finding: `/condominio/${id}/achados/{id}`,
-        case: `/condominio/${id}/assuntos/{id}`,
-        opportunity: `/condominio/${id}/oportunidades/{id}`,
-        action: `/condominio/${id}/aprovacoes/{id}`,
-        agenda: `/condominio/${id}/agenda`,
-      }}
-    />
+    <>
+      {journey}
+      <BriefingView
+        compact
+        briefing={briefing}
+        paths={{
+          finding: `/condominio/${id}/achados/{id}`,
+          case: `/condominio/${id}/assuntos/{id}`,
+          opportunity: `/condominio/${id}/oportunidades/{id}`,
+          action: `/condominio/${id}/aprovacoes/{id}`,
+          agenda: `/condominio/${id}/agenda`,
+        }}
+      />
+    </>
   );
 
   if (!summary.competence) {

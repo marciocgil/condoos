@@ -1,6 +1,6 @@
 # Rastreabilidade — FR ↔ tarefa ↔ código ↔ teste ↔ entrega
 
-Data: 07/11/2026. Atualizar ao fim de cada fatia (CLAUDE.md, item 6). "Entrega" = marco do MVP auditor (Marco 1–6, 05/11/2026) ou decisão pós-piloto (D65–D71) em que o código entrou. Testes citados existem no repositório. Última execução local completa: 07/11/2026, 307 passaram (D85); E2E: 29 fluxos passaram contra a stack local.
+Data: 07/11/2026. Atualizar ao fim de cada fatia (CLAUDE.md, item 6). "Entrega" = marco do MVP auditor (Marco 1–6, 05/11/2026) ou decisão pós-piloto (D65–D71) em que o código entrou. Testes citados existem no repositório. Última execução local completa: 07/11/2026, 322 passaram (D89); E2E: 29 fluxos passaram contra a stack local (D85); `launch.spec.ts` (D89) passou numa stack local sem Docker.
 
 | FR | Tarefa(s) | Código | Teste(s) | Entrega |
 |---|---|---|---|---|
@@ -49,7 +49,7 @@ Data: 07/11/2026. Atualizar ao fim de cada fatia (CLAUDE.md, item 6). "Entrega" 
 | Caso | Situação | Onde |
 |---|---|---|
 | SEC-01 (tenant A × B) | Coberto; tentativa registrada como evento de segurança (D78) | `test_isolation.py`, `test_access_revocation.py` |
-| SEC-02/AI (PDF adversarial) | Parcial: ferramentas só de leitura; sem teste explícito de injeção | CB-010 |
+| SEC-02/AI (PDF adversarial) | Coberto (D89, LB-021): todo prompt que recebe documento diz que o conteúdo é dado; texto vai delimitado em `<documento>`; a política não lê texto; instrução injetada não muda campo nem confiança | `test_prompt_injection.py` |
 | SEC-02 Plano (busca entre tenants) | Coberto | `test_isolation.py`, RLS em `document_chunk` |
 | SEC-04/05 (valor/expiração da aprovação) | Coberto (D83): aprovação de outra versão é recusada; custo acima do teto e aprovação vencida devolvem para nova aprovação | `test_actions.py` |
 | SEC-08 Plano (kill switch) | Coberto (D83) | `test_actions.py`, e2e `actions.spec.ts` |
@@ -64,3 +64,18 @@ Data: 07/11/2026. Atualizar ao fim de cada fatia (CLAUDE.md, item 6). "Entrega" 
 | OPS-02, WF-04, WF-10 | Cobertos no assunto: fechar sem evidência é negado; "fornecedor disse que fez" não resolve; reabrir preserva histórico (D80) | `test_cases.py` |
 | OPS-01, WF-01..03, WF-05, WF-07..09 | Inexistentes (sem OS, webhook ou ERP) | — |
 | AI-01 (sem fonte suficiente) | Gabarito existe; ao vivo não rodado | `tests/chat_eval/`; CB-040 |
+
+## CondoOS Launch (D88, D89)
+
+| Item | Código | Teste(s) | Entrega |
+|---|---|---|---|
+| LB-001 estado da jornada | `models.LaunchState`, migração 0018, `launch/state.py`, `routers/launch.py` (`PUT …/launch/goal`, `POST …/launch/postpone`, `PUT …/launch/dismissed`) | `test_launch.py::test_launch_api_permissions_and_isolation`, `test_isolation.py::test_every_tenant_table_has_rls` | D89 |
+| LB-002 marcos LM1–LM5 por fatos | `launch/journey.py` | `test_launch.py::test_new_condominium_journey_from_facts` | D89 |
+| LB-003 próximos passos | `launch/steps.py` | `test_launch.py::test_next_steps_follow_the_goal_and_postponement` | D89 |
+| LB-004 rota de leitura | `routers/launch.py` (`GET …/launch`), permissão `MANAGE_LAUNCH` | `test_launch.py::test_launch_api_permissions_and_isolation` | D89 |
+| LB-005 cartão de jornada | `components/condoos/JourneyCard.tsx`, tela Hoje do síndico | e2e `launch.spec.ts` | D89 |
+| LB-006/007 primeiro valor | `launch/first_value.py`, `GET …/documents/{id}/first-value`, `components/condoos/FirstValueCard.tsx`, `UploadForm.tsx` | `test_launch.py::test_uncertain_contract_field_is_never_a_fact`, `::test_first_value_route_is_scoped_and_recorded_once`, e2e `launch.spec.ts` | D89 |
+| LB-008 "o que já fiz por você" | `launch/journey.py::done_for_you` | `test_launch.py` (via API) | D89 |
+| LB-010 prontidão C1–C3 | `launch/readiness.py` | `test_launch.py::test_new_condominium_journey_from_facts`, `::test_uncertain_contract_field_is_never_a_fact` | D89 |
+| LB-021 SEC-02 | `prompts/*.md` (regra de conteúdo não confiável) | `test_prompt_injection.py` | D89 |
+| LB-090 (parcial) | evento `launch.first_value_shown` (uma vez por documento), `launch.goal_selected`, `launch.step_postponed` em `audit_log` | `test_launch.py` | D89 |

@@ -30,10 +30,10 @@ Os marcos são **conquistas calculadas a partir de fatos do banco**, nunca uma c
 
 | Marco | Nome na tela | Concluído quando (fato verificável) | Reaproveita |
 |---|---|---|---|
-| LM1 | Prazer, condomínio! | Condomínio existe, síndico com `membership` ativa e `accepted_at` preenchido (primeiro login), objetivo inicial escolhido ou pulado | `condominium`, `membership` ✔ |
-| LM2 | Seu condomínio ganhou memória | ≥ 1 documento do condomínio com `extraction_status = done`, trechos indexados (`document_chunk`) e cartão de primeiro valor exibido ao síndico | `document`, `document_chunk`, `field_provenance` ✔ |
+| LM1 | Prazer, condomínio! | Condomínio existe e síndico com `membership` ativa e `accepted_at` preenchido (primeiro login). O objetivo é preferência, não fato do marco (D89) | `condominium`, `membership` ✔ |
+| LM2 | Seu condomínio ganhou memória | ≥ 1 contrato, convenção ou ata com `extraction_status = done` e texto guardado. Indexação e exibição do cartão ficam na prontidão C1 e no evento `launch.first_value_shown` (D89) | `document`, `document_chunk`, `field_provenance` ✔ |
 | LM3 | Seu assessor começou a investigar | Ao menos um mês com contrato vigente **e** despesa/fatura casada, regras avaliadas, com cobertura declarada (período, fontes, % do que se espera) | `competence`, `finding`, `pending.py` ✔ |
-| LM4 | Seu condomínio está conectado | Revisor CondoOS atribuído, ao menos um canal de entrada com documento recebido (e-mail do condomínio ou administradora com acesso) e, se houver, pedido delegado concluído | `condo_assignment`, `document.origin`, pedido delegado (novo, LF4) |
+| LM4 | Seu condomínio está conectado | Revisor CondoOS atribuído e documento chegando por outro caminho (e-mail do condomínio ou administradora). Pedido delegado entra no critério com a LF4 | `condo_assignment`, `document.origin`, pedido delegado (novo, LF4) |
 | LM5 | Seu assessor começou a agir | Uma ação de baixo risco aprovada e com execução **registrada** (D83: o sistema não envia; a pessoa executa e registra) | `action_request`, `action_decision` ✔ |
 
 Os marcos **não são sequenciais**: LM5 pode vir antes de LM3 (por exemplo, pedir orçamento sem compromisso a partir de um assunto). A tela mostra o próximo melhor passo a partir do grafo de dependências por capacidade (seção 5 de `04-…`), não da ordem dos marcos.

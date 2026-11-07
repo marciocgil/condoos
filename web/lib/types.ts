@@ -736,3 +736,66 @@ export interface ProvenanceItem {
   status?: string;
   confirmed_by?: string;
 }
+
+// CondoOS Launch (D89): journey, readiness per capability and the first-value card.
+export type LaunchGoal = "economizar" | "pendencias" | "fornecedores" | "panorama";
+
+export interface LaunchMilestone {
+  key: string;
+  title: string;
+  value: string;
+  criterion: string;
+  done: boolean;
+  at: string | null;
+  ref: { kind: string; id: string } | null;
+}
+
+export type ReadinessState = "nao_configurado" | "analise_parcial" | "supervisionada";
+
+export interface CapabilityReadiness {
+  key: string;
+  title: string;
+  state: ReadinessState;
+  state_label: string;
+  missing: string[];
+}
+
+export interface LaunchStep {
+  key: string;
+  label: string;
+  why: string;
+  unlocks: string;
+  href: string;
+  primary: boolean;
+}
+
+export interface Launch {
+  goal: LaunchGoal | null;
+  dismissed: boolean;
+  can_manage: boolean;
+  milestones: LaunchMilestone[];
+  readiness: CapabilityReadiness[];
+  next_steps: LaunchStep[];
+  done_for_you: { key: string; count: number; label: string }[];
+}
+
+export interface FirstValueField {
+  name: string;
+  label: string;
+  status: "lido" | "a_confirmar" | "nao_encontrado";
+  value: string | null;
+  source?: string | null;
+  evidence?: { page: number | null; excerpt: string };
+}
+
+export interface FirstValue {
+  document_id: string;
+  filename: string;
+  doc_type: string;
+  state: "lendo" | "falhou" | "memoria" | "outro_tipo" | "lido" | "parcial";
+  message: string;
+  fields?: FirstValueField[];
+  clauses?: { label: string; value: string; evidence?: { excerpt: string } | null }[];
+  limits?: string[];
+  next_step?: { key: string; label: string; why: string };
+}

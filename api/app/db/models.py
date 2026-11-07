@@ -1024,6 +1024,32 @@ class CondominiumSettingsVersion(IdTimestampMixin, Base):
     valid_from: Mapped[datetime] = mapped_column(DateTime(timezone=True))
 
 
+class LaunchState(IdTimestampMixin, Base):
+    """The human choices of the Launch journey (ADR-L01, D89): the first goal, steps put off
+    for later and whether the journey card was dismissed. Milestones and readiness are never
+    stored: they are computed from the data every time (``app/launch``)."""
+
+    __tablename__ = "launch_state"
+    __table_args__ = (
+        UniqueConstraint("condominium_id"),
+        CheckConstraint(
+            "goal IS NULL OR goal IN ('economizar', 'pendencias', 'fornecedores', 'panorama')",
+            name="goal_valid",
+        ),
+    )
+
+    condominium_id: Mapped[uuid.UUID] = _uuid_fk("condominium.id")
+    goal: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    # {"step key": "YYYY-MM-DD"}: hidden from the next steps until that date.
+    postponed: Mapped[dict[str, Any]] = mapped_column(
+        Json, default=dict, server_default=sql_text("'{}'")
+    )
+    dismissed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    updated_by_user_id: Mapped[uuid.UUID | None] = _uuid_fk(
+        "app_user.id", nullable=True, ondelete="SET NULL"
+    )
+
+
 # Tables protected by Row-Level Security, with the column holding the tenant id.
 RLS_TABLES: dict[str, str] = {
     "condominium": "id",
@@ -1059,6 +1085,7 @@ RLS_TABLES: dict[str, str] = {
     "outbox_event": "condominium_id",
     "automation_pause": "condominium_id",
     "condominium_settings_version": "condominium_id",
+    "launch_state": "condominium_id",
 }
 
 # Tables the application role may only read and insert into (never update or delete).

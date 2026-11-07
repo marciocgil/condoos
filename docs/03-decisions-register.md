@@ -86,10 +86,10 @@ Detalhe em `docs/condoos-planning/launch/01-diagnostico-as-is.md` §4 e `00-stat
 
 | # | Tema | Situação |
 |---|---|---|
-| DL-01 / Q-L01 | Síndico cria o próprio condomínio × só gerente ou Admin CondoOS cria (`registry.py`) | Aberta; hipótese: implantação assistida no piloto |
-| DL-02 / Q-L02 | Delegação e lembretes com envio × nada sai do sistema (D83, Plano D-04) | Aberta; hipótese: link e texto gerados, síndico envia |
+| DL-01 / Q-L01 | Síndico cria o próprio condomínio × só gerente ou Admin CondoOS cria (`registry.py`) | **Resolvida (D89):** implantação assistida pelo Admin no piloto |
+| DL-02 / Q-L02 | Delegação e lembretes com envio × nada sai do sistema (D83, Plano D-04) | **Resolvida (D89):** link e texto gerados, síndico envia |
 | DL-03 | Revisor convidado pela jornada × atribuído pelo Admin (D79) | Proposta: manter D79 |
 | DL-04 | Tabelas de fato extraído × `field_provenance` (D85) | Proposta: reusar (ADR-L03 no Launch) |
 | DL-05 | `OnboardingTask` × `case_task` (D80) | Proposta: reusar `case_task` |
-| DL-06 / Q-L03 | Fases e gates do Launch × caminho crítico do Plano (VS-06) | Aberta; hipótese: LF2 antes da VS-06 |
-| Q-L04 | Migração 0018 (`launch_state`) e alçadas opcionais no cadastro | Aguarda aprovação |
+| DL-06 / Q-L03 | Fases e gates do Launch × caminho crítico do Plano (VS-06) | **Resolvida (D89):** LF2 antes da VS-06 |
+| Q-L04 | Migração 0018 (`launch_state`) e alçadas opcionais no cadastro | **Aprovada (D89)**; 0018 entregue |

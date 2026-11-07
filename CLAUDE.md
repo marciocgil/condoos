@@ -63,6 +63,8 @@ api/            FastAPI + SQLAlchemy 2 (async) + Alembic; worker da fila de jobs
   app/core/retention.py  política de retenção (job diário retention.purge)
   app/policy/     motor de política das ações (nega por padrão) e kill switch (D83)
   app/actions/    pedido de ação com aprovação, outbox e despacho sem envio (D83)
+  app/launch/     implantação guiada (D89): marcos por fatos, prontidão por capacidade,
+                  cartão de primeiro valor, próximos passos, launch_state
   scripts/pilot_run.py   aceite do Marco 6: condomínio fictício do upload ao relatório
   app/prompts/    prompts versionados (*.md)
   app/db/         models.py, enums.py, session.py, migrations/
@@ -138,6 +140,7 @@ make pilot         # aceite do Marco 6 (após reset + up) → docs/pilot/run.md
 - **Ações e kill switch** (D83): só `app/policy/` autoriza (código tipado, versionado, nega por padrão; pagamento, contratação, multa e dados bancários negados sempre; nenhuma regra responde "permite"). Pedido em `app/actions/`: conteúdo congelado por hash, o síndico aprova a versão que viu, a aprovação vale 7 dias, mudança depois de aprovada anula. O despacho (`action.dispatch`) confere tudo de novo e **não envia nada**: a ação espera uma pessoa executar e registrar. Custo acima do teto ou aprovação vencida voltam para aprovação. `action_decision` só aceita inclusão; outbox com chave única. Tipo de job novo que tenha efeito entra em `PAUSABLE_JOBS` (o worker não roda job pausado).
 - **Economia contratada e realizada** (D84): "contratada" só com o documento do acordo (`record_contracted`, `acordo_v1`); "realizada" só a revisora CondoOS mede, pelas faturas com nota emitidas depois do acordo (`measure_realized`, `medicao_faturas_v1`). Cada estágio é linha nova em `savings_record`; nada paga nem envia.
 - **Versões e proveniência** (D85): alçadas e parâmetros mudam por `app/condo_settings.py` (versão nova com autor e motivo; regras usam `ctx.limits`/`ctx.rule_params`, a versão vigente no mês, nunca `condominium.approval_limits` direto). Extração grava `field_provenance` (origem, página, trecho; trecho só se o texto mostrar o valor). Documento novo do mesmo documento lógico entra por `.../documents/{id}/versions`; a busca usa só a versão vigente. Cláusulas de rescisão em `app/extraction/clauses.py` (por regra, com trecho; valor posto por pessoa fica).
+- **Launch** (D89): marcos (LM1–LM5) e prontidão (C1–C3) são calculados dos dados a cada leitura, nunca gravados, e não liberam nada; só objetivo, adiados e cartão oculto ficam em `launch_state`. O cartão de primeiro valor só mostra valores de `document.extracted` (abaixo de 0,9 = "a confirmar") e sempre diz o que a leitura não cobre. Prompt que recebe documento traz a regra de conteúdo não confiável (`tests/test_prompt_injection.py`).
 - **Revisão** (D74, D79): o status inicial de um achado vem da política (`app/review/`), não da severidade direto. Status novo precisa entrar em `NOT_AT_RISK`/`UNDER_REVIEW` (`db/enums.py`) quando couber.
 - **Telas da administradora** aceitam `?condominio=<id>` (filtro por condomínio, D69); o menu lateral mantém a escolha.
 - **Interface:** use os tokens e os componentes de `components/ui` e `components/condoos`; status sempre com texto e ícone, nunca só cor; verde-lima só em ação primária e item ativo.

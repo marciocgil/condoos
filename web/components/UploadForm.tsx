@@ -3,8 +3,11 @@
 import { CheckCircle2, Copy, UploadCloud, XCircle } from "lucide-react";
 import { useState, type ChangeEvent } from "react";
 
+import { FirstValueCard } from "@/components/condoos/FirstValueCard";
 import type { UploadResult } from "@/lib/types";
 
+// The first-value card follows at most this many new documents of one upload (LB-007).
+const MAX_CARDS = 3;
 const ACCEPT = ".pdf,.xml,.ofx,.csv,.ret,.txt,image/jpeg,image/png,image/webp";
 
 export function UploadForm({ condominiumId }: { condominiumId: string }) {
@@ -91,6 +94,16 @@ export function UploadForm({ condominiumId }: { condominiumId: string }) {
           ))}
         </ul>
       )}
+      {results
+        .filter((r) => r.document_id && !r.error)
+        .slice(0, MAX_CARDS)
+        .map((r) => (
+          <FirstValueCard
+            key={r.document_id}
+            condominiumId={condominiumId}
+            documentId={r.document_id as string}
+          />
+        ))}
     </div>
   );
 }
