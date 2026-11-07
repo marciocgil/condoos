@@ -8,7 +8,7 @@ Estados: `nao_iniciado`, `em_analise`, `em_desenvolvimento`, `em_teste`, `bloque
 
 - **Marco atual:** M1 — Core confiável (M0 concluído em 07/11/2026: inventário, decisões D73–D77 e plano de migração aprovado). MVP auditor (Marcos 1–6) concluído em 05/11/2026; base reaproveitada integralmente.
 - **Cobertura dos 65 FR** (`docs/02-gap-matrix.md`): 9 real, 24 parcial, 32 inexistentes. P0: 7 real, 19 parcial, 3 inexistentes.
-- **Gates:** G0 aberto · G1 fechado no código (CI, SEC-10 e evento de segurança, D78; falta só a primeira execução verde no GitHub) · G2 parcial · G3 desbloqueado por D74, depende do EP-09 e da VS-03 · G4 e G5 não iniciados.
+- **Gates:** G0 aberto · **G1 fechado** (CI, SEC-10 e evento de segurança, D78; CI verde no GitHub: https://github.com/marciocgil/marcio-linkedin-skills/actions/runs/42322097954) · G2 parcial · G3 desbloqueado por D74, depende do EP-09 e da VS-03 · G4 e G5 não iniciados.
 
 ## 2. Estado por requisito (resumo)
 
@@ -36,7 +36,6 @@ Detalhe e evidências: `docs/02-gap-matrix.md` e `docs/traceability.md`.
 |---|---|---|---|
 | B4 | Sem chave de API | FR-031 (avaliação ao vivo), acurácia com LLM, R04/R07 reais | Marcio (chave em ambiente de teste) |
 | B5 | Sem piloto real nem autorização de dados | G0, baseline | Marcio / pilotos |
-| B6 | Primeira execução do CI no GitHub | Evidência remota do G1 | Push do branch (CB-001) |
 
 ## 5. Próxima fatia e incrementos seguintes
 
@@ -44,7 +43,7 @@ Detalhe e evidências: `docs/02-gap-matrix.md` e `docs/traceability.md`.
 
 | Ordem | Incremento | Pacotes / histórias | Critério de conclusão | Depende de |
 |---|---|---|---|---|
-| 1 | ~~Fechar G1~~ **entregue** (D78) | WP-01, WP-02: CB-001, CB-003, CB-004 | 230 testes e lint passando localmente; CI criado | — |
+| 1 | ~~Fechar G1~~ **entregue** (D78) | WP-01, WP-02: CB-001, CB-003, CB-004 | 230 testes e lint passando localmente e no CI (execução nº 1, verde) | — |
 | 2 | **Acesso e revisão proporcional** ← próximo | EP-09: CB-002, CB-013..017 (migrações 0011, 0012) | Critérios 0011 e 0012 de `docs/data-model.md` §8; `test_planted_cases.py` exato; reviewer opera um condomínio sem administradora de ponta a ponta no seed; fuso por condomínio | Plano aprovado |
 | 3 | **VS-01** | WP-04, WP-07: CB-020..027 (migração 0013) | Aceite VS-01 + critérios 0013; Playwright | Incremento 2 |
 | 4 | **VS-03** | CB-060..064 (migração 0014) | G3 + critérios 0014 | Incremento 2 |
@@ -58,3 +57,4 @@ Política mínima e kill switch (CB-010..012) entram entre os incrementos 2 e 3 
 - 07/11/2026 — criação (prompt 01). Documentos vivos criados: `01-repo-audit.md`, `02-gap-matrix.md`, `03-decisions-register.md`, `product-roadmap.md`, `backlog.md`, `traceability.md`, `pilot-protocol.md`, esta página.
 - 07/11/2026 — DV-01..DV-05 respondidas pelo Marcio; registradas como D73–D77. Criados `data-model.md`, `authorization-matrix.md` e `flows.md`; backlog com EP-09 e CB-013..017, CB-026/027, CB-064; FR-046 sai de bloqueado.
 - 07/11/2026 — Plano de migração 0011–0014 aprovado. Incremento 1 entregue (D78): CI, evento de segurança em 404/403, prova de revogação (SEC-10). Execução local: 230 testes, lint backend e frontend limpos. CB-002 (fuso) movido para o incremento 2 (migração 0011).
+- 07/11/2026 — Primeira execução do CI no GitHub: backend e frontend verdes (run 42322097954).
