@@ -858,6 +858,29 @@ class OpportunityReview(IdTimestampMixin, Base):
     reviewed_version_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
 
 
+# --------------------------------------------------------------------------- briefing (D82)
+
+
+class Briefing(IdTimestampMixin, Base):
+    """The day's briefing of one person in one condominium (VS-04, FR-032). Built by code
+    from records only; each item points to its source. A refresh is a new version."""
+
+    __tablename__ = "briefing"
+    __table_args__ = (UniqueConstraint("condominium_id", "user_id", "local_date", "version"),)
+
+    condominium_id: Mapped[uuid.UUID] = _uuid_fk("condominium.id")
+    user_id: Mapped[uuid.UUID] = _uuid_fk("app_user.id", ondelete="CASCADE")
+    local_date: Mapped[date] = mapped_column(Date)
+    version: Mapped[int] = mapped_column(Integer)
+    timezone: Mapped[str] = mapped_column(String(64))
+    period_start: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    period_end: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    content: Mapped[dict[str, Any]] = mapped_column(Json, default=dict)
+    partial_sources: Mapped[list[dict[str, Any]]] = mapped_column(Json, default=list)
+    generated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    read_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
 # Tables protected by Row-Level Security, with the column holding the tenant id.
 RLS_TABLES: dict[str, str] = {
     "condominium": "id",
@@ -887,6 +910,7 @@ RLS_TABLES: dict[str, str] = {
     "opportunity_finding": "condominium_id",
     "savings_record": "condominium_id",
     "opportunity_review": "condominium_id",
+    "briefing": "condominium_id",
 }
 
 # Tables the application role may only read and insert into (never update or delete).

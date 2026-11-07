@@ -97,3 +97,7 @@ async def purge_job(session: AsyncSession, payload: dict[str, Any]) -> None:
         n = await purge_condominium(session, condo, today)
         if n:
             logger.info("retention purged condominium=%s documents=%s", condo.id, n)
+    from app.briefing import purge as purge_briefings
+
+    if n := await purge_briefings(session, today):
+        logger.info("retention purged briefings=%s", n)
