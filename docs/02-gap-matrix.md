@@ -54,7 +54,7 @@ Data: 07/11/2026 (FR-046 revisto após D74). Fonte dos requisitos: Especificaç�
 | FR | P | WP | Repo | O que existe | Lacuna | Evidência | Status |
 |---|---|---|---|---|---|---|---|
 | FR-031 | P0 | WP-06 | real (não medido ao vivo) | Chat com 9 ferramentas de leitura, citações e números conferidos (D55) | Avaliação ao vivo (≥ 90 %, zero vazamento) | `test_chat.py`, `chat_eval/` (gabarito) | bloqueado (falta `ANTHROPIC_API_KEY`) |
-| FR-032 | P0 | WP-09 | parcial | Resumo do mês e prévia da Agenda | Briefing diário com período/fuso, persistido e com fontes | — | em_analise |
+| FR-032 | P0 | WP-09 | real | Briefing do dia por pessoa e condomínio: riscos, decisões, andamento, concluído (só com registro), agenda, oportunidades e qualidade dos dados, com fonte, período, fuso, versão, leitura e aviso de dados parciais (D82) | Envio por canal externo; horário configurável (FR-009) | `test_briefing.py`, e2e `briefing.spec.ts` | pronto_para_validar |
 | FR-033 | P0 | WP-09 | parcial | Achado com explicação e evidências; ação sugerida do chat (lista fechada) | Próxima ação + estado de autorização | `test_explain.py` | em_analise |
 | FR-034 | P0 | WP-10 | parcial | Nenhum efeito externo existe (seguro por ausência) | Separação garantida por política quando houver efeito | — | em_analise |
 | FR-035 | P1 | WP-20 | inexistente | — | WhatsApp oficial | — | nao_iniciado |
@@ -106,12 +106,12 @@ Data: 07/11/2026 (FR-046 revisto após D74). Fonte dos requisitos: Especificaç�
 | Plataforma (001–010) | 10 | 3 | 4 | 3 |
 | Documentos (011–020) | 10 | 3 | 7 | 0 |
 | Workflow (021–030) | 10 | 4 | 4 | 2 |
-| Advisor (031–040) | 10 | 1 | 3 | 6 |
+| Advisor (031–040) | 10 | 2 | 2 | 6 |
 | Optimize (041–050) | 10 | 5 | 2 | 3 |
 | Operate etc. (051–065) | 15 | 0 | 1 | 14 |
-| **Total** | **65** | **16** | **21** | **28** |
+| **Total** | **65** | **17** | **20** | **28** |
 
-P0 (29 FRs): 14 real, 14 parcial, 1 inexistente (FR-007 kill switch). FR-021 e FR-022 entraram com a VS-01 (D80). FR-045 (oportunidade) e FR-046 (revisão interna) são parciais, mas centrais ao Optimize, e FR-046 foi decidido em D74 (revisão proporcional ao risco).
+P0 (29 FRs): 15 real, 13 parcial, 1 inexistente (FR-007 kill switch). FR-021 e FR-022 entraram com a VS-01 (D80). FR-045 (oportunidade) e FR-046 (revisão interna) são parciais, mas centrais ao Optimize, e FR-046 foi decidido em D74 (revisão proporcional ao risco).
 
 ## 8. Cobertura por CAP
 

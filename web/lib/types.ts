@@ -585,3 +585,30 @@ export interface OpportunityDetail extends OpportunityRow {
   allowed_actions: string[];
   can_adjust: boolean;
 }
+
+// --------------------------------------------------------------------------- briefing (D82)
+
+export interface BriefingItem {
+  kind: string;
+  title: string;
+  detail: string;
+  ref: { type: string; id: string } | null;
+  when: string | null;
+  tone: "danger" | "warning" | "info" | "success" | "neutral";
+}
+
+export interface Briefing {
+  id: string;
+  condominium_id: string;
+  condominium_name: string;
+  local_date: string;
+  version: number;
+  timezone: string;
+  period_start: string;
+  period_end: string;
+  generated_at: string;
+  read_at: string | null;
+  headline: string;
+  sections: { key: string; title: string; count: number; items: BriefingItem[] }[];
+  partial_sources: { source: string; label: string; reason: string }[];
+}

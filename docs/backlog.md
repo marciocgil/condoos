@@ -94,9 +94,9 @@ Data: 07/11/2026 (revisado com D73–D77). Prioridade e ordem seguem `docs/produ
 
 **CB-040 — Avaliação ao vivo do chat** · P · FR-031, AI-01 · *bloqueado: chave de API*
 - Aceite: `make chat-eval` ≥ 90 %, zero vazamento; resultado em `docs/chat_eval.md`.
-**CB-041 — Tela Hoje** · G · FR-032, FR-033 · §7.3
+**CB-041 — Tela Hoje** · G · FR-032, FR-033 · §7.3 · ✅ entregue (D82)
 - Aceite: blocos "precisa de você", decisões, atrasos, agenda, radar; cada cartão abre o contexto; nada de "nota única"; fonte e última atualização visíveis.
-**CB-042 — Briefing diário (VS-04)** · G · FR-032, US-008
+**CB-042 — Briefing diário (VS-04)** · G · FR-032, US-008 · ✅ entregue (D82)
 - Aceite: período e fuso corretos; persistido com versão; só cita fatos com fonte; dado parcial sinalizado; não afirma execução inexistente; entrega interna (tela) primeiro — nada por e-mail/WhatsApp sem política.
 
 ## Épico EP-06 — Aprovações com escopo congelado · WP-10 · P0

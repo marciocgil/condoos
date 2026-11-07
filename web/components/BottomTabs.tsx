@@ -7,7 +7,7 @@ import { usePathname } from "next/navigation";
 import { cx } from "@/components/ui/cx";
 
 const TABS = [
-  { slug: "resumo", label: "Resumo", icon: LayoutDashboard },
+  { slug: "resumo", label: "Hoje", icon: LayoutDashboard },
   { slug: "achados", label: "Achados", icon: ListChecks },
   { slug: "assuntos", label: "Assuntos", icon: FolderKanban },
   { slug: "contratos", label: "Contratos", icon: FileSignature },

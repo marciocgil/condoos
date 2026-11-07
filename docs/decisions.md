@@ -407,3 +407,32 @@ O CondoOS não move dinheiro: a agenda não tem ação de pagar nem de agendar p
   - estágios "contratada" e "realizada" (CB-063) e extração de aviso prévio e multa (CB-060) não entraram;
   - um único método de cálculo (R02/R03);
   - o relatório PDF/XLSX ainda não mostra oportunidades.
+
+## VS-04 — Briefing do dia e tela Hoje (migração 0015)
+
+**D82 — Briefing orientado por dados** (CB-041, CB-042; 07/11/2026; migração 0015 aprovada pelo Marcio no mesmo dia).
+- **Tabela `briefing`** (RLS): um registro por pessoa, condomínio e dia no fuso do condomínio. "Atualizar" cria uma versão nova e nunca edita a anterior. Cada registro guarda o período (desde o briefing anterior da pessoa, ou as últimas 24 h), as fontes parciais e a hora em que foi lido. Retenção de 90 dias no job diário (`retention.purge`): o briefing é uma conveniência, não um registro.
+- **Montado por código, sem IA** (`app/briefing/`). Sete seções:
+  - riscos e atrasos (assuntos com próxima ação atrasada, suspensão vencida ou criticidade crítica; achados graves sem decisão; vencimentos sem pagamento);
+  - decisões aguardando a pessoa, conforme as permissões dela (achados para decidir, oportunidades apresentadas, achados em revisão, oportunidades em revisão CondoOS, fila de exceções);
+  - o que está em andamento com ela (tarefas e assuntos);
+  - o que foi concluído no período;
+  - agenda dos próximos 7 dias;
+  - oportunidades (com o nome do estágio, nunca somadas);
+  - qualidade dos dados (último documento recebido e último lançamento do extrato).
+- **Não afirma o que não aconteceu:** "Concluído" só lista eventos registrados no período (assunto resolvido ou cancelado, tarefa concluída, decisão sobre achado, decisão sobre oportunidade). Cada item aponta para a fonte e abre no contexto certo.
+- **Não mistura condomínios:** um briefing por condomínio; o desktop mostra um por condomínio, lado a lado. O teste confere que toda referência pertence ao condomínio do próprio briefing.
+- **Fonte que falha ou está desatualizada:** cada seção roda num savepoint próprio. Se falhar, o briefing sai mesmo assim, com o aviso "Dados parciais" e a fonte indicada. Também conta como parcial ficar mais de 35 dias sem documento novo ou sem lançamento no extrato.
+- **Defeito encontrado e lição:** a seção "Concluído" falhava (uso de `Result.tuples()`, obsoleto no SQLAlchemy) e a proteção de fonte parcial escondeu o erro; só um teste de conteúdo o pegou. Por isso o teste principal agora exige que, em uso normal, as únicas fontes parciais sejam as de dados desatualizados.
+- **Privacidade:** os nomes exibidos vêm só das pessoas que aparecem nos registros do período (a tabela de usuários não tem RLS; nunca carregar todos).
+- **Entrega só dentro do aplicativo** (Plano D-04): nenhum e-mail ou mensagem. A leitura é registrada quando a pessoa abre a tela.
+- **Telas:**
+  - no celular, a aba "Resumo" passou a se chamar **"Hoje"**: o briefing vem primeiro e a auditoria do mês segue logo abaixo, sem mudança (mesma rota `/resumo`);
+  - no desktop, novo item **"Hoje"** no topo do menu, com um briefing por condomínio.
+  - A tela inicial do desktop continua sendo a Carteira.
+- **Teste E2E corrigido:** o fluxo de cadastro de contrato tinha uma corrida antiga (clicava "Mirante do Vale" antes de a página de novo contrato carregar e acertava o filtro da lista); agora espera a navegação.
+- **Limites conhecidos:**
+  - sem reescrita por IA do texto (pode vir depois, com a mesma conferência numérica das explicações);
+  - sem envio por e-mail ou WhatsApp;
+  - sem horário configurável por pessoa (FR-009);
+  - sem digest semanal (FR-038).

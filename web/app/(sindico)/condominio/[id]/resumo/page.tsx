@@ -2,6 +2,7 @@ import { Download, Upload } from "lucide-react";
 import Link from "next/link";
 
 import { AgendaPreview } from "@/components/condoos/AgendaPreview";
+import { BriefingView } from "@/components/condoos/BriefingView";
 import { OpportunitiesPreview } from "@/components/condoos/OpportunitiesPreview";
 import { InsightCard } from "@/components/condoos/InsightCard";
 import { SEVERITY_DOT } from "@/components/condoos/SeverityBadge";
@@ -12,7 +13,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { apiGet } from "@/lib/api";
 import { competenceParam, formatBRL, formatBRLShort, formatMonth } from "@/lib/format";
 import { SEVERITY_PLURAL } from "@/lib/labels";
-import type { Competence, Condominium, Severity, Summary } from "@/lib/types";
+import type { Briefing, Competence, Condominium, Severity, Summary } from "@/lib/types";
 
 const SEVERITIES: Severity[] = ["alta", "media", "baixa"];
 const CHIP_BORDER: Record<Severity, string> = {
@@ -30,16 +31,31 @@ export default async function ResumoPage({
 }) {
   const { id } = await params;
   const { mes } = await searchParams;
-  const [condo, competences, summary] = await Promise.all([
+  const [condo, competences, summary, briefing] = await Promise.all([
     apiGet<Condominium>(`/condominiums/${id}`),
     apiGet<Competence[]>(`/condominiums/${id}/competences`),
     apiGet<Summary>(`/condominiums/${id}/summary${mes ? `?competence=${mes}` : ""}`),
+    apiGet<Briefing>(`/condominiums/${id}/briefing`),
   ]);
+  // Hoje (VS-04): the day's briefing first; the month's audit summary follows, unchanged.
+  const today = (
+    <BriefingView
+      compact
+      briefing={briefing}
+      paths={{
+        finding: `/condominio/${id}/achados/{id}`,
+        case: `/condominio/${id}/assuntos/{id}`,
+        opportunity: `/condominio/${id}/oportunidades/{id}`,
+        agenda: `/condominio/${id}/agenda`,
+      }}
+    />
+  );
 
   if (!summary.competence) {
     return (
       <>
         <h1 className="text-xl font-semibold">{condo.name}</h1>
+        {today}
         <EmptyState title="Ainda não há meses processados">
           Envie as notas, boletos e o extrato do mês para começar a auditoria.
         </EmptyState>
@@ -54,6 +70,8 @@ export default async function ResumoPage({
         <h1 className="text-xl leading-tight font-semibold">{condo.name}</h1>
         <p className="text-sm text-fg-2">{formatMonth(summary.competence)}</p>
       </div>
+      {today}
+      <h2 className="pt-2 text-lg font-semibold">Auditoria do mês</h2>
       <MonthSelect competences={competences} value={summary.competence} />
 
       <Card tone="highlight" aria-label="Destaque do mês">

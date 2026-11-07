@@ -23,6 +23,8 @@ test.describe("gerente — cadastros", () => {
 
     await page.goto("/admin/contratos");
     await page.getByRole("link", { name: "Novo contrato" }).click();
+    // "Mirante do Vale" is also a filter on the list: wait for the new-contract page first.
+    await page.waitForURL(/\/admin\/contratos\/novo/);
     await page.getByRole("link", { name: /Mirante do Vale/ }).click();
     // A seed supplier (fictitious and already enriched): a random valid CNPJ may belong to a
     // real company, and the registry lookup would bring real data into the test database.

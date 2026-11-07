@@ -15,6 +15,7 @@ import {
   PiggyBank,
   Settings,
   Store,
+  Sun,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
@@ -24,6 +25,7 @@ import { Logo } from "@/components/layout/Logo";
 import { cx } from "@/components/ui/cx";
 
 const ITEMS = [
+  { href: "/admin/hoje", label: "Hoje", icon: Sun },
   { href: "/admin/carteira", label: "Carteira", icon: LayoutGrid },
   { href: "/admin/fila", label: "Fila de exceções", icon: Inbox, counter: true },
   { href: "/admin/assuntos", label: "Assuntos", icon: FolderKanban },
