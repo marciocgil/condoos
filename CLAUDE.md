@@ -114,7 +114,8 @@ make pilot         # aceite do Marco 6 (após reset + up) → docs/pilot/run.md
 
 - **Multi-tenant:** toda tabela com dados de condomínio tem `condominium_id`. Toda consulta filtra por ele **e** o RLS do PostgreSQL filtra de novo. Ao criar uma tabela nova com dados de condomínio, acrescente-a em `RLS_TABLES` (`app/db/models.py`) e crie uma migração com a política. Teste o isolamento.
 - **Banco nas rotas:** use sempre o alias `DbSession` (commit antes da resposta, D18). Rotas de um condomínio recebem `access = Depends(require(Permission.X))`.
-- **Outro condomínio = 404**, nunca 403.
+- **Outro condomínio = 404**, nunca 403. A tentativa é gravada como `security.access_denied` (e o 403 por papel como `security.permission_denied`) por `auth/deps.py`, em transação própria (D78). Rotas de condomínio devem passar por `require()`/`get_condo_access` para herdar isso.
+- **CI** (`.github/workflows/ci.yml`) roda `make lint` e `pytest` com pgvector a cada push; mantenha-o verde.
 - **`decision` e `audit_log` só aceitam inclusão.** Nunca apagar nem alterar.
 - **Jobs** são idempotentes: use `dedupe_key` ao enfileirar e o hash do arquivo para documentos.
 - **Logs** só com ids, nunca dados de cliente.

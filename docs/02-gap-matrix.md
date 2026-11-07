@@ -10,7 +10,7 @@ Data: 07/11/2026 (FR-046 revisto após D74). Fonte dos requisitos: Especificaç�
 |---|---|---|---|---|---|---|---|
 | FR-001 | P0 | WP-02 | parcial | `condominium`, Carteira "Novo condomínio", `app.onboarding` | Fuso horário configurável por condomínio | `test_registry.py`, `test_onboarding.py` | em_analise |
 | FR-002 | P0 | WP-02 | parcial | Acesso por e-mail com papel (`POST /condominiums/{id}/members`), remoção, auditoria | Convite com prazo próprio e aceite; papéis da §9.4 | `test_registry.py`, `test_auth.py` | em_analise |
-| FR-003 | P0 | WP-02 | real | RLS em 17 tabelas, filtro duplo, 404 | Busca e storage já escopados; falta teste de storage cruzado | `test_isolation.py` (10) | pronto_para_validar |
+| FR-003 | P0 | WP-02 | real | RLS em 17 tabelas, filtro duplo, 404 com evento de segurança (D78), CI | Falta teste de storage cruzado | `test_isolation.py` (10), `test_access_revocation.py` | pronto_para_validar |
 | FR-004 | P0 | WP-02 | real | `rbac.py` (5 papéis × 11 permissões), `require()` no backend | Papéis futuros (zelador, fornecedor…) | `test_rbac.py`, `test_findings_api.py` | pronto_para_validar |
 | FR-005 | P0 | WP-03 | parcial | `audit_log` e `decision` append-only (D14) | Versão de política/aplicação e motivo em todas as mudanças críticas; estado anterior/novo | `test_isolation.py::test_append_only_tables` | em_analise |
 | FR-006 | P0 | WP-03 | parcial | Alçadas e parâmetros de regra por condomínio (`settings.py`) | Política versionada, com responsável e vigência; níveis L1–L5 | `test_registry.py` (parcial) | em_analise |

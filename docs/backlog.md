@@ -12,7 +12,7 @@ Data: 07/11/2026 (revisado com D73–D77). Prioridade e ordem seguem `docs/produ
 ## Épico EP-01 — Plataforma segura (G1) · WP-01, WP-02 · P0
 
 ### Feature F-01.1 — Integração contínua (ADR-P06)
-**CB-001 — CI com lint e testes do backend** · M · FR transversal · NFR qualidade (§16.6)
+**CB-001 — CI com lint e testes do backend** · M · ✅ entregue (D78; E2E e badge ficaram de fora) · FR transversal · NFR qualidade (§16.6)
 - Como mantenedor, quero que cada push rode lint e pytest, para que uma regressão de isolamento não passe despercebida.
 - Aceite: workflow em `.github/workflows/` roda `ruff`, `black --check`, `mypy`, `eslint`, `tsc`, `prettier` e `pytest` com serviço PostgreSQL 16 + pgvector; falha de qualquer um deixa o job vermelho; nenhum segredo de LLM (modo `replay`); tempo e cache registrados.
 - Fora do escopo: E2E no CI, deploy.
@@ -20,13 +20,13 @@ Data: 07/11/2026 (revisado com D73–D77). Prioridade e ordem seguem `docs/produ
 - Premissa: a suíte roda sem a stack completa (já é assim localmente).
 
 ### Feature F-01.2 — Lacunas de identidade e tenant
-**CB-002 — Fuso horário do condomínio** (ADR-P07) · P · FR-001
+**CB-002 — Fuso horário do condomínio** (ADR-P07) · P · FR-001 · movido para o incremento 2 (migração 0011)
 - Aceite: `condominium.timezone` com padrão `America/Sao_Paulo`, validado contra a base IANA; editável em Configurações (gerente); migração sem RLS nova (coluna); agenda e "em atraso" usam o fuso; teste com fuso diferente.
 
-**CB-003 — Evento de segurança em acesso negado** (DV-06) · P · FR-003, US-001
+**CB-003 — Evento de segurança em acesso negado** (DV-06) · P · FR-003, US-001 · ✅ entregue (D78; também no 403)
 - Aceite: acesso a condomínio alheio continua 404 (D15) e grava `audit_log` `security.access_denied` só com ids; teste para rota de leitura e de escrita; nada de dado pessoal no log.
 
-**CB-004 — Revogação imediata provada (SEC-10)** · P · FR-002, FR-004
+**CB-004 — Revogação imediata provada (SEC-10)** · P · FR-002, FR-004 · ✅ entregue (D78)
 - Aceite: após remover o acesso (ou desativar o usuário), a sessão existente recebe 404/401 na próxima requisição; teste automatizado; se falhar, corrigir em `auth/deps.py`.
 
 **CB-005 — Convite com prazo** · movido para **CB-014** (EP-09), junto com o acesso temporário de externos (D77).

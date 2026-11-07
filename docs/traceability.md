@@ -1,13 +1,13 @@
 # Rastreabilidade — FR ↔ tarefa ↔ código ↔ teste ↔ entrega
 
-Data: 07/11/2026. Atualizar ao fim de cada fatia (CLAUDE.md, item 6). "Entrega" = marco do MVP auditor (Marco 1–6, 05/11/2026) ou decisão pós-piloto (D65–D71) em que o código entrou. Testes citados existem no repositório; **não foram executados nesta sessão**.
+Data: 07/11/2026. Atualizar ao fim de cada fatia (CLAUDE.md, item 6). "Entrega" = marco do MVP auditor (Marco 1–6, 05/11/2026) ou decisão pós-piloto (D65–D71) em que o código entrou. Testes citados existem no repositório. Última execução local completa: 07/11/2026, 230 passaram (D78).
 
 | FR | Tarefa(s) | Código | Teste(s) | Entrega |
 |---|---|---|---|---|
 | FR-001 | CB-002 | `models.Condominium`, `routers/registry.py` (`POST /portfolio/condominiums`), `app/onboarding/` | `test_registry.py::test_manager_creates_a_condominium`, `test_onboarding.py` | Marco 1, Marco 6, D67 |
 | FR-002 | CB-004, CB-013, CB-014 | `routers/registry.py` (members), `auth/service.py`, `auth/tokens.py` | `test_auth.py`, `test_registry.py` | Marco 1, D67 |
-| FR-003 | CB-001, CB-003 | `db/models.py::RLS_TABLES`, migração `0002_security.py`, `auth/deps.py` | `test_isolation.py` (10) | Marco 1 |
-| FR-004 | CB-004 | `auth/rbac.py`, `auth/deps.py::require` | `test_rbac.py`, `test_findings_api.py` | Marco 1 |
+| FR-003 | CB-001, CB-003 | `db/models.py::RLS_TABLES`, migração `0002_security.py`, `auth/deps.py`, `core/audit.py::record_security_event`, `.github/workflows/ci.yml` | `test_isolation.py` (10), `test_access_revocation.py` (2 de evento) | Marco 1, D78 |
+| FR-004 | CB-004 | `auth/rbac.py`, `auth/deps.py::require` | `test_rbac.py`, `test_findings_api.py`, `test_access_revocation.py` (revogação e desativação) | Marco 1, D78 |
 | FR-005 | CB-010, CB-012 | `core/audit.py`, `models.AuditLog`, `models.Decision` | `test_isolation.py::test_append_only_tables`, `test_auth.py::test_login_is_audited` | Marco 1, Marco 4 |
 | FR-006 | CB-010, CB-012 | `routers/settings.py` (alçadas, parâmetros) | `test_registry.py` (parcial) | Marco 4 |
 | FR-007 | CB-011 | — | — | — |
@@ -46,12 +46,12 @@ Data: 07/11/2026. Atualizar ao fim de cada fatia (CLAUDE.md, item 6). "Entrega" 
 
 | Caso | Situação | Onde |
 |---|---|---|
-| SEC-01 (tenant A × B) | Coberto | `test_isolation.py` |
+| SEC-01 (tenant A × B) | Coberto; tentativa registrada como evento de segurança (D78) | `test_isolation.py`, `test_access_revocation.py` |
 | SEC-02/AI (PDF adversarial) | Parcial: ferramentas só de leitura; sem teste explícito de injeção | CB-010 |
 | SEC-02 Plano (busca entre tenants) | Coberto | `test_isolation.py`, RLS em `document_chunk` |
 | SEC-04/05 (valor/expiração da aprovação) | Não há aprovação de ação | CB-050 |
 | SEC-08 (kill switch) | Inexistente | CB-011 |
-| SEC-10 (revogado com sessão antiga) | Sem teste dedicado | CB-004 |
+| SEC-10 (revogado com sessão antiga) | Coberto (D78) | `test_access_revocation.py` |
 | DOC-01 (campo ausente) | Parcial: obrigatório < 0,9 vai para fila | `test_extraction.py`; CB-030 |
 | DOC-02 (versão vigente) | Parcial (aditivos) | CB-031 |
 | FIN-01 (reajuste reproduzível) | Coberto | `test_rules.py` (R03) |

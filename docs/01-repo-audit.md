@@ -29,7 +29,7 @@ Na taxonomia da Especificação Mestra, o produto atual cobre **parte do CondoOS
 | LLM | Real | Cliente único `app/llm/client.py` (live/record/replay/off), `llm_calls`, orçamento mensal por condomínio, prompts em `app/prompts/*.md` |
 | Busca | Real | Híbrida (pgvector 384 dim local + full-text pt), `document_chunk` com RLS (D52, D53) |
 | Chat | Real (não avaliado ao vivo) | Claude Agent SDK com 9 ferramentas só de leitura; números, citações e ação sugerida conferidos por código (D54, D55) |
-| CI | **Inexistente** | Não há `.github/` nem outro pipeline; `make lint/test/e2e` só local; há `.pre-commit-config.yaml` |
+| CI | **Criado em D78** (era inexistente na auditoria) | `.github/workflows/ci.yml`: lint + pytest com pgvector + frontend; E2E só local |
 | Deploy | Documentado, sem staging | `docs/deploy.md`; nenhum ambiente versionado no repositório |
 
 ## 4. Segurança e multi-tenant (verificado)
