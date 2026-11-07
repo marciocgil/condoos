@@ -9,8 +9,9 @@ import uuid
 from datetime import date
 from typing import Annotated, Any, Literal
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel
+from sqlalchemy import select
 
 from app.auth.deps import CurrentPrincipal, require
 from app.auth.rbac import CondoAccess, Permission
@@ -25,6 +26,7 @@ from app.launch.state import (
     set_dismissed,
     set_goal,
 )
+from app.reports.data import DOC_TYPE_LABEL
 from app.routers.portfolio import _manager_condos
 
 router = APIRouter(tags=["launch"])
@@ -105,3 +107,44 @@ async def portfolio_launch(db: DbSession, principal: CurrentPrincipal) -> list[d
         await portfolio_row(db, c, local_today(c.timezone))
         for c in await _manager_condos(db, principal)
     ]
+
+
+MAX_BATCH = 50
+BATCH_STATE = {"pending": "lendo", "processing": "lendo", "failed": "falhou"}
+
+
+@router.get("/condominiums/{condominium_id}/documents-status")
+async def batch_status(
+    condominium_id: uuid.UUID,
+    access: CanView,
+    db: DbSession,
+    ids: Annotated[list[uuid.UUID], Query(max_length=MAX_BATCH)],
+) -> dict[str, Any]:
+    """Progress of an upload batch (LB-033, "Faça por mim"): each file's state and the totals.
+    Ids of another condominium are simply not returned."""
+    docs = list(
+        await db.scalars(
+            select(Document).where(
+                Document.condominium_id == access.condominium_id, Document.id.in_(ids)
+            )
+        )
+    )
+    items = []
+    for d in docs:
+        state = BATCH_STATE.get(d.extraction_status)
+        if state is None:
+            state = "a_conferir" if d.needs_review and d.reviewed_at is None else "lido"
+        items.append(
+            {
+                "id": str(d.id),
+                "filename": d.original_filename,
+                "doc_type": d.doc_type,
+                "doc_type_label": DOC_TYPE_LABEL.get(d.doc_type, d.doc_type),
+                "state": state,
+                "reasons": d.review_reasons if state == "a_conferir" else [],
+            }
+        )
+    totals = {
+        k: sum(i["state"] == k for i in items) for k in ("lendo", "lido", "a_conferir", "falhou")
+    }
+    return {"items": items, "totals": totals, "done": totals["lendo"] == 0}

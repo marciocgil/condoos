@@ -215,7 +215,8 @@ async def test_uncertain_contract_field_is_never_a_fact(admin_engine: AsyncEngin
         assert fields["valor_mensal"]["value"] == brl(Decimal(EXTRACTED["valor_mensal"]))
         assert fields["valor_mensal"]["evidence"]["excerpt"] == "R$ 12.480,00"
         assert fields["objeto"]["status"] == "lido"
-        assert fields["data_fim"]["status"] == "lido"  # no end date: indeterminate
+        assert fields["data_fim"]["status"] == "inferido"  # no end date: presumed indeterminate
+        assert "prazo indeterminado" in fields["data_fim"]["rule"]
         assert "valor mensal" in card["message"]
         assert any("não uma auditoria" in limit for limit in card["limits"])
         assert _by_key(await readiness(s, condo.id))["C2"].state == "analise_parcial"
@@ -527,3 +528,42 @@ async def test_savings_expected_documents_and_closing_readiness(
         await s.flush()
         assert _by_key(await readiness(s, condo.id, today))["C9"].state == "supervisionada"
         await s.rollback()
+
+
+async def test_batch_status_of_an_upload(
+    client: httpx.AsyncClient, mailer: MemoryMailer, admin_engine: AsyncEngine
+) -> None:
+    """LB-033 (D94): one call tells the state of each file of a batch; another condominium's
+    document is never returned."""
+    acacias = await condo_id(admin_engine, "jardim-das-acacias")
+    mirante = await condo_id(admin_engine, "mirante-do-vale")
+    async with sessionmaker_for(admin_engine)() as s, s.begin():
+        a = await s.get(Condominium, acacias)
+        m = await s.get(Condominium, mirante)
+        assert a is not None and m is not None
+        docs = [
+            _document(a, "nfse", extraction_status="pending"),
+            _document(a, "contrato"),
+            _document(
+                a,
+                "recibo",
+                extraction_status="needs_review",
+                needs_review=True,
+                review_reasons=["Valor: baixa confiança"],
+            ),
+            _document(a, "outro", extraction_status="failed"),
+        ]
+        other = _document(m, "nfse")
+        s.add_all([*docs, other])
+    await login(client, mailer, SINDICA_ACACIAS)
+    ids = [str(d.id) for d in docs] + [str(other.id)]
+    r = await client.get(
+        f"/condominiums/{acacias}/documents-status", params=[("ids", i) for i in ids]
+    )
+    assert r.status_code == 200
+    body = r.json()
+    assert {i["id"] for i in body["items"]} == {str(d.id) for d in docs}
+    assert body["totals"] == {"lendo": 1, "lido": 1, "a_conferir": 1, "falhou": 1}
+    assert body["done"] is False
+    review = next(i for i in body["items"] if i["state"] == "a_conferir")
+    assert review["reasons"] == ["Valor: baixa confiança"] and review["doc_type_label"] == "Recibo"

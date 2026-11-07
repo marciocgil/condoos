@@ -77,3 +77,46 @@ async def test_extraction_and_review_record_provenance(
     assert r.status_code == 200, r.text
     after = r.json()["provenance"]
     assert all(v["status"] == "confirmado" and v["confirmed_by"] for v in after.values())
+
+
+def test_values_filled_by_a_rule_are_inferred_never_read() -> None:
+    """LB-036 (D94): without a start date the term starts on the signature date, and the
+    adjustment month is the start month (D68). Both are "inferido", with the rule, and never
+    get an excerpt — even though the signature date is in the text."""
+    import random
+    from datetime import date
+
+    from app.core.br import format_cnpj, generate_cnpj
+    from app.extraction.confidence import assess
+
+    condo = generate_cnpj(random.Random("inf-condo"))
+    supplier = generate_cnpj(random.Random("inf-supplier"))
+    raw = {
+        "cnpj_contratada": supplier,
+        "razao_social_contratada": "Limpa Bem Serviços Ltda",
+        "cnpj_contratante": condo,
+        "objeto": "Limpeza das áreas comuns",
+        "itens_escopo": ["limpeza"],
+        "valor_mensal": "4800.00",
+        "indice_reajuste": "IPCA",
+        "data_assinatura": "2025-03-10",
+    }
+    result = assess(
+        DocumentType.CONTRATO,
+        raw,
+        {k: 0.95 for k in raw},
+        condominium_cnpj=condo,
+        today=date(2026, 11, 7),
+    )
+    assert set(result.inferred) == {"data_inicio", "mes_base_reajuste"}
+    text = f"CONTRATANTE CNPJ {format_cnpj(condo)}. São Paulo, 10/03/2025."
+    prov = build(
+        DocumentType.CONTRATO, result.values, {k: "texto" for k in raw}, text, result.inferred
+    )
+    assert (
+        prov["data_inicio"]["source"] == "inferido" and "assinatura" in prov["data_inicio"]["rule"]
+    )
+    assert "excerpt" not in prov["data_inicio"]
+    assert prov["mes_base_reajuste"]["source"] == "inferido"
+    assert prov["data_assinatura"]["source"] == "texto"  # read, keeps its excerpt
+    assert "excerpt" in prov["data_assinatura"]

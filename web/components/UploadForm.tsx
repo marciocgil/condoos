@@ -3,6 +3,7 @@
 import { CheckCircle2, Copy, UploadCloud, XCircle } from "lucide-react";
 import { useState, type ChangeEvent } from "react";
 
+import { BatchProgress } from "@/components/condoos/BatchProgress";
 import { FirstValueCard } from "@/components/condoos/FirstValueCard";
 import type { UploadResult } from "@/lib/types";
 
@@ -111,6 +112,14 @@ export function UploadForm({ condominiumId }: { condominiumId: string }) {
             </li>
           ))}
         </ul>
+      )}
+      {results.filter((r) => r.document_id && !r.error).length > 1 && (
+        <BatchProgress
+          condominiumId={condominiumId}
+          documentIds={results
+            .filter((r) => r.document_id && !r.error)
+            .map((r) => r.document_id as string)}
+        />
       )}
       {results
         .filter((r) => r.document_id && !r.error)

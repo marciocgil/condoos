@@ -71,3 +71,29 @@ test("admin CondoOS acompanha implantações, prontidão e tempo até o primeiro
     "Jardim das Acácias",
   );
 });
+
+// LB-033 (D94): "Faça por mim" — a batch is read and followed file by file.
+test("síndica envia um lote e acompanha a leitura de cada arquivo", async ({ page }, info) => {
+  test.skip(info.project.name !== "sindico-mobile", "fluxo do celular");
+  test.setTimeout(150_000);
+  await loginAs(page, "ana.sindica@acacias.example.com");
+  const id = page.url().match(/condominio\/([^/]+)/)?.[1];
+  const corpus = path.resolve(__dirname, "../../../api/tests/fixtures/corpus");
+  const stamp = Date.now();
+  const file = (name: string) => ({
+    name: `${stamp}-${name}`,
+    mimeType: "application/pdf",
+    buffer: Buffer.concat([
+      readFileSync(path.join(corpus, name)),
+      Buffer.from(`\n% e2e ${stamp}\n`),
+    ]),
+  });
+  await page.goto(`/condominio/${id}/enviar`);
+  await page
+    .getByLabel("Escolher arquivos")
+    .setInputFiles([file("01_nfse.pdf"), file("17_recibo.pdf")]);
+  const batch = page.getByTestId("batch-progress");
+  await expect(batch).toBeVisible();
+  await expect(batch).toContainText("leitura concluída", { timeout: 120_000 });
+  await expect(batch.getByRole("listitem")).toHaveCount(2);
+});

@@ -32,6 +32,8 @@ class Assessment:
     values: dict[str, Any]
     confidence: dict[str, float]
     reasons: list[str] = field(default_factory=list)
+    # Fields filled by a rule, not read in the document (LB-036, D94): field -> the rule.
+    inferred: dict[str, str] = field(default_factory=dict)
 
     @property
     def needs_review(self) -> bool:
@@ -56,6 +58,7 @@ def assess(
     values: dict[str, Any] = {}
     conf: dict[str, float] = {}
     notes: dict[str, str] = {}
+    inferred: dict[str, str] = {}
 
     for spec in specs_for(doc_type):
         raw = raw_values.get(spec.name)
@@ -102,7 +105,7 @@ def assess(
     if doc_type == DocumentType.NFSE:
         _check_nfse_totals(values, conf, notes)
     if doc_type == DocumentType.CONTRATO:
-        _contract_defaults(values, conf, notes)
+        _contract_defaults(values, conf, notes, inferred)
         start, end = values.get("data_inicio"), values.get("data_fim")
         if start and end and end < start:
             for name in ("data_inicio", "data_fim"):
@@ -132,7 +135,8 @@ def assess(
             if not spec.required and conf.get(spec.name, 0.0) < REVIEW_THRESHOLD:
                 values[spec.name] = None
                 conf[spec.name] = 0.0
-    return Assessment(values=values, confidence=conf, reasons=reasons)
+    inferred = {k: v for k, v in inferred.items() if values.get(k) is not None}
+    return Assessment(values=values, confidence=conf, reasons=reasons, inferred=inferred)
 
 
 KNOWN_INDEXES = {"IPCA", "IGPM", "IGP", "INPC", "FIXO", "SEMREAJUSTE", "NENHUM", "OUTRO"}
@@ -154,7 +158,10 @@ def _contract_inputs(
 
 
 def _contract_defaults(
-    values: dict[str, Any], conf: dict[str, float], notes: dict[str, str]
+    values: dict[str, Any],
+    conf: dict[str, float],
+    notes: dict[str, str],
+    inferred: dict[str, str] | None = None,
 ) -> None:
     """Rules of the management company for contracts (D68):
     - no start date in the contract: the term starts on the signature date;
@@ -163,11 +170,17 @@ def _contract_defaults(
         values["data_inicio"] = values["data_assinatura"]
         conf["data_inicio"] = conf.get("data_assinatura", 0.0)
         notes.setdefault("data_inicio", "Início da vigência: assumida a data da assinatura")
+        if inferred is not None:
+            inferred["data_inicio"] = "Sem data de início no contrato: assumida a da assinatura."
     index = values.get("indice_reajuste")
     adjusts = index not in (None, "FIXO", "NENHUM")
     if adjusts and values.get("mes_base_reajuste") is None and values.get("data_inicio"):
         values["mes_base_reajuste"] = date.fromisoformat(values["data_inicio"]).month
         conf["mes_base_reajuste"] = conf.get("data_inicio", 0.0)
+        if inferred is not None:
+            inferred["mes_base_reajuste"] = (
+                "Sem mês de reajuste no contrato: assumido o mês do início da vigência."
+            )
     if index == "OUTRO" and not values.get("indice_reajuste_outro"):
         conf["indice_reajuste"] = min(conf.get("indice_reajuste", 0.0), 0.3)
         notes["indice_reajuste"] = "Índice de reajuste: informe qual é o índice"

@@ -169,7 +169,7 @@ async def analyze(
     if base.reasons and notes:
         base.reasons.append(f"Observação da IA: {notes}")
     base.complete = not result.needs_review
-    base.provenance = build_provenance(doc_type, result.values, origin, text)
+    base.provenance = build_provenance(doc_type, result.values, origin, text, result.inferred)
     return base
 
 

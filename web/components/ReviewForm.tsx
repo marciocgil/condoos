@@ -238,6 +238,7 @@ const SOURCE_LABEL: Record<string, string> = {
   texto: "texto do documento",
   ia: "leitura por IA",
   pessoa: "conferido por uma pessoa",
+  inferido: "presumido por regra, não lido no texto",
 };
 
 /** Where the value came from (CB-030): source, page and excerpt; never an invented excerpt. */
@@ -257,6 +258,8 @@ function Provenance({ item }: { item?: ProvenanceItem }) {
         </>
       ) : item.source === "ia" ? (
         " · trecho não localizado no texto: confira no arquivo"
+      ) : item.source === "inferido" && item.rule ? (
+        ` — ${item.rule}`
       ) : null}
     </p>
   );

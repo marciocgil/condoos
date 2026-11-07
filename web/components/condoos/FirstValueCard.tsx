@@ -6,6 +6,7 @@ import {
   CircleHelp,
   GitCompare,
   Loader2,
+  Sigma,
   XCircle,
 } from "lucide-react";
 import Link from "next/link";
@@ -27,6 +28,7 @@ const FIELD: Record<
   a_confirmar: { tone: "warning", icon: <AlertTriangle size={12} />, label: "A confirmar" },
   nao_encontrado: { tone: "neutral", icon: <CircleHelp size={12} />, label: "Não encontrado" },
   conflitante: { tone: "danger", icon: <GitCompare size={12} />, label: "Conflitante" },
+  inferido: { tone: "info", icon: <Sigma size={12} />, label: "Presumido" },
 };
 
 /** First-value card (LB-006/007, F01): follows the reading of an uploaded document and
@@ -116,6 +118,7 @@ export function FirstValueCard({
                 </Badge>
               </dt>
               <dd className="tabular mt-0.5 text-sm">{f.value ?? "—"}</dd>
+              {f.rule && <dd className="mt-0.5 text-[13px] text-fg-2">{f.rule}</dd>}
               {f.evidence && (
                 <dd className="mt-0.5 border-l-2 border-line pl-2 text-[13px] break-words text-fg-2">
                   {f.evidence.page ? `p. ${f.evidence.page}: ` : ""}“{f.evidence.excerpt}”

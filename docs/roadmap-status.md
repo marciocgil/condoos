@@ -15,8 +15,8 @@ Estados: `nao_iniciado`, `em_analise`, `em_desenvolvimento`, `em_teste`, `bloque
 | Estado | FRs |
 |---|---|
 | validado | — |
-| pronto_para_validar | 001, 003, 004, 006, 007, 011, 012, 013, 015, 020, 021, 022, 023, 024, 025, 027, 032, 034, 041, 042, 043, 044, 045, 046, 048, 050 |
-| em_desenvolvimento | 058 (aprovação com escopo congelado; a contratação em si segue fora do sistema), 016 (faltam as classes "inferido" e "conflitante") |
+| pronto_para_validar | 016 (D93, D94), 001, 003, 004, 006, 007, 011, 012, 013, 015, 020, 021, 022, 023, 024, 025, 027, 032, 034, 041, 042, 043, 044, 045, 046, 048, 050 |
+| em_desenvolvimento | 058 (aprovação com escopo congelado; a contratação em si segue fora do sistema) |
 | em_analise | 002, 005, 008, 014, 017, 018, 019, 026, 028, 033 |
 | bloqueado | 031 (avaliação ao vivo: falta `ANTHROPIC_API_KEY`) |
 | nao_iniciado | 009, 010, 029, 030, 035, 036, 037, 038, 047, 049, 051–057 |
@@ -74,3 +74,4 @@ Política mínima e kill switch entregues com a VS-05 (D83); o produto continua 
 - 07/11/2026 — LB-020 entregue (D91, migração 0019 aprovada, ida e volta verificada): regimento, apólice, balancete, laudo e plano de manutenção classificados, guardados como texto e pesquisáveis. 331 testes, lint. Launch LF2 completo no código; falta o gate LG2 (`make e2e` no docker).
 - 07/11/2026 — Launch LF3-a entregue (D92), sem migração: prontidão C4 (recomendações), C8 (documentos esperados), C9 (fechamento) e cobertura no relatório PDF/XLSX. 332 testes, lint. Proposta da LF3-b (conflitos de dados, Central de Validação, migração 0020) em `docs/condoos-planning/launch/07-lf3-proposta-conflitos.md`, aguardando aprovação.
 - 07/11/2026 — Launch LF3-b entregue (D93, migração 0020 aprovada, ida e volta verificada): conflitos de dados com três detectores, ciclo com motivo e trilha só de inclusão, Central de Validação, política nega ações com fornecedor em conflito, prontidão e cartão marcam o campo conflitante. Verificação local: 336 testes, lint, E2E `validation.spec.ts`, `launch.spec.ts` e `actions.spec.ts` em stack local sem Docker.
+- 07/11/2026 — Launch LF3 fechada no código (D94): campo "inferido" na proveniência e no cartão, envio em lote com acompanhamento, teste do gate LG3. 339 testes, lint, E2E do Launch e da Central em stack local sem Docker. Próximo: `make e2e` no docker (LG2/LG3) e proposta da LF4 aguardando aprovação.

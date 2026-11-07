@@ -735,6 +735,7 @@ export interface ProvenanceItem {
   excerpt?: string;
   status?: string;
   confirmed_by?: string;
+  rule?: string;
 }
 
 // CondoOS Launch (D89): journey, readiness per capability and the first-value card.
@@ -782,10 +783,11 @@ export interface Launch {
 export interface FirstValueField {
   name: string;
   label: string;
-  status: "lido" | "a_confirmar" | "nao_encontrado" | "conflitante";
+  status: "lido" | "a_confirmar" | "nao_encontrado" | "conflitante" | "inferido";
   value: string | null;
   source?: string | null;
   evidence?: { page: number | null; excerpt: string };
+  rule?: string;
 }
 
 export interface FirstValue {

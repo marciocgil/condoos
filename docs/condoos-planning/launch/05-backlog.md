@@ -82,12 +82,12 @@ Data: 07/11/2026. IDs **LB-xxx** (sem colidir com CB-xxx do `docs/backlog.md`). 
 - **LB-030** `data_issue` (ADR-L05, migração 0020) · G · ✅ entregue (D93) · conflito contrato × aditivo (F05), versão prevalente com motivo.
 - **LB-031** Reconciliação bidirecional visível: fatura sem contrato e contrato sem cobrança, com cobertura por período (reusa `pending.py`) · M · ✅ entregue como cobertura (D92); lista detalhada segue em Pendências (D70).
 - **LB-032** Central de Validação para revisor e síndico (prioridade por valor em risco; trechos lado a lado) — reusa fila e `SidePanel` · G · ✅ entregue (D93).
-- **LB-033** Upload em lote com acompanhamento ("Faça por mim") · M.
+- **LB-033** Upload em lote com acompanhamento ("Faça por mim") · M · ✅ entregue (D94).
 - **LB-034** Prontidão C4, C8, C9 · M · ✅ entregue (D92).
 - **LB-035** Política consulta prontidão (ADR-L03) · M · ✅ entregue (D93): ação com fornecedor em conflito aberto → `DENY`.
-- **LB-036** Classes "inferido" e "conflitante" na proveniência (FR-016) · M · parcial (D93: "conflitante" entregue; "inferido" pendente).
+- **LB-036** Classes "inferido" e "conflitante" na proveniência (FR-016) · M · ✅ entregue ("conflitante" D93, "inferido" D94).
 - **LB-037** Rótulo de cobertura em relatório e briefing (nunca "completo" com fila aberta) · P · ✅ entregue no relatório (D92); o briefing já marca "dados parciais" (D82).
-- **Gate LG3:** documentos contraditórios, ausentes, duplicados e ilegíveis testados; nenhum relatório parcial descrito como completo.
+- **Gate LG3:** documentos contraditórios, ausentes, duplicados e ilegíveis testados; nenhum relatório parcial descrito como completo. ✅ no código (`test_lg3_gate.py`, D94); falta a confirmação no docker.
 
 ## LF4 — Colaborativo (P1)
 

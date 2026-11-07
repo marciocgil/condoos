@@ -5,7 +5,9 @@ says where it came from (``field_provenance``, D85):
 
 - ``lido``: read with confidence >= 0.9, or confirmed by a person;
 - ``a_confirmar``: read with lower confidence — shown as such, never as a fact;
-- ``nao_encontrado``: the document does not show it.
+- ``nao_encontrado``: the document does not show it;
+- ``inferido``: filled by a rule (no end date = indeterminate term, start = signature date,
+  adjustment month = start month), shown with the rule (LB-036, D94).
 
 The card always states the limits of the reading: one document is not an audit.
 """
@@ -91,7 +93,11 @@ def _fields(doc: Document) -> list[dict[str, Any]]:
         item: dict[str, Any] = {"name": name, "label": CARD_LABEL.get(name, spec.label)}
         if value in (None, "", []):
             if name == "data_fim" and doc.extracted.get("data_inicio"):
-                item.update(status="lido", value="Prazo indeterminado ou não informado")
+                item.update(
+                    status="inferido",
+                    value="Prazo indeterminado",
+                    rule="O documento não traz data de fim: tratado como prazo indeterminado.",
+                )
             else:
                 item.update(status="nao_encontrado", value=None)
             out.append(item)
@@ -99,6 +105,9 @@ def _fields(doc: Document) -> list[dict[str, Any]]:
         by_person = prov.get("source") == "pessoa" or doc.reviewed_at is not None
         confident = (doc.field_confidence or {}).get(name, 0.0) >= REVIEW_THRESHOLD
         item["status"] = "lido" if by_person or confident else "a_confirmar"
+        if prov.get("source") == "inferido" and not by_person:
+            # Filled by a rule, not read (LB-036): said as such, with the rule.
+            item["status"], item["rule"] = "inferido", prov.get("rule")
         item["value"] = _display(spec.kind, value, doc.extracted)
         item["source"] = "pessoa" if by_person else prov.get("source")
         if prov.get("excerpt"):
@@ -216,6 +225,9 @@ async def first_value(session: AsyncSession, doc: Document) -> dict[str, Any]:
         message = "Li parte do contrato. " + " ".join(parts)
     else:
         message = "Memória ativada: já posso responder sobre este contrato."
+    presumed = [f["label"] for f in fields if f["status"] == "inferido"]
+    if presumed:
+        message += " Presumi, por regra e não pelo texto: " + ", ".join(presumed).lower() + "."
     return {
         **base,
         "state": "parcial" if parts else "lido",

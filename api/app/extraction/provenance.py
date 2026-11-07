@@ -69,14 +69,26 @@ def locate(text: str, kind: Kind, value: Any, margin: int = 60) -> dict[str, Any
     return None
 
 
+INFERRED = "inferido"
+
+
 def build(
-    doc_type: Any, values: dict[str, Any], sources: dict[str, str], text: str | None
+    doc_type: Any,
+    values: dict[str, Any],
+    sources: dict[str, str],
+    text: str | None,
+    inferred: dict[str, str] | None = None,
 ) -> dict[str, Any]:
+    """``inferred``: fields a rule filled (field -> the rule, LB-036): their source is
+    "inferido", with the rule, and never an excerpt — the text does not say it."""
     out: dict[str, Any] = {}
     for spec in SPECS.get(doc_type, []):
         value = values.get(spec.name)
         if value in (None, "", []):
             out[spec.name] = {"source": NOT_AVAILABLE}
+            continue
+        if inferred and spec.name in inferred:
+            out[spec.name] = {"source": INFERRED, "rule": inferred[spec.name]}
             continue
         item: dict[str, Any] = {"source": sources.get(spec.name, "texto")}
         if text and item["source"] != "xml":
