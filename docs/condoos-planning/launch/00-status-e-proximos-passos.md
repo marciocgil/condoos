@@ -8,7 +8,7 @@
 |---|---|---|
 | LF0 Diagnóstico | ✅ concluída (gate LG0 verificado) | `01-diagnostico-as-is.md` |
 | LF1 Blueprint | ✅ aprovada pelo Marcio (gate LG1, D89) | `02`–`06` deste diretório |
-| LF2 Primeiro valor | **em_desenvolvimento** — LF2-a (D89) e LF2-b (D90) entregues; falta LB-020 e o gate LG2 | ver abaixo |
+| LF2 Primeiro valor | **em_desenvolvimento** — LF2-a (D89), LF2-b (D90) e LB-020 (D91) entregues; falta só o gate LG2 (`make e2e` no docker) | ver abaixo |
 | LF3–LF8 | nao_iniciado | `05-backlog.md` |
 
 **LF2-a entregue (D89):** LB-001 (`launch_state`, migração 0018), LB-002 (marcos por fatos), LB-003 (próximos passos), LB-004 (rotas), LB-005 (cartão de jornada no Hoje), LB-006/007 (cartão de primeiro valor no envio), LB-008 ("o que já fiz por você"), LB-010 (prontidão C1–C3), LB-021 (SEC-02), LB-090 parcial (eventos `launch.*`). Verificação: 322 testes do backend, lint backend e frontend, migração ida e volta, E2E `launch.spec.ts` passando numa stack local sem Docker (API e worker num processo, armazenamento em memória, `next dev`, substituto do Mailpit). Na suíte E2E inteira nessa stack, só `correction.spec.ts` falhou, e falha igual sem as mudanças desta fatia (efeito da stack local); **rodar `make e2e` na stack do docker** para confirmar.
@@ -46,7 +46,7 @@ Q-L01 assistida pelo Admin · Q-L02 síndico envia o link/texto · Q-L03 LF2 ant
 ## Próximo incremento recomendado
 
 1. **Gate LG2:** rodar `make e2e` na stack do docker (inclui `launch.spec.ts`) — precisa do Marcio ou de um ambiente com Docker.
-2. **LB-020 — tipos documentais** (apólice, balancete, regimento, laudo, plano de manutenção, aditivo): exige migração do CHECK `ck_document_doc_type_valid` (0019) e mudança na classificação; **pedir aprovação da migração antes**.
+2. ~~LB-020 — tipos documentais~~ **entregue (D91, migração 0019).**
 3. Depois de LG2, a LF3 (conflito de dados `data_issue`, Central de Validação, reconciliação bidirecional), que também tem migração a aprovar (ADR-L05).
 
 ## Ritual de cada incremento

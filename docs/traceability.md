@@ -1,6 +1,6 @@
 # Rastreabilidade — FR ↔ tarefa ↔ código ↔ teste ↔ entrega
 
-Data: 07/11/2026. Atualizar ao fim de cada fatia (CLAUDE.md, item 6). "Entrega" = marco do MVP auditor (Marco 1–6, 05/11/2026) ou decisão pós-piloto (D65–D71) em que o código entrou. Testes citados existem no repositório. Última execução local completa: 07/11/2026, 324 passaram (D90); E2E: 29 fluxos passaram contra a stack local (D85); `launch.spec.ts` (D89) passou numa stack local sem Docker.
+Data: 07/11/2026. Atualizar ao fim de cada fatia (CLAUDE.md, item 6). "Entrega" = marco do MVP auditor (Marco 1–6, 05/11/2026) ou decisão pós-piloto (D65–D71) em que o código entrou. Testes citados existem no repositório. Última execução local completa: 07/11/2026, 331 passaram (D91); E2E: 29 fluxos passaram contra a stack local (D85); `launch.spec.ts` (D89) passou numa stack local sem Docker.
 
 | FR | Tarefa(s) | Código | Teste(s) | Entrega |
 |---|---|---|---|---|
@@ -85,3 +85,4 @@ Data: 07/11/2026. Atualizar ao fim de cada fatia (CLAUDE.md, item 6). "Entrega" 
 | LB-012 implantações na Carteira | `launch/state.py::portfolio_row`, `GET /portfolio/launch`, Carteira | `test_launch.py::test_portfolio_launch_and_time_to_first_value`, e2e `launch.spec.ts` | D90 |
 | LB-090 tempo até o primeiro valor | `launch/state.py::portfolio_row` (`hours_to_first_value`, `steps_postponed`), Métricas | `test_launch.py::test_portfolio_launch_and_time_to_first_value`, e2e `launch.spec.ts` | D90 |
 | LB-022 bordas do envio | `ingestion/documents.py` (já existia), `UploadForm.tsx` (orientação), `FirstValueCard.tsx` (repetido) | `test_ingestion.py::test_upload_rejects_unsupported_files` | D90 |
+| LB-020 tipos documentais | `db/enums.py::DocumentType`, migração 0019, `extraction/heuristics.py::classify_text`, `prompts/classify_document.md`, `extraction/fields.py::TEXT_ONLY_TYPES`, `chat/search.py::INDEXED_TYPES`, `launch/first_value.py`, `web/lib/labels.ts` | `test_document_types.py` | D91 |

@@ -62,6 +62,11 @@ DOC_TYPE_LABEL = {
     "contrato": "Contrato",
     "convencao": "Convenção",
     "ata": "Ata",
+    "regimento": "Regimento interno",
+    "apolice": "Apólice de seguro",
+    "balancete": "Balancete",
+    "laudo": "Laudo técnico",
+    "plano_manutencao": "Plano de manutenção",
     "outro": "Outro",
 }
 

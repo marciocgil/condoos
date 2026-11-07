@@ -39,7 +39,20 @@ class ListField(BaseModel):
 
 
 ClassifiableType = Literal[
-    "nfse", "nfe", "boleto", "recibo", "extrato", "contrato", "convencao", "ata", "outro"
+    "nfse",
+    "nfe",
+    "boleto",
+    "recibo",
+    "extrato",
+    "contrato",
+    "convencao",
+    "ata",
+    "regimento",
+    "apolice",
+    "balancete",
+    "laudo",
+    "plano_manutencao",
+    "outro",
 ]
 
 

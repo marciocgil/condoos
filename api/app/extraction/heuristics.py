@@ -108,6 +108,24 @@ def classify_text(text: str, reference: date) -> Classification:
     if t.startswith("recibo") or " recibo " in t[:200] or "recebi de" in t or "recebemos de" in t:
         signals.append("título de recibo")
         return Classification(DocumentType.RECIBO, 0.9, signals)
+    # Governing and technical documents by their title (LB-020): checked before the loose
+    # "contratante/contratada" rule, since a maintenance plan or a report may name the parties.
+    top = t[:300]
+    if "regimento interno" in top:
+        signals.append("título de regimento interno")
+        return Classification(DocumentType.REGIMENTO, 0.92, signals)
+    if "apolice" in top and ("segurado" in t or "seguradora" in t):
+        signals.append("apólice com seguradora/segurado")
+        return Classification(DocumentType.APOLICE, 0.92, signals)
+    if "balancete" in top or "demonstrativo de receitas e despesas" in top:
+        signals.append("título de balancete")
+        return Classification(DocumentType.BALANCETE, 0.9, signals)
+    if "plano de manutencao" in top or "pmoc" in top:
+        signals.append("título de plano de manutenção")
+        return Classification(DocumentType.PLANO_MANUTENCAO, 0.9, signals)
+    if "laudo" in top or "relatorio de vistoria" in top or "relatorio de inspecao" in top:
+        signals.append("título de laudo ou vistoria")
+        return Classification(DocumentType.LAUDO, 0.9, signals)
     if "contrato de prestacao de servico" in t or ("contratante" in t and "contratada" in t):
         signals.append("contrato de prestação de serviços")
         return Classification(DocumentType.CONTRATO, 0.92, signals)

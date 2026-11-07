@@ -63,7 +63,7 @@ Data: 07/11/2026. IDs **LB-xxx** (sem colidir com CB-xxx do `docs/backlog.md`). 
 **LB-011 — Prontidão na tela Ajustes (síndico) e Configurações (administradora)** · M · ✅ entregue (D90)
 **LB-012 — Implantações em andamento na Carteira (equipe CondoOS)** · P · ✅ entregue (D90)
 
-**LB-020 — Tipos documentais faltantes** · M · migração (CHECK `ck_document_doc_type_valid`)
+**LB-020 — Tipos documentais faltantes** · M · migração (CHECK `ck_document_doc_type_valid`) · ✅ entregue (D91; aditivo segue como contrato, D66)
 - apólice, balancete, regimento, laudo, plano_manutencao, aditivo. Só classificação e busca; extração estruturada fora. Heurística + prompt `classify_document.md`; corpus ganha 1 exemplo por tipo.
 
 **LB-021 — Teste SEC-02: PDF com instrução maliciosa** · P · P0 · ✅ entregue (D89)

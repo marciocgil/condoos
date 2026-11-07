@@ -8,6 +8,11 @@ export const DOC_TYPE_LABEL: Record<string, string> = {
   contrato: "Contrato",
   convencao: "Convenção",
   ata: "Ata",
+  regimento: "Regimento interno",
+  apolice: "Apólice de seguro",
+  balancete: "Balancete",
+  laudo: "Laudo técnico",
+  plano_manutencao: "Plano de manutenção",
   outro: "Outro",
 };
 

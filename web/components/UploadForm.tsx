@@ -60,7 +60,8 @@ export function UploadForm({ condominiumId }: { condominiumId: string }) {
           {busy ? "Enviando…" : "Toque para escolher ou tire uma foto"}
         </span>
         <span className="mt-1 text-[13px] text-fg-2">
-          Notas, boletos, recibos, contratos (PDF, foto ou XML) e extratos (OFX, CSV, CNAB)
+          Notas, boletos, recibos, contratos, convenção, atas, apólices, laudos e balancetes (PDF,
+          foto ou XML) e extratos (OFX, CSV, CNAB)
         </span>
         <input
           type="file"

@@ -644,7 +644,8 @@ class ChatTools:
             ),
             ToolSpec(
                 "search_documents",
-                "Busca trechos na convenção, atas e contratos do condomínio.",
+                "Busca trechos na convenção, regimento, atas, contratos, apólices, "
+                "balancetes, laudos e planos de manutenção do condomínio.",
                 obj({"query": text}, ["query"]),
                 self.search_documents,
             ),

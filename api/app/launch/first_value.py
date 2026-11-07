@@ -21,7 +21,7 @@ from app.core.br import format_cnpj
 from app.core.money import brl
 from app.db.enums import DocumentType, ExtractionStatus
 from app.db.models import Contract, ContractAmendment, Document
-from app.extraction.fields import REVIEW_THRESHOLD, SPECS
+from app.extraction.fields import REVIEW_THRESHOLD, SPECS, TEXT_ONLY_TYPES
 
 TYPE_LABEL = {
     "nfse": "uma nota fiscal de serviço",
@@ -33,6 +33,11 @@ TYPE_LABEL = {
     "contrato": "um contrato",
     "convencao": "a convenção do condomínio",
     "ata": "uma ata",
+    "regimento": "o regimento interno",
+    "apolice": "uma apólice de seguro",
+    "balancete": "um balancete",
+    "laudo": "um laudo técnico",
+    "plano_manutencao": "um plano de manutenção",
     "outro": "um documento que não reconheci",
 }
 INDEX_LABEL = {"IPCA": "IPCA", "IGPM": "IGP-M", "INPC": "INPC", "FIXO": "Valor fixo"}
@@ -164,15 +169,18 @@ async def first_value(session: AsyncSession, doc: Document) -> dict[str, Any]:
             "message": "Não consegui ler este arquivo. Tente o PDF original ou uma foto mais "
             "nítida.",
         }
-    if doc.doc_type in (DocumentType.CONVENCAO.value, DocumentType.ATA.value):
+    if doc.doc_type in {t.value for t in TEXT_ONLY_TYPES}:
         pages = doc.page_count or 0
         return {
             **base,
             "state": "memoria",
             "message": f"Guardei {TYPE_LABEL[doc.doc_type]}"
             + (f" ({pages} página{'s' if pages != 1 else ''})" if pages else "")
-            + ". Já posso localizar trechos dela quando você precisar.",
-            "limits": ["Guardar o texto não é interpretar juridicamente o documento."],
+            + ". Já posso localizar trechos deste documento quando você precisar.",
+            "limits": [
+                "Guardar o texto não é interpretar o documento: questões jurídicas ou técnicas "
+                "seguem com um profissional."
+            ],
         }
     if doc.doc_type != DocumentType.CONTRATO.value:
         return {

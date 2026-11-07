@@ -86,7 +86,15 @@ SPECS: dict[DocumentType, list[FieldSpec]] = {
 }
 
 # Types whose content is kept as text only in this milestone (chat search in milestone 5).
-TEXT_ONLY_TYPES = {DocumentType.CONVENCAO, DocumentType.ATA}
+TEXT_ONLY_TYPES = {
+    DocumentType.CONVENCAO,
+    DocumentType.ATA,
+    DocumentType.REGIMENTO,
+    DocumentType.APOLICE,
+    DocumentType.BALANCETE,
+    DocumentType.LAUDO,
+    DocumentType.PLANO_MANUTENCAO,
+}
 BANK_TYPES = {DocumentType.EXTRATO, DocumentType.CNAB_RETORNO}
 
 

@@ -62,6 +62,13 @@ class DocumentType(StrEnum):
     CONTRATO = "contrato"
     CONVENCAO = "convencao"
     ATA = "ata"
+    # Governing and technical documents (LB-020, D91): classified, kept as text and searchable;
+    # no structured extraction yet. A contract amendment stays "contrato" (D66).
+    REGIMENTO = "regimento"
+    APOLICE = "apolice"
+    BALANCETE = "balancete"
+    LAUDO = "laudo"
+    PLANO_MANUTENCAO = "plano_manutencao"
     OUTRO = "outro"
 
 
