@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 
 import { ContractClauses } from "@/components/condoos/ContractClauses";
 import { ContractForm } from "@/components/condoos/ContractForm";
+import { DocumentNewVersion } from "@/components/condoos/DocumentNewVersion";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { apiGet } from "@/lib/api";
 import type { Contract } from "@/lib/types";
@@ -39,8 +40,11 @@ export default async function EditarContratoPage({
           billing_frequency_months: String(c.billing_frequency_months ?? 1),
         }}
       />
-      <div className="mt-6 max-w-2xl">
+      <div className="mt-6 max-w-2xl space-y-3">
         <ContractClauses contract={c} />
+        {c.source_document_id && (
+          <DocumentNewVersion condominiumId={condoId} documentId={c.source_document_id} />
+        )}
       </div>
     </>
   );

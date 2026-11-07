@@ -68,6 +68,7 @@ export interface Contract {
   scope_items?: string[];
   original_monthly_value?: string | null;
   billing_frequency_months?: number;
+  source_document_id?: string | null;
   notice_days?: number | null;
   auto_renewal?: boolean | null;
   termination_penalty?: string | null;

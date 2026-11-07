@@ -13,7 +13,7 @@ from dataclasses import dataclass
 from functools import lru_cache
 from typing import Any
 
-from sqlalchemy import delete, text
+from sqlalchemy import delete, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
@@ -70,6 +70,9 @@ async def index_document(session: AsyncSession, doc: Document) -> int:
     await session.execute(delete(DocumentChunk).where(DocumentChunk.document_id == doc.id))
     if doc.doc_type not in INDEXED_TYPES or not doc.text_content:
         return 0
+    newer = await session.scalar(select(Document.id).where(Document.supersedes_id == doc.id))
+    if newer is not None:  # only the version in force is searchable (CB-031)
+        return 0
     chunks = chunk_text(doc.text_content)
     embedded = embed(chunks)
     vectors: list[list[float] | None] = list(embedded) if embedded else [None] * len(chunks)
@@ -109,6 +112,7 @@ _SEARCH_SQL = """
       FROM document_chunk c
       JOIN document d ON d.id = c.document_id, q
      WHERE c.condominium_id = :condo
+       AND NOT EXISTS (SELECT 1 FROM document n WHERE n.supersedes_id = d.id)
      ORDER BY score DESC
      LIMIT :limit
 """
