@@ -322,3 +322,10 @@ Telas:
 - Síndico: "Em atraso" e "Próximos 30 dias", mais um cartão no Resumo. As quatro abas de baixo continuam as mesmas.
 
 O CondoOS não move dinheiro: a agenda não tem ação de pagar nem de agendar pagamento. Corrigido junto: o valor esperado em Pendências passa a incluir o reajuste por índice (antes mostrava o valor original do contrato).
+
+## Planejamento estratégico (pacote v1.0)
+
+**D72 — Documentos vivos do planejamento** (prompt 01, 07/11/2026). O planejador mestre criou `docs/01-repo-audit.md`, `docs/02-gap-matrix.md`, `docs/03-decisions-register.md`, `docs/product-roadmap.md`, `docs/backlog.md`, `docs/traceability.md`, `docs/pilot-protocol.md` e `docs/roadmap-status.md`, sem alterar código.
+- `docs/decisions.md` continua sendo o registro das decisões aceitas (é o "decision-log" do Plano Diretor §12.3). `docs/03-decisions-register.md` guarda só propostas (ADR-P01..P07), divergências com o produto (DV-01..DV-07) e as decisões abertas do Plano (Plano D-01..D-12). Proposta aceita ganha número D7x aqui.
+- Histórias do projeto usam o prefixo CB-xxx, para não colidir com US-001..020 da Especificação.
+- Os testes não foram executados na sessão do planejamento (contêiner sem dependências nem pgvector); o estado dos FR usa `pronto_para_validar`, nunca `validado`, até haver execução e aceite.
