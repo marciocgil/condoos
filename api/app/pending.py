@@ -35,7 +35,8 @@ from app.db.models import (
     ExpenseDocument,
     Supplier,
 )
-from app.rules.contracts import terms_at
+from app.enrichment.indices import load_index_table
+from app.rules.contracts import contract_value_at, terms_at
 
 GRACE_DAYS = 10
 UTILITIES = ["energia", "agua", "gas"]
@@ -143,6 +144,7 @@ async def month_pending(
     def has_invoice(e: Expense) -> bool:
         return bool(e.invoice_number) or e.id in fiscal
 
+    table = await load_index_table(session)  # expected value with index adjustments
     waiting = today <= month_end(month) + timedelta(days=GRACE_DAYS)
     billing: list[ContractBilling] = []
     for c in sorted(contracts, key=lambda c: suppliers.get(c.supplier_id, "")):
@@ -164,7 +166,10 @@ async def month_pending(
                 contract_id=c.id,
                 supplier=suppliers.get(c.supplier_id, ""),
                 object=c.object,
-                expected_value=terms_at(c, amendments.get(c.id, []), month)[0],
+                expected_value=(
+                    contract_value_at(c, amendments.get(c.id, []), month, table)
+                    or terms_at(c, amendments.get(c.id, []), month)[0]
+                ),
                 status=status,
                 expense_id=charged.id if charged else None,
                 billed_value=charged.amount if charged else None,

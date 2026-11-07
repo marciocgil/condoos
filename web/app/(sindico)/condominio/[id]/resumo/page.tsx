@@ -1,6 +1,7 @@
 import { Download, Upload } from "lucide-react";
 import Link from "next/link";
 
+import { AgendaPreview } from "@/components/condoos/AgendaPreview";
 import { InsightCard } from "@/components/condoos/InsightCard";
 import { SEVERITY_DOT } from "@/components/condoos/SeverityBadge";
 import { MonthSelect } from "@/components/MonthSelect";
@@ -106,6 +107,8 @@ export default async function ResumoPage({
           </div>
         )}
       </section>
+
+      <AgendaPreview condominiumId={id} />
 
       <div className="grid grid-cols-2 gap-2">
         <Link href={`/condominio/${id}/enviar`} className={buttonClass("secondary")}>

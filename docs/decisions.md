@@ -310,3 +310,15 @@ O condomínio novo ainda não está no escopo de RLS da requisição. Por isso �
 - **Serviço avulso** (despesa sem contrato; energia, água e gás fora, como na R12) fica pendente até ter aprovação registrada. A aprovação pode ser ligada a um documento já enviado: proposta assinada ou orçamento (tipo "outro"), ata ou contrato.
 - São pendências de acompanhamento da administradora, não achados: não aparecem para o síndico e não acusam ninguém. A auditoria continua com R09, R10 e R12.
 - Filtro por condomínio e pelos últimos 6 meses, com a contagem de pendências por mês.
+
+**D71 — Agenda** (`app/agenda.py`; tela "Agenda" da administradora e do síndico). Uma visão por data do que já existe, sem tabela nova e sem gerar achado:
+- **Vencimentos** de cada despesa, com a situação tirada do extrato: pago, vencido sem pagamento ou a vencer.
+- **NF prevista dos contratos**, pela periodicidade (D70). O dia vem da mediana do dia de emissão das últimas notas do contrato (dia 1 sem histórico) e é marcado como previsto. O valor é o vigente, com aditivos e reajustes por índice.
+- **Reajustes** no mês-base dos contratos com índice ("conferir" depois de chegar o mês).
+- **Fim de contrato**: contratos de prazo indeterminado não aparecem.
+
+Telas:
+- Administradora: calendário do mês, lista por dia e filtros por condomínio e por tipo. O calendário fica oculto para leitores de tela; a lista por dia é a versão acessível.
+- Síndico: "Em atraso" e "Próximos 30 dias", mais um cartão no Resumo. As quatro abas de baixo continuam as mesmas.
+
+O CondoOS não move dinheiro: a agenda não tem ação de pagar nem de agendar pagamento. Corrigido junto: o valor esperado em Pendências passa a incluir o reajuste por índice (antes mostrava o valor original do contrato).

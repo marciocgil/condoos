@@ -372,3 +372,25 @@ export interface DocumentItem {
   original_filename: string;
   created_at: string;
 }
+
+export type AgendaKind = "vencimento" | "nf_prevista" | "reajuste" | "fim_contrato";
+
+export interface AgendaEvent {
+  date: string;
+  kind: AgendaKind;
+  title: string;
+  detail: string;
+  status: string;
+  predicted: boolean;
+  amount: string | null;
+  contract_id: string | null;
+  expense_id: string | null;
+  condominium_id?: string;
+  condominium?: string;
+}
+
+export interface Agenda {
+  start: string;
+  end: string;
+  events: AgendaEvent[];
+}

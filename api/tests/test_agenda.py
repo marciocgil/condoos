@@ -101,6 +101,7 @@ async def test_agenda_events_and_statuses(admin_engine: AsyncEngine) -> None:
     # yet but is within the issue time.
     dec = by[("nf_prevista", date(2026, 12, 7))]
     assert dec.predicted and dec.status == "prevista"
+    assert dec.amount == Decimal("9000.00")  # first INPC adjustment only in Dec/2026
     assert by[("nf_prevista", date(2026, 11, 7))].status == "prevista"
     assert by[("reajuste", date(2026, 12, 1))].detail.endswith("INPC")
     assert by[("fim_contrato", date(2026, 12, 15))].status == "vence"

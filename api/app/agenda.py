@@ -31,8 +31,9 @@ from app.db.models import (
     ExpenseDocument,
     Supplier,
 )
+from app.enrichment.indices import load_index_table
 from app.pending import GRACE_DAYS, billing_expected, month_end
-from app.rules.contracts import anniversaries, terms_at
+from app.rules.contracts import anniversaries, contract_value_at, terms_at
 
 KINDS = ("vencimento", "nf_prevista", "reajuste", "fim_contrato")
 ADJUSTING = {
@@ -122,6 +123,13 @@ async def condominium_agenda(
     ):
         amendments.setdefault(amendment.contract_id, []).append(amendment)
 
+    table = await load_index_table(session)
+
+    def expected(c: Contract, month: date) -> Decimal:
+        """Value due in the month: amendments and index adjustments applied (D66, D68)."""
+        mine = amendments.get(c.id, [])
+        return contract_value_at(c, mine, month, table) or terms_at(c, mine, month)[0]
+
     events: list[Event] = []
 
     # Due dates of expenses.
@@ -184,11 +192,7 @@ async def condominium_agenda(
                     ),
                     status=status,
                     predicted=invoiced is None,
-                    amount=(
-                        invoiced.amount
-                        if invoiced
-                        else terms_at(c, amendments.get(c.id, []), month)[0]
-                    ),
+                    amount=invoiced.amount if invoiced else expected(c, month),
                     contract_id=c.id,
                     expense_id=invoiced.id if invoiced else None,
                 )
