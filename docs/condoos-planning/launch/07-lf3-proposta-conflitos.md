@@ -1,6 +1,6 @@
 # Launch LF3-b — proposta: conflitos de dados e Central de Validação (migração 0020)
 
-Data: 07/11/2026. **Proposta para aprovação do Marcio. Nenhuma linha desta parte foi escrita no código.** Detalha a ADR-L05 (`03-arquitetura-e-dados.md`) e os itens LB-030, LB-032, LB-035 e LB-036 de `05-backlog.md`. A parte da LF3 sem migração já foi entregue (D92).
+Data: 07/11/2026. **Aprovada pelo Marcio em 07/11/2026 e implementada (D93).** O texto abaixo é a proposta original; diferenças da implementação estão em D93. Detalha a ADR-L05 (`03-arquitetura-e-dados.md`) e os itens LB-030, LB-032, LB-035 e LB-036 de `05-backlog.md`. A parte da LF3 sem migração já foi entregue (D92).
 
 ## 1. Problema
 

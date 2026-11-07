@@ -1,6 +1,13 @@
 "use client";
 
-import { AlertTriangle, CheckCircle2, CircleHelp, Loader2, XCircle } from "lucide-react";
+import {
+  AlertTriangle,
+  CheckCircle2,
+  CircleHelp,
+  GitCompare,
+  Loader2,
+  XCircle,
+} from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
@@ -19,6 +26,7 @@ const FIELD: Record<
   lido: { tone: "success", icon: <CheckCircle2 size={12} />, label: "Lido no documento" },
   a_confirmar: { tone: "warning", icon: <AlertTriangle size={12} />, label: "A confirmar" },
   nao_encontrado: { tone: "neutral", icon: <CircleHelp size={12} />, label: "Não encontrado" },
+  conflitante: { tone: "danger", icon: <GitCompare size={12} />, label: "Conflitante" },
 };
 
 /** First-value card (LB-006/007, F01): follows the reading of an uploaded document and
@@ -116,6 +124,22 @@ export function FirstValueCard({
             </div>
           ))}
         </dl>
+      )}
+
+      {card.conflicts && card.conflicts.length > 0 && (
+        <div className="mt-4 border-t border-line pt-3">
+          <h3 className="flex items-center gap-2 text-[13px] font-medium text-fg-2">
+            <GitCompare size={14} aria-hidden /> Divergência com outro documento
+          </h3>
+          <ul className="mt-1 space-y-1 text-[13px] text-fg-2">
+            {card.conflicts.map((c) => (
+              <li key={c.id}>
+                <span className="text-fg">{c.title}.</span> {c.detail} A equipe CondoOS vai conferir
+                qual versão vale.
+              </li>
+            ))}
+          </ul>
+        </div>
       )}
 
       {card.clauses && card.clauses.length > 0 && (

@@ -93,4 +93,4 @@ Detalhe em `docs/condoos-planning/launch/01-diagnostico-as-is.md` §4 e `00-stat
 | DL-05 | `OnboardingTask` × `case_task` (D80) | Proposta: reusar `case_task` |
 | DL-06 / Q-L03 | Fases e gates do Launch × caminho crítico do Plano (VS-06) | **Resolvida (D89):** LF2 antes da VS-06 |
 | Q-L04 | Migração 0018 (`launch_state`) e alçadas opcionais no cadastro | **Aprovada (D89)**; 0018 entregue |
-| Q-L05 | LF3-b: migração 0020 (`data_issue`), quem resolve conflitos, política nega ação com conflito aberto | Aguarda aprovação (`docs/condoos-planning/launch/07-lf3-proposta-conflitos.md`) |
+| Q-L05 | LF3-b: migração 0020 (`data_issue`), quem resolve conflitos, política nega ação com conflito aberto | **Aprovada (D93)**: revisora e gerente resolvem; política nega |

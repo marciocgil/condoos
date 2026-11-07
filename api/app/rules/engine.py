@@ -19,6 +19,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.condo_settings import settings_at
 from app.core.audit import record_audit
 from app.core.jobs import enqueue
+from app.data_issues import contracts_of, open_issues
 from app.db.enums import FindingStatus
 from app.db.models import (
     Approval,
@@ -28,6 +29,7 @@ from app.db.models import (
     Condominium,
     Contract,
     ContractAmendment,
+    DataIssue,
     Decision,
     Document,
     Expense,
@@ -181,12 +183,40 @@ def _review(policy: Policy, d: FindingDraft) -> tuple[str, FindingStatus, int]:
     return outcome.requirement.value, initial_status(outcome.requirement), outcome.version
 
 
+def _conflict_evidence(
+    d: FindingDraft, conflicts: dict[str, list[DataIssue]]
+) -> list[dict[str, str]]:
+    seen: set[str] = set()
+    out: list[dict[str, str]] = []
+    for e in d.evidence:
+        if e.kind != "contract":
+            continue
+        for issue in conflicts.get(e.id, []):
+            if str(issue.id) in seen:
+                continue
+            seen.add(str(issue.id))
+            out.append(
+                {
+                    "kind": "data_issue",
+                    "id": str(issue.id),
+                    "label": "Contrato com divergência de dados em validação",
+                    "excerpt": issue.title,
+                }
+            )
+    return out
+
+
 async def persist(
     session: AsyncSession, ctx: RuleContext, drafts: list[FindingDraft]
 ) -> tuple[int, int]:
     created = updated = 0
     to_explain: list[uuid.UUID] = []
     policy = await current_policy(session, ctx.condominium.id)
+    # Contracts with an open data conflict (D93): their findings say so in the evidence.
+    conflicts: dict[str, list[DataIssue]] = {}
+    for issue in await open_issues(session, ctx.condominium.id):
+        for contract_id in contracts_of(issue):
+            conflicts.setdefault(contract_id, []).append(issue)
     for d in drafts:
         existing = await session.scalar(
             select(Finding).where(
@@ -199,7 +229,7 @@ async def persist(
             "title": d.title,
             "explanation": d.explanation,
             "amount_at_risk": d.amount_at_risk,
-            "evidence": [e.as_dict() for e in d.evidence],
+            "evidence": [e.as_dict() for e in d.evidence] + _conflict_evidence(d, conflicts),
             "rule_inputs": d.rule_inputs,
             "competence": ctx.competence,
             "ai_assisted": d.ai_assisted,

@@ -71,7 +71,8 @@ def test_document_text_goes_inside_delimiters() -> None:
 
 def test_policy_never_reads_text() -> None:
     params = set(inspect.signature(evaluate).parameters)
-    assert params == {"session", "condo", "action_type", "cost_cap", "category"}
+    # No free text: the supplier id (D93) is a key, read against the database.
+    assert params == {"session", "condo", "action_type", "cost_cap", "category", "supplier_id"}
     assert CATALOGUE["pagamento.aprovar"].always_denied
 
 

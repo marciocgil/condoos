@@ -225,6 +225,12 @@ async def check_target(
                 ),
             )
         )
+    elif t == CaseLinkTarget.DATA_ISSUE:
+        from app.db.models import DataIssue
+
+        found = await session.scalar(
+            select(DataIssue.id).where(DataIssue.id == tid, DataIssue.condominium_id == cid)
+        )
     elif t == CaseLinkTarget.CASE:
         if tid == case_id:
             raise CaseError("Um assunto não pode ser vinculado a ele mesmo.")

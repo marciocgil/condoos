@@ -144,6 +144,9 @@ async def match_document(session: AsyncSession, doc: Document) -> MatchOutcome:
         return await _match_boleto(session, doc)
     elif doc_type == DocumentType.CONTRATO:
         await register_contract(session, doc)
+        from app.data_issues import detect  # conflicts between documents (D93)
+
+        await detect(session, doc.condominium_id)
         return MatchOutcome(None)
     else:
         return MatchOutcome(None)

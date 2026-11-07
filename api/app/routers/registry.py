@@ -19,6 +19,7 @@ from app.core.audit import record_audit
 from app.core.br import is_valid_cnpj, only_digits
 from app.core.jobs import enqueue
 from app.core.time import is_valid_timezone, utcnow
+from app.data_issues import detect as detect_data_issues
 from app.db.enums import AdjustmentIndex, BoardPosition, PlatformRole, Role
 from app.db.models import (
     AppUser,
@@ -364,6 +365,7 @@ async def create_contract(
     db.add(contract)
     await db.flush()
     await _audit(db, access, "contract.created", "contract", contract.id)
+    await detect_data_issues(db, access.condominium_id)
     await _recheck_open_months(db, access.condominium_id)
     out = ContractOut.model_validate(contract)
     out.supplier_name = body.supplier_name.strip()
@@ -388,6 +390,7 @@ async def update_contract(
     await _apply(db, contract, body)
     await db.flush()
     await _audit(db, access, "contract.updated", "contract", contract.id)
+    await detect_data_issues(db, access.condominium_id)
     await _recheck_open_months(db, access.condominium_id)
     out = ContractOut.model_validate(contract)
     out.supplier_name = body.supplier_name.strip()

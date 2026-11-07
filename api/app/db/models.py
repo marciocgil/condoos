@@ -49,6 +49,9 @@ from app.db.enums import (
     CaseStatus,
     ChatRole,
     CompetenceStatus,
+    DataIssueEventKind,
+    DataIssueKind,
+    DataIssueStatus,
     DecisionAction,
     DocumentOrigin,
     DocumentType,
@@ -1050,6 +1053,54 @@ class LaunchState(IdTimestampMixin, Base):
     )
 
 
+class DataIssue(IdTimestampMixin, Base):
+    """A conflict between documents (D93, ADR-L05): two sources say different things about
+    the same record. Not a finding (it accuses nobody) and not a case (it can be linked to
+    one). While open, what depends on the record is partial and actions with the supplier
+    are refused by the policy."""
+
+    __tablename__ = "data_issue"
+    __table_args__ = (
+        _enum_check("kind", DataIssueKind),
+        _enum_check("status", DataIssueStatus),
+        UniqueConstraint("condominium_id", "dedupe_key"),
+    )
+
+    condominium_id: Mapped[uuid.UUID] = _uuid_fk("condominium.id")
+    kind: Mapped[str] = mapped_column(String(30))
+    status: Mapped[str] = mapped_column(String(15), default=DataIssueStatus.ABERTO.value)
+    subject_type: Mapped[str] = mapped_column(String(20))
+    subject_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), index=True)
+    supplier_id: Mapped[uuid.UUID | None] = _uuid_fk("supplier.id", nullable=True)
+    field: Mapped[str | None] = mapped_column(String(60), nullable=True)
+    title: Mapped[str] = mapped_column(String(300))
+    detail: Mapped[str] = mapped_column(Text, default="")
+    # One item per side: {"document_id", "label", "value", "page", "excerpt"}.
+    evidence: Mapped[list[dict[str, Any]]] = mapped_column(Json, default=list)
+    capabilities: Mapped[list[str]] = mapped_column(Json, default=list)
+    amount_at_stake: Mapped[Decimal | None] = mapped_column(Money, nullable=True)
+    detector: Mapped[str] = mapped_column(String(60))
+    dedupe_key: Mapped[str] = mapped_column(String(200))
+    resolution: Mapped[dict[str, Any] | None] = mapped_column(Json, nullable=True)
+    resolved_by_user_id: Mapped[uuid.UUID | None] = _uuid_fk(
+        "app_user.id", nullable=True, ondelete="SET NULL"
+    )
+    resolved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class DataIssueEvent(IdTimestampMixin, Base):
+    """The history of a data issue (append only, like ``case_event``)."""
+
+    __tablename__ = "data_issue_event"
+    __table_args__ = (_enum_check("kind", DataIssueEventKind),)
+
+    condominium_id: Mapped[uuid.UUID] = _uuid_fk("condominium.id")
+    issue_id: Mapped[uuid.UUID] = _uuid_fk("data_issue.id")
+    kind: Mapped[str] = mapped_column(String(15))
+    user_id: Mapped[uuid.UUID | None] = _uuid_fk("app_user.id", nullable=True, ondelete="SET NULL")
+    payload: Mapped[dict[str, Any]] = mapped_column(Json, default=dict)
+
+
 # Tables protected by Row-Level Security, with the column holding the tenant id.
 RLS_TABLES: dict[str, str] = {
     "condominium": "id",
@@ -1086,6 +1137,8 @@ RLS_TABLES: dict[str, str] = {
     "automation_pause": "condominium_id",
     "condominium_settings_version": "condominium_id",
     "launch_state": "condominium_id",
+    "data_issue": "condominium_id",
+    "data_issue_event": "condominium_id",
 }
 
 # Tables the application role may only read and insert into (never update or delete).
@@ -1098,4 +1151,5 @@ APPEND_ONLY_TABLES: tuple[str, ...] = (
     "opportunity_review",
     "action_decision",
     "condominium_settings_version",
+    "data_issue_event",
 )

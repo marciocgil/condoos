@@ -237,6 +237,7 @@ class CaseLinkTarget(StrEnum):
     SUPPLIER = "supplier"
     EXPENSE = "expense"
     CASE = "case"
+    DATA_ISSUE = "data_issue"  # a data conflict (D93)
 
 
 class TaskStatus(StrEnum):
@@ -348,3 +349,28 @@ class OutboxStatus(StrEnum):
     DESPACHADO = "despachado"
     CANCELADO = "cancelado"
     BLOQUEADO = "bloqueado"
+
+
+# --------------------------------------------------------------------------- data issues (D93)
+
+
+class DataIssueKind(StrEnum):
+    CONFLITO_DOCUMENTOS = "conflito_documentos"
+    # Reserved: no detector yet.
+    DUPLICIDADE_SUSPEITA = "duplicidade_suspeita"
+    DADO_VENCIDO = "dado_vencido"
+
+
+class DataIssueStatus(StrEnum):
+    ABERTO = "aberto"
+    RESOLVIDO = "resolvido"
+    DESCARTADO = "descartado"
+
+
+class DataIssueEventKind(StrEnum):
+    DETECTADO = "detectado"
+    REDETECTADO = "redetectado"
+    RESOLVIDO = "resolvido"
+    DESCARTADO = "descartado"
+    SUPERADO = "superado"  # no longer detected, and nobody had acted on it (like D61)
+    REABERTO = "reaberto"

@@ -19,6 +19,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.br import format_cnpj
 from app.core.money import brl
+from app.data_issues import documents_of, open_issues
 from app.db.enums import DocumentType, ExtractionStatus
 from app.db.models import Contract, ContractAmendment, Document
 from app.extraction.fields import REVIEW_THRESHOLD, SPECS, TEXT_ONLY_TYPES
@@ -191,7 +192,13 @@ async def first_value(session: AsyncSession, doc: Document) -> dict[str, Any]:
         }
 
     fields = _fields(doc)
-    to_confirm = [f["label"] for f in fields if f["status"] == "a_confirmar"]
+    conflicts = [
+        c for c in await open_issues(session, doc.condominium_id) if str(doc.id) in documents_of(c)
+    ]
+    for f in fields:  # a field in dispute is never shown as read (D93)
+        if any(c.field == f["name"] for c in conflicts):
+            f["status"] = "conflitante"
+    to_confirm = [f["label"] for f in fields if f["status"] in ("a_confirmar", "conflitante")]
     limits = list(CONTRACT_LIMITS)
     if await _has_amendment(session, doc):
         limits[2] = (
@@ -203,6 +210,8 @@ async def first_value(session: AsyncSession, doc: Document) -> dict[str, Any]:
         parts.append("Um revisor vai confirmar: " + ", ".join(to_confirm).lower() + ".")
     if not_found:
         parts.append("Não encontrei no documento: " + ", ".join(not_found).lower() + ".")
+    if conflicts:
+        parts.append("Há divergência com outro documento em validação.")
     if parts:
         message = "Li parte do contrato. " + " ".join(parts)
     else:
@@ -213,6 +222,7 @@ async def first_value(session: AsyncSession, doc: Document) -> dict[str, Any]:
         "message": message,
         "fields": fields,
         "clauses": await _clauses(session, doc),
+        "conflicts": [{"id": str(c.id), "title": c.title, "detail": c.detail} for c in conflicts],
         "limits": limits,
         "next_step": {
             "key": "enviar_faturas",

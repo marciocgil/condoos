@@ -1,6 +1,6 @@
 # Rastreabilidade — FR ↔ tarefa ↔ código ↔ teste ↔ entrega
 
-Data: 07/11/2026. Atualizar ao fim de cada fatia (CLAUDE.md, item 6). "Entrega" = marco do MVP auditor (Marco 1–6, 05/11/2026) ou decisão pós-piloto (D65–D71) em que o código entrou. Testes citados existem no repositório. Última execução local completa: 07/11/2026, 331 passaram (D91); E2E: 29 fluxos passaram contra a stack local (D85); `launch.spec.ts` (D89) passou numa stack local sem Docker.
+Data: 07/11/2026. Atualizar ao fim de cada fatia (CLAUDE.md, item 6). "Entrega" = marco do MVP auditor (Marco 1–6, 05/11/2026) ou decisão pós-piloto (D65–D71) em que o código entrou. Testes citados existem no repositório. Última execução local completa: 07/11/2026, 336 passaram (D93); E2E: 29 fluxos passaram contra a stack local (D85); `launch.spec.ts` (D89) passou numa stack local sem Docker.
 
 | FR | Tarefa(s) | Código | Teste(s) | Entrega |
 |---|---|---|---|---|
@@ -88,3 +88,7 @@ Data: 07/11/2026. Atualizar ao fim de cada fatia (CLAUDE.md, item 6). "Entrega" 
 | LB-020 tipos documentais | `db/enums.py::DocumentType`, migração 0019, `extraction/heuristics.py::classify_text`, `prompts/classify_document.md`, `extraction/fields.py::TEXT_ONLY_TYPES`, `chat/search.py::INDEXED_TYPES`, `launch/first_value.py`, `web/lib/labels.ts` | `test_document_types.py` | D91 |
 | LB-034 prontidão C4, C8, C9 | `launch/readiness.py` (`savings_capability`, `expected_documents_capability`, `closing_capability`) | `test_launch.py::test_savings_expected_documents_and_closing_readiness` | D92 |
 | LB-037 cobertura do relatório | `reports/data.py::month_coverage`, `reports/pdf.py`, `reports/xlsx.py` (aba "Cobertura") | `test_reports.py::test_report_for_each_seeded_condominium` | D92 |
+| LB-030 conflitos de dados | `app/data_issues/` (detectores v1, ciclo), `db/models.py::DataIssue/DataIssueEvent`, migração 0020, `matching/documents.py` e `routers/registry.py` (detecção) | `test_data_issues.py` (4), `test_isolation.py` (RLS e só inclusão) | D93 |
+| LB-032 Central de Validação | `routers/data_issues.py`, `web/app/(admin)/admin/validacao`, `components/condoos/DataIssueCard.tsx` | `test_data_issues.py::test_api_permissions_and_isolation`, e2e `validation.spec.ts` | D93 |
+| LB-035 política consulta conflitos | `policy/__init__.py::evaluate(supplier_id=...)`, `actions/__init__.py` | `test_data_issues.py`, `test_prompt_injection.py::test_policy_never_reads_text` | D93 |
+| LB-036 (parcial) campo conflitante | `launch/first_value.py`, `launch/readiness.py::_with_conflicts`, `rules/engine.py::_conflict_evidence` | `test_data_issues.py::test_amendment_outside_the_term` | D93 |

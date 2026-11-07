@@ -1,4 +1,12 @@
-import { Banknote, FileSignature, FileText, Receipt, Store, UserRound } from "lucide-react";
+import {
+  Banknote,
+  FileSignature,
+  FileText,
+  GitCompare,
+  Receipt,
+  Store,
+  UserRound,
+} from "lucide-react";
 
 import { formatBRL } from "@/lib/format";
 import type { Evidence } from "@/lib/types";
@@ -16,6 +24,7 @@ const ICON: Record<string, React.ReactNode> = {
   contract: <FileSignature size={16} />,
   supplier: <Store size={16} />,
   board_member: <UserRound size={16} />,
+  data_issue: <GitCompare size={16} />,
 };
 
 /** Evidence list: every item says where it comes from; documents open the original file. */

@@ -9,7 +9,7 @@
 | LF0 Diagnóstico | ✅ concluída (gate LG0 verificado) | `01-diagnostico-as-is.md` |
 | LF1 Blueprint | ✅ aprovada pelo Marcio (gate LG1, D89) | `02`–`06` deste diretório |
 | LF2 Primeiro valor | **em_desenvolvimento** — LF2-a (D89), LF2-b (D90) e LB-020 (D91) entregues; falta só o gate LG2 (`make e2e` no docker) | ver abaixo |
-| LF3 Dados e reconciliação | **em_desenvolvimento** — LF3-a entregue (D92); LF3-b (migração 0020) aguarda aprovação | `07-lf3-proposta-conflitos.md` |
+| LF3 Dados e reconciliação | **em_desenvolvimento** — LF3-a (D92) e LF3-b (D93) entregues; falta LB-033 (lote), LB-036 "inferido" e o gate LG3 | `07-lf3-proposta-conflitos.md` |
 | LF4–LF8 | nao_iniciado | `05-backlog.md` |
 
 **LF2-a entregue (D89):** LB-001 (`launch_state`, migração 0018), LB-002 (marcos por fatos), LB-003 (próximos passos), LB-004 (rotas), LB-005 (cartão de jornada no Hoje), LB-006/007 (cartão de primeiro valor no envio), LB-008 ("o que já fiz por você"), LB-010 (prontidão C1–C3), LB-021 (SEC-02), LB-090 parcial (eventos `launch.*`). Verificação: 322 testes do backend, lint backend e frontend, migração ida e volta, E2E `launch.spec.ts` passando numa stack local sem Docker (API e worker num processo, armazenamento em memória, `next dev`, substituto do Mailpit). Na suíte E2E inteira nessa stack, só `correction.spec.ts` falhou, e falha igual sem as mudanças desta fatia (efeito da stack local); **rodar `make e2e` na stack do docker** para confirmar.
@@ -47,8 +47,9 @@ Q-L01 assistida pelo Admin · Q-L02 síndico envia o link/texto · Q-L03 LF2 ant
 
 ## Próximo incremento recomendado
 
-1. **Gate LG2:** `make e2e` na stack do docker (Marcio, no MacBook).
-2. **LF3-b:** aprovar a proposta `07-lf3-proposta-conflitos.md` (migração 0020, quem resolve, efeito na política). Com a aprovação: detectores v1, `data_issue` e eventos, Central de Validação, política que nega ação com conflito aberto, campo "conflitante" no cartão.
+1. **Gate LG2 (e LG3 junto):** `make e2e` na stack do docker (Marcio, no MacBook). Inclui `launch.spec.ts` e `validation.spec.ts`.
+2. **Fechar a LF3:** LB-033 (envio em lote com acompanhamento, "Faça por mim"), LB-036 (classe "inferido" na proveniência: mês de reajuste presumido pelo início, fim indeterminado) e os testes do gate LG3 com documentos contraditórios, ausentes, duplicados e ilegíveis num roteiro único. Sem migração.
+3. **LF4 (colaborativo):** pedido delegado com link de envio (ADR-L04) tem migração e exige decidir a triagem de arquivos (ADR-L06): trazer proposta antes.
 
 ## Ritual de cada incremento
 

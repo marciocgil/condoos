@@ -107,6 +107,25 @@ async def active_pause(
     )
 
 
+async def _open_conflict(
+    session: AsyncSession, condominium_id: uuid.UUID, supplier_id: uuid.UUID
+) -> bool:
+    """An open data issue on a contract of this supplier (D93). Read from the database, never
+    from any text: documents are data, not instructions (SEC-02)."""
+    from app.db.models import DataIssue
+
+    found = await session.scalar(
+        select(DataIssue.id)
+        .where(
+            DataIssue.condominium_id == condominium_id,
+            DataIssue.supplier_id == supplier_id,
+            DataIssue.status == "aberto",
+        )
+        .limit(1)
+    )
+    return found is not None
+
+
 async def evaluate(
     session: AsyncSession,
     condo: Condominium,
@@ -114,6 +133,7 @@ async def evaluate(
     action_type: str,
     cost_cap: Decimal,
     category: str | None = None,
+    supplier_id: uuid.UUID | None = None,
 ) -> PolicyResult:
     """Decide what an action needs. Deny by default; never ``ALLOW`` in this version: every
     allowed action needs a person's approval (no automation has an external effect)."""
@@ -130,6 +150,12 @@ async def evaluate(
     if spec.zero_cost_only and cost_cap > 0:
         return PolicyResult(
             PolicyDecision.DENY, f"{spec.label} só é permitido sem custo (teto R$ 0,00)."
+        )
+    if supplier_id is not None and await _open_conflict(session, condo.id, supplier_id):
+        return PolicyResult(
+            PolicyDecision.DENY,
+            "Há divergência de dados aberta no contrato deste fornecedor: ela precisa ser "
+            "resolvida na Central de Validação antes de pedir ações.",
         )
     if await active_pause(session, condo.id, "action.dispatch") is not None:
         return PolicyResult(

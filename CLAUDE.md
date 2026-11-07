@@ -65,6 +65,7 @@ api/            FastAPI + SQLAlchemy 2 (async) + Alembic; worker da fila de jobs
   app/actions/    pedido de ação com aprovação, outbox e despacho sem envio (D83)
   app/launch/     implantação guiada (D89): marcos por fatos, prontidão por capacidade,
                   cartão de primeiro valor, próximos passos, launch_state
+  app/data_issues/ conflitos entre documentos (D93): detectores, ciclo, Central de Validação
   scripts/pilot_run.py   aceite do Marco 6: condomínio fictício do upload ao relatório
   app/prompts/    prompts versionados (*.md)
   app/db/         models.py, enums.py, session.py, migrations/
@@ -141,6 +142,7 @@ make pilot         # aceite do Marco 6 (após reset + up) → docs/pilot/run.md
 - **Economia contratada e realizada** (D84): "contratada" só com o documento do acordo (`record_contracted`, `acordo_v1`); "realizada" só a revisora CondoOS mede, pelas faturas com nota emitidas depois do acordo (`measure_realized`, `medicao_faturas_v1`). Cada estágio é linha nova em `savings_record`; nada paga nem envia.
 - **Versões e proveniência** (D85): alçadas e parâmetros mudam por `app/condo_settings.py` (versão nova com autor e motivo; regras usam `ctx.limits`/`ctx.rule_params`, a versão vigente no mês, nunca `condominium.approval_limits` direto). Extração grava `field_provenance` (origem, página, trecho; trecho só se o texto mostrar o valor). Documento novo do mesmo documento lógico entra por `.../documents/{id}/versions`; a busca usa só a versão vigente. Cláusulas de rescisão em `app/extraction/clauses.py` (por regra, com trecho; valor posto por pessoa fica).
 - **Launch** (D89): marcos (LM1–LM5) e prontidão (C1–C3) são calculados dos dados a cada leitura, nunca gravados, e não liberam nada; só objetivo, adiados e cartão oculto ficam em `launch_state`. O cartão de primeiro valor só mostra valores de `document.extracted` (abaixo de 0,9 = "a confirmar") e sempre diz o que a leitura não cobre. Prompt que recebe documento traz a regra de conteúdo não confiável (`tests/test_prompt_injection.py`).
+- **Conflitos de dados** (D93): só `app/data_issues/` detecta (determinístico, detector versionado, idempotente por `dedupe_key`); conflito sem ação de pessoa que some vira "superado", o que uma pessoa decidiu fica. Resolver exige um dos lados e motivo e não altera o contrato. Enquanto aberto: C2/C3 parciais, campo "conflitante" no cartão, linha na evidência dos achados e a política nega ação com o fornecedor. `data_issue_event` só aceita inclusão. Detector novo: teste positivo e negativo em `tests/test_data_issues.py` e conferir que o seed não gera falso positivo.
 - **Revisão** (D74, D79): o status inicial de um achado vem da política (`app/review/`), não da severidade direto. Status novo precisa entrar em `NOT_AT_RISK`/`UNDER_REVIEW` (`db/enums.py`) quando couber.
 - **Telas da administradora** aceitam `?condominio=<id>` (filtro por condomínio, D69); o menu lateral mantém a escolha.
 - **Interface:** use os tokens e os componentes de `components/ui` e `components/condoos`; status sempre com texto e ícone, nunca só cor; verde-lima só em ação primária e item ativo.

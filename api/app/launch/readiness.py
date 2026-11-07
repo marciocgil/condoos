@@ -22,6 +22,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.chat.search import INDEXED_TYPES
 from app.core.time import add_months, local_today
+from app.data_issues import open_issues
 from app.db.enums import CompetenceStatus, DocumentType, ExtractionStatus, PlatformRole
 from app.db.models import (
     BankTransaction,
@@ -385,6 +386,18 @@ async def closing_capability(session: AsyncSession, condo_id: uuid.UUID) -> Read
     return r
 
 
+def _with_conflicts(r: Readiness, conflicts: list[Any]) -> Readiness:
+    """An open data conflict (D93) makes the capability partial, with its title."""
+    mine = [c for c in conflicts if r.key in (c.capabilities or [])]
+    if not mine or r.state == "nao_configurado":
+        return r
+    r.state = "analise_parcial"
+    r.facts["divergencias_abertas"] = len(mine)
+    for c in mine:
+        r.missing.append(f"Divergência em validação: {c.title}.")
+    return r
+
+
 async def readiness(
     session: AsyncSession, condo_id: uuid.UUID, today: date | None = None
 ) -> list[Readiness]:
@@ -392,8 +405,9 @@ async def readiness(
         condo = await session.get(Condominium, condo_id)
         today = local_today(condo.timezone if condo else None)
     c1 = await documents_capability(session, condo_id)
-    c2 = await contracts_capability(session, condo_id)
-    c3 = await billing_capability(session, condo_id, c2)
+    conflicts = await open_issues(session, condo_id)
+    c2 = _with_conflicts(await contracts_capability(session, condo_id), conflicts)
+    c3 = _with_conflicts(await billing_capability(session, condo_id, c2), conflicts)
     c4 = await savings_capability(session, condo_id, c3)
     c7 = await actions_capability(session, condo_id)
     c8 = await expected_documents_capability(session, condo_id, today)

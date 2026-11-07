@@ -782,7 +782,7 @@ export interface Launch {
 export interface FirstValueField {
   name: string;
   label: string;
-  status: "lido" | "a_confirmar" | "nao_encontrado";
+  status: "lido" | "a_confirmar" | "nao_encontrado" | "conflitante";
   value: string | null;
   source?: string | null;
   evidence?: { page: number | null; excerpt: string };
@@ -797,6 +797,7 @@ export interface FirstValue {
   fields?: FirstValueField[];
   clauses?: { label: string; value: string; evidence?: { excerpt: string } | null }[];
   limits?: string[];
+  conflicts?: { id: string; title: string; detail: string }[];
   next_step?: { key: string; label: string; why: string };
 }
 
@@ -815,4 +816,34 @@ export interface PortfolioLaunchRow {
   first_value_at: string | null;
   hours_to_first_value: number | null;
   steps_postponed: number;
+}
+
+// Data conflicts (D93): two documents that say different things about a contract.
+export interface DataIssueSide {
+  label: string;
+  value: string;
+  contract_id: string;
+  document_id: string | null;
+  filename: string | null;
+  excerpt?: string;
+  page?: number | null;
+}
+
+export interface DataIssue {
+  id: string;
+  condominium_id: string;
+  condominium?: string;
+  kind: string;
+  status: "aberto" | "resolvido" | "descartado";
+  field: string | null;
+  title: string;
+  detail: string;
+  evidence: DataIssueSide[];
+  capabilities: string[];
+  amount_at_stake: string | null;
+  detector: string;
+  resolution: { prevailing?: DataIssueSide; reason?: string; superado?: boolean } | null;
+  resolved_at: string | null;
+  created_at: string | null;
+  can_resolve: boolean;
 }
