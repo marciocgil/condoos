@@ -8,8 +8,8 @@ Data: 07/11/2026 (FR-046 revisto após D74). Fonte dos requisitos: Especificaç�
 
 | FR | P | WP | Repo | O que existe | Lacuna para o critério | Evidência | Status |
 |---|---|---|---|---|---|---|---|
-| FR-001 | P0 | WP-02 | parcial | `condominium`, Carteira "Novo condomínio", `app.onboarding` | Fuso horário configurável por condomínio | `test_registry.py`, `test_onboarding.py` | em_analise |
-| FR-002 | P0 | WP-02 | parcial | Acesso por e-mail com papel (`POST /condominiums/{id}/members`), remoção, auditoria | Convite com prazo próprio e aceite; papéis da §9.4 | `test_registry.py`, `test_auth.py` | em_analise |
+| FR-001 | P0 | WP-02 | real | `condominium` com fuso IANA (D79), Carteira "Novo condomínio" (gerente ou Admin CondoOS), `app.onboarding` | — | `test_registry.py`, `test_onboarding.py`, `test_access_model.py::test_condominium_time_zone` | pronto_para_validar |
+| FR-002 | P0 | WP-02 | parcial | Acesso por e-mail com papel, convite aceito no 1º login, acesso com prazo, revogação com histórico, papéis da equipe CondoOS e reservados (D79) | Convite pendente sem prazo próprio; tela de atribuição da equipe CondoOS | `test_registry.py`, `test_auth.py`, `test_access_model.py` | em_analise |
 | FR-003 | P0 | WP-02 | real | RLS em 17 tabelas, filtro duplo, 404 com evento de segurança (D78), CI | Falta teste de storage cruzado | `test_isolation.py` (10), `test_access_revocation.py` | pronto_para_validar |
 | FR-004 | P0 | WP-02 | real | `rbac.py` (5 papéis × 11 permissões), `require()` no backend | Papéis futuros (zelador, fornecedor…) | `test_rbac.py`, `test_findings_api.py` | pronto_para_validar |
 | FR-005 | P0 | WP-03 | parcial | `audit_log` e `decision` append-only (D14) | Versão de política/aplicação e motivo em todas as mudanças críticas; estado anterior/novo | `test_isolation.py::test_append_only_tables` | em_analise |
@@ -73,7 +73,7 @@ Data: 07/11/2026 (FR-046 revisto após D74). Fonte dos requisitos: Especificaç�
 | FR-043 | P0 | WP-12 | real | NFS-e, NF-e, boleto, recibo, XML, OFX, CSV, CNAB; competência normalizada | Planilha/balancete de ERP | `test_extraction.py`, `test_bank_parsers.py` (12) | pronto_para_validar |
 | FR-044 | P0 | WP-13 | real | R02 (acima do contrato), R03 (reajuste), R04 (escopo) com cálculo determinístico e índices BCB reais | Rótulo "divergência aparente" até validação (já é "indício") | `test_rules.py` (23), `test_planted_cases.py` | pronto_para_validar |
 | FR-045 | P0 | WP-13 | parcial | Achado com valor em risco | Entidade Oportunidade (tipo, economia bruta/líquida, risco, confiança, status) | — | em_analise |
-| FR-046 | P0 | WP-14 | parcial | Gerente da administradora valida graves antes do síndico ver (D48) | Revisor **interno CondoOS** antes de qualquer recomendação ao condomínio; médios/baixos hoje publicam direto | `test_rbac.py::test_pending_findings_visibility` | em_analise (D74: revisão proporcional; CB-015/016/062) |
+| FR-046 | P0 | WP-14 | parcial (política de revisão real) | Gerente da administradora valida graves antes do síndico ver (D48) | Revisor **interno CondoOS** antes de qualquer recomendação ao condomínio; médios/baixos hoje publicam direto | `test_rbac.py::test_pending_findings_visibility`, `test_review_policy.py` | em_desenvolvimento (política e revisão interna prontas, D79; falta a oportunidade, CB-062) |
 | FR-047 | P1 | WP-22 | inexistente | (R11 compara com histórico, não com orçamento) | Orçamento × realizado | — | nao_iniciado |
 | FR-048 | P1 | WP-22 | real | Casamento despesa ↔ extrato com `match_issue` (D41) | — | `test_matching.py` (9) | pronto_para_validar |
 | FR-049 | P1 | WP-22 | inexistente | — | Caixa por cenários | — | nao_iniciado |
@@ -103,15 +103,15 @@ Data: 07/11/2026 (FR-046 revisto após D74). Fonte dos requisitos: Especificaç�
 
 | Grupo | FRs | real | parcial | inexistente |
 |---|---|---|---|---|
-| Plataforma (001–010) | 10 | 2 | 5 | 3 |
+| Plataforma (001–010) | 10 | 3 | 4 | 3 |
 | Documentos (011–020) | 10 | 3 | 7 | 0 |
 | Workflow (021–030) | 10 | 0 | 4 | 6 |
 | Advisor (031–040) | 10 | 1 | 3 | 6 |
 | Optimize (041–050) | 10 | 3 | 4 | 3 |
 | Operate etc. (051–065) | 15 | 0 | 1 | 14 |
-| **Total** | **65** | **9** | **24** | **32** |
+| **Total** | **65** | **10** | **23** | **32** |
 
-P0 (29 FRs): 7 real, 19 parcial, 3 inexistentes (FR-007 kill switch, FR-021 assunto, FR-022 tarefa). FR-045 (oportunidade) e FR-046 (revisão interna) são parciais, mas centrais ao Optimize, e FR-046 foi decidido em D74 (revisão proporcional ao risco).
+P0 (29 FRs): 8 real, 18 parcial, 3 inexistentes (FR-007 kill switch, FR-021 assunto, FR-022 tarefa). FR-045 (oportunidade) e FR-046 (revisão interna) são parciais, mas centrais ao Optimize, e FR-046 foi decidido em D74 (revisão proporcional ao risco).
 
 ## 8. Cobertura por CAP
 

@@ -25,7 +25,7 @@ from app.auth.rbac import CondoAccess, Permission
 from app.chat.search import search
 from app.core.br import format_cnpj
 from app.core.time import add_months
-from app.db.enums import VISIBLE_TO_BOARD, FindingStatus
+from app.db.enums import NOT_AT_RISK, VISIBLE_TO_BOARD
 from app.db.models import (
     BankTransaction,
     Competence,
@@ -203,16 +203,7 @@ class ChatTools:
                 ).order_by(Finding.amount_at_risk.desc(), Finding.id)
             )
         )
-        open_ = [
-            f
-            for f in findings
-            if f.status
-            not in (
-                FindingStatus.IGNORADO.value,
-                FindingStatus.DESCARTADO.value,
-                FindingStatus.SUPERADO.value,
-            )
-        ]
+        open_ = [f for f in findings if f.status not in NOT_AT_RISK]
         exp = (
             await self.session.execute(
                 select(func.count(), func.coalesce(func.sum(Expense.amount), 0)).where(

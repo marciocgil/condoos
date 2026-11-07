@@ -60,11 +60,14 @@ async def test_pending_findings_visibility(
     assert (str(findings["aguardando_validacao"]) in ids) is sees_pending
 
 
-def test_only_gerente_validates_and_configures() -> None:
+def test_who_validates_and_configures() -> None:
+    """D77 (docs/authorization-matrix.md): the manager and the CondoOS reviewer validate;
+    the manager and the CondoOS admin configure. Nobody else."""
+    validates = {Role.GERENTE, Role.CONDOOS_REVIEWER}
+    configures = {Role.GERENTE, Role.CONDOOS_ADMIN}
     for role, perms in ROLE_PERMISSIONS.items():
-        allowed = role == Role.GERENTE
-        assert (Permission.VALIDATE_FINDING in perms) is allowed
-        assert (Permission.CONFIGURE in perms) is allowed
+        assert (Permission.VALIDATE_FINDING in perms) is (role in validates), role
+        assert (Permission.CONFIGURE in perms) is (role in configures), role
 
 
 def test_permissions_union_of_roles() -> None:

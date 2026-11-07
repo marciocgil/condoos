@@ -6,15 +6,16 @@ from dataclasses import dataclass
 from typing import Annotated
 
 from fastapi import Depends, HTTPException, Request, status
-from sqlalchemy import or_, select
+from sqlalchemy import ColumnElement, and_, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.rbac import CondoAccess, Permission
 from app.auth.service import user_from_session_token
 from app.config import get_settings
 from app.core.audit import record_security_event
+from app.core.time import utcnow
 from app.db.enums import Role
-from app.db.models import AppUser, Condominium, Membership
+from app.db.models import AppUser, CondoAssignment, Condominium, Membership, PlatformRoleGrant
 from app.db.session import DbSession, accessible_condominium_ids, set_tenant_scope
 
 
@@ -40,6 +41,15 @@ async def get_principal(request: Request, session: DbSession) -> Principal:
 CurrentPrincipal = Annotated[Principal, Depends(get_principal)]
 
 
+def active_membership() -> list[ColumnElement[bool]]:
+    """A membership counts while not revoked and not expired (D77)."""
+    now = utcnow()
+    return [
+        Membership.revoked_at.is_(None),
+        or_(Membership.expires_at.is_(None), Membership.expires_at > now),
+    ]
+
+
 async def roles_on_condominium(
     session: AsyncSession, user_id: uuid.UUID, condominium: Condominium
 ) -> frozenset[Role]:
@@ -47,9 +57,44 @@ async def roles_on_condominium(
     if condominium.management_company_id is not None:
         scope.append(Membership.management_company_id == condominium.management_company_id)
     rows = await session.scalars(
-        select(Membership.role).where(Membership.user_id == user_id, or_(*scope))
+        select(Membership.role).where(
+            Membership.user_id == user_id, or_(*scope), *active_membership()
+        )
     )
-    return frozenset(Role(r) for r in rows)
+    roles = {Role(r) for r in rows}
+    now = utcnow()
+    staff = await session.scalars(
+        select(CondoAssignment.platform_role)
+        .join(
+            PlatformRoleGrant,
+            and_(
+                PlatformRoleGrant.user_id == CondoAssignment.user_id,
+                PlatformRoleGrant.role == CondoAssignment.platform_role,
+            ),
+        )
+        .where(
+            CondoAssignment.user_id == user_id,
+            CondoAssignment.condominium_id == condominium.id,
+            CondoAssignment.revoked_at.is_(None),
+            or_(CondoAssignment.valid_until.is_(None), CondoAssignment.valid_until > now),
+            PlatformRoleGrant.revoked_at.is_(None),
+            or_(PlatformRoleGrant.expires_at.is_(None), PlatformRoleGrant.expires_at > now),
+        )
+    )
+    roles |= {Role(r) for r in staff}
+    return frozenset(roles)
+
+
+async def access_for(
+    session: AsyncSession, user_id: uuid.UUID, condominium: Condominium
+) -> CondoAccess:
+    """Roles and per-condominium flags of a user on one condominium."""
+    return CondoAccess(
+        user_id=user_id,
+        condominium_id=condominium.id,
+        roles=await roles_on_condominium(session, user_id, condominium),
+        company_reviews=condominium.management_company_reviews,
+    )
 
 
 NOT_FOUND = HTTPException(status.HTTP_404_NOT_FOUND, "Condomínio não encontrado.")
@@ -72,12 +117,12 @@ async def get_condo_access(
 ) -> CondoAccess:
     # 404 (not 403) so that the existence of other tenants' ids is not revealed (D15). The
     # attempt is still recorded as a security event (D78), with the requested id in details.
-    roles: frozenset[Role] = frozenset()
+    access: CondoAccess | None = None
     if condominium_id in principal.condominium_ids:
         condo = await session.get(Condominium, condominium_id)
         if condo is not None:
-            roles = await roles_on_condominium(session, principal.user.id, condo)
-    if not roles:
+            access = await access_for(session, principal.user.id, condo)
+    if access is None or not access.roles:
         await record_security_event(
             action=ACCESS_DENIED,
             actor_user_id=principal.user.id,
@@ -88,7 +133,7 @@ async def get_condo_access(
             },
         )
         raise NOT_FOUND
-    return CondoAccess(user_id=principal.user.id, condominium_id=condominium_id, roles=roles)
+    return access
 
 
 def require(permission: Permission) -> Callable[..., Awaitable[CondoAccess]]:

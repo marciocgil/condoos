@@ -39,7 +39,11 @@ export default async function CarteiraPage() {
     apiGet<QueueItem[]>("/queue"),
     apiGet<Me>("/me"),
   ]);
-  const isManager = me.management_companies.some((c) => c.roles.includes("gerente"));
+  // The manager registers in its company; a CondoOS admin registers a condominium that
+  // contracts directly, without a management company (D73).
+  const isManager =
+    me.management_companies.some((c) => c.roles.includes("gerente")) ||
+    me.platform_roles.includes("condoos_admin");
   const n = p.condominiums.length;
   return (
     <>

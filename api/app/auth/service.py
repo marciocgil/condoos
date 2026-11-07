@@ -12,7 +12,7 @@ from app.auth.tokens import hash_token, new_token
 from app.config import get_settings
 from app.core.audit import record_audit
 from app.core.time import utcnow
-from app.db.models import AppUser, MagicLinkToken, UserSession
+from app.db.models import AppUser, MagicLinkToken, Membership, UserSession
 
 
 def normalize_email(email: str) -> str:
@@ -107,6 +107,16 @@ async def consume_magic_link(session: AsyncSession, raw_token: str) -> NewSessio
             expires_at=now + timedelta(days=get_settings().session_ttl_days),
             last_seen_at=now,
         )
+    )
+    # The first login accepts pending invitations (D77).
+    await session.execute(
+        update(Membership)
+        .where(
+            Membership.user_id == user_id,
+            Membership.accepted_at.is_(None),
+            Membership.revoked_at.is_(None),
+        )
+        .values(accepted_at=now)
     )
     await record_audit(
         session,

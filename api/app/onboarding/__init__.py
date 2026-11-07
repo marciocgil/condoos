@@ -129,6 +129,9 @@ async def onboard(session: AsyncSession, spec: OnboardingIn) -> Condominium:
     condo = Condominium(
         id=uuid.uuid4(),
         management_company_id=company_id,
+        # With a management company, its manager reviews findings as before (D74); the
+        # condominium can turn it off. Without one, only CondoOS reviewers do.
+        management_company_reviews=company_id is not None,
         name=c.name,
         slug=c.slug,
         cnpj=c.cnpj,

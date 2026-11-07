@@ -8,8 +8,21 @@ import { textareaClass } from "@/components/ui/Field";
 import { ACTION_LABEL } from "@/lib/labels";
 
 // Actions that require a comment (spec §7).
-const NEEDS_COMMENT = new Set(["contestar", "descartar"]);
-const ORDER = ["validar", "confirmar", "contestar", "ignorar", "descartar", "reabrir"];
+const NEEDS_COMMENT = new Set(["contestar", "descartar", "solicitar_evidencia"]);
+const ORDER = [
+  "validar",
+  "confirmar",
+  "contestar",
+  "ignorar",
+  "solicitar_evidencia",
+  "descartar",
+  "reabrir",
+];
+const COMMENT_LABEL: Record<string, string> = {
+  contestar: "Por que você contesta este achado?",
+  descartar: "Motivo do descarte",
+  solicitar_evidencia: "Que evidência falta para decidir?",
+};
 const VARIANT: Record<string, ButtonVariant> = {
   validar: "primary",
   confirmar: "primary",
@@ -82,7 +95,7 @@ export function DecisionBar({
       {pending && (
         <div className="space-y-2 rounded-[var(--radius-card)] border border-line bg-bg-2 p-4">
           <label htmlFor="decision-comment" className="text-[13px] font-medium">
-            {pending === "contestar" ? "Por que você contesta este achado?" : "Motivo do descarte"}
+            {COMMENT_LABEL[pending] ?? "Motivo"}
           </label>
           <textarea
             id="decision-comment"

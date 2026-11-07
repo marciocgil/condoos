@@ -9,6 +9,32 @@ class Role(StrEnum):
     CONSELHEIRO = "conselheiro"
     GERENTE = "gerente"
     ANALISTA = "analista"
+    # Reserved for later pilots (D77): accepted in memberships, no permission yet.
+    ZELADOR = "zelador"
+    FORNECEDOR = "fornecedor"
+    MORADOR = "morador"
+    # CondoOS staff (D77). Never stored in ``membership``: they come from ``platform_role``
+    # plus a ``condo_assignment`` on each condominium.
+    CONDOOS_ADMIN = "condoos_admin"
+    CONDOOS_REVIEWER = "condoos_reviewer"
+
+
+class PlatformRole(StrEnum):
+    CONDOOS_ADMIN = "condoos_admin"
+    CONDOOS_REVIEWER = "condoos_reviewer"
+
+
+# Roles a ``membership`` row may hold (the CHECK constraint of migration 0011).
+MEMBERSHIP_ROLES: tuple[Role, ...] = (
+    Role.SINDICO,
+    Role.SUBSINDICO,
+    Role.CONSELHEIRO,
+    Role.GERENTE,
+    Role.ANALISTA,
+    Role.ZELADOR,
+    Role.FORNECEDOR,
+    Role.MORADOR,
+)
 
 
 class BoardPosition(StrEnum):
@@ -77,6 +103,9 @@ class FindingStatus(StrEnum):
     # The rule stopped detecting it after new data (e.g. the missing note arrived) before any
     # person acted on it (D61). Kept for the record; not shown to the board, not at risk.
     SUPERADO = "superado"
+    # Inconclusive: a reviewer asked for more evidence (D74). Not shown to the board and not
+    # counted at risk until reviewed again.
+    PENDENTE_EVIDENCIA = "pendente_evidencia"
 
 
 class DecisionAction(StrEnum):
@@ -86,6 +115,18 @@ class DecisionAction(StrEnum):
     CONTESTAR = "contestar"
     IGNORAR = "ignorar"
     REABRIR = "reabrir"
+    SOLICITAR_EVIDENCIA = "solicitar_evidencia"
+
+
+class ReviewRequirement(StrEnum):
+    """What a finding (or, later, an opportunity) needs before the board sees it (D74)."""
+
+    NONE = "none"  # published directly
+    QUALIFIED_REVIEW = (
+        "qualified_review"  # a qualified person reviews (reviewer; manager if allowed)
+    )
+    INTERNAL_REVIEW = "internal_review"  # only a CondoOS reviewer (economy recommendations)
+    PENDING_EVIDENCE = "pending_evidence"  # inconclusive: waits for evidence
 
 
 class CompetenceStatus(StrEnum):
@@ -113,4 +154,19 @@ VISIBLE_TO_BOARD: frozenset[FindingStatus] = frozenset(
         FindingStatus.CONTESTADO,
         FindingStatus.IGNORADO,
     }
+)
+
+# Statuses that are no longer (or not yet) risk: out of "valor em risco".
+NOT_AT_RISK: frozenset[FindingStatus] = frozenset(
+    {
+        FindingStatus.IGNORADO,
+        FindingStatus.DESCARTADO,
+        FindingStatus.SUPERADO,
+        FindingStatus.PENDENTE_EVIDENCIA,
+    }
+)
+
+# Statuses waiting for a reviewer (queue, closing check, portfolio counters).
+UNDER_REVIEW: frozenset[FindingStatus] = frozenset(
+    {FindingStatus.AGUARDANDO_VALIDACAO, FindingStatus.PENDENTE_EVIDENCIA}
 )

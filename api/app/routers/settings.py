@@ -2,7 +2,7 @@
 and members. Every change is recorded in audit_log (keys only, never values of people)."""
 
 import uuid
-from datetime import date
+from datetime import date, datetime
 from decimal import Decimal, InvalidOperation
 from typing import Annotated, Any
 
@@ -10,11 +10,12 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 from sqlalchemy import or_, select
 
-from app.auth.deps import require
+from app.auth.deps import active_membership, require
 from app.auth.rbac import CondoAccess, Permission
 from app.core.audit import record_audit
 from app.core.br import format_cnpj
-from app.db.models import AppUser, BoardMember, Condominium, Membership
+from app.core.time import utcnow
+from app.db.models import AppUser, BoardMember, CondoAssignment, Condominium, Membership
 from app.db.session import DbSession
 from app.rules.engine import ALL_RULES
 
@@ -34,7 +35,9 @@ class MemberOut(BaseModel):
     name: str
     email: str
     role: str
-    scope: str  # condominio | administradora
+    scope: str  # condominio | administradora | condoos
+    status: str = "ativo"  # convidado | ativo (expired and revoked accesses are not listed)
+    expires_at: datetime | None = None
 
 
 class BoardOut(BaseModel):
@@ -52,6 +55,8 @@ class ProfileOut(BaseModel):
     units: int
     address: str
     retention_years: int
+    timezone: str
+    management_company_reviews: bool
 
 
 class SettingsOut(BaseModel):
@@ -92,13 +97,32 @@ async def _out(db: DbSession, condo: Condominium) -> SettingsOut:
                 Membership.role,
                 Membership.condominium_id,
                 Membership.id,
+                Membership.accepted_at,
+                Membership.invited_at,
+                Membership.expires_at,
             )
             .join(Membership, Membership.user_id == AppUser.id)
             .where(
                 or_(
                     Membership.condominium_id == condo.id,
                     Membership.management_company_id == condo.management_company_id,
-                )
+                ),
+                *active_membership(),
+            )
+            .order_by(AppUser.name)
+        )
+    ).all()
+    staff = (
+        await db.execute(
+            select(AppUser.name, AppUser.email, CondoAssignment.platform_role)
+            .join(CondoAssignment, CondoAssignment.user_id == AppUser.id)
+            .where(
+                CondoAssignment.condominium_id == condo.id,
+                CondoAssignment.revoked_at.is_(None),
+                or_(
+                    CondoAssignment.valid_until.is_(None),
+                    CondoAssignment.valid_until > utcnow(),
+                ),
             )
             .order_by(AppUser.name)
         )
@@ -115,6 +139,8 @@ async def _out(db: DbSession, condo: Condominium) -> SettingsOut:
             units=condo.units,
             address=condo.address,
             retention_years=condo.retention_years,
+            timezone=condo.timezone,
+            management_company_reviews=condo.management_company_reviews,
         ),
         approval_limits=condo.approval_limits or {},
         expense_categories=condo.expense_categories or [],
@@ -134,9 +160,12 @@ async def _out(db: DbSession, condo: Condominium) -> SettingsOut:
                 email=e,
                 role=r,
                 scope="condominio" if cid else "administradora",
+                status="convidado" if invited and accepted is None else "ativo",
+                expires_at=expires,
             )
-            for n, e, r, cid, mid in members
-        ],
+            for n, e, r, cid, mid, accepted, invited, expires in members
+        ]
+        + [MemberOut(name=n, email=e, role=r, scope="condoos") for n, e, r in staff],
         board=[
             BoardOut(
                 id=b.id,

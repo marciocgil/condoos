@@ -2,6 +2,7 @@ import {
   CheckCircle2,
   Clock,
   EyeOff,
+  FileQuestion,
   MessageSquareWarning,
   RefreshCcw,
   Sparkles,
@@ -20,6 +21,7 @@ const TONE: Record<FindingStatus, BadgeTone> = {
   ignorado: "neutral",
   descartado: "neutral",
   superado: "neutral",
+  pendente_evidencia: "warning",
 };
 const ICON: Record<FindingStatus, React.ReactNode> = {
   aguardando_validacao: <Clock size={12} />,
@@ -29,6 +31,7 @@ const ICON: Record<FindingStatus, React.ReactNode> = {
   ignorado: <EyeOff size={12} />,
   descartado: <XCircle size={12} />,
   superado: <RefreshCcw size={12} />,
+  pendente_evidencia: <FileQuestion size={12} />,
 };
 
 export function FindingStatusBadge({ status }: { status: FindingStatus }) {

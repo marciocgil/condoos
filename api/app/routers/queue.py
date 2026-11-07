@@ -13,13 +13,13 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 
-from app.auth.deps import CurrentPrincipal, require, roles_on_condominium
+from app.auth.deps import CurrentPrincipal, access_for, require
 from app.auth.rbac import CondoAccess, Permission
 from app.core.audit import record_audit
 from app.core.br import is_valid_cnpj, is_valid_cpf
 from app.core.money import brl
 from app.core.time import utcnow
-from app.db.enums import DocumentType, ExtractionStatus, FindingStatus
+from app.db.enums import UNDER_REVIEW, DocumentType, ExtractionStatus, FindingStatus
 from app.db.models import (
     BankTransaction,
     Condominium,
@@ -96,9 +96,7 @@ async def _queue(db: DbSession, principal: CurrentPrincipal) -> list[QueueItemOu
     can_correct: dict[uuid.UUID, str] = {}
     can_validate: dict[uuid.UUID, str] = {}
     for condo in condos:
-        access = CondoAccess(
-            principal.user.id, condo.id, await roles_on_condominium(db, principal.user.id, condo)
-        )
+        access = await access_for(db, principal.user.id, condo)
         if access.can(Permission.CORRECT_EXTRACTION):
             can_correct[condo.id] = condo.name
         if access.can(Permission.VALIDATE_FINDING):
@@ -146,7 +144,7 @@ async def _queue(db: DbSession, principal: CurrentPrincipal) -> list[QueueItemOu
             select(Finding)
             .where(
                 Finding.condominium_id.in_(can_validate),
-                Finding.status == FindingStatus.AGUARDANDO_VALIDACAO.value,
+                Finding.status.in_([s.value for s in UNDER_REVIEW]),
             )
             .order_by(Finding.amount_at_risk.desc())
         )
@@ -157,7 +155,11 @@ async def _queue(db: DbSession, principal: CurrentPrincipal) -> list[QueueItemOu
                     id=f.id,
                     condominium_id=f.condominium_id,
                     condominium_name=can_validate[f.condominium_id],
-                    title=f"Grave: {f.title}",
+                    title=(
+                        f"Evidência pendente: {f.title}"
+                        if f.status == FindingStatus.PENDENTE_EVIDENCIA.value
+                        else f"Grave: {f.title}"
+                    ),
                     detail=f"{brl(f.amount_at_risk)} em risco",
                     created_at=f.created_at,
                 )

@@ -21,6 +21,7 @@ from app.db.enums import (
     BankTransactionOrigin,
     BoardPosition,
     CompetenceStatus,
+    PlatformRole,
     Role,
 )
 from app.db.models import (
@@ -29,12 +30,14 @@ from app.db.models import (
     BankTransaction,
     BoardMember,
     Competence,
+    CondoAssignment,
     Condominium,
     Contract,
     Expense,
     IndexValue,
     ManagementCompany,
     Membership,
+    PlatformRoleGrant,
     Supplier,
 )
 from app.enrichment.indices import fixture_values
@@ -356,6 +359,24 @@ USERS: list[tuple[str, str, list[tuple[str | None, Role]]]] = [
     ("Elisa Prado Monteiro", "elisa.analista@atlantida.example.com", [(None, Role.ANALISTA)]),
 ]
 
+# CondoOS staff (D77): a platform role plus an assignment per condominium. Ids come from
+# uuid5 so the random sequence behind the planted cases does not change.
+STAFF: list[tuple[str, str, PlatformRole, list[str]]] = [
+    (
+        "Fábio Nogueira Lins",
+        "fabio.admin@condoos.example.com",
+        PlatformRole.CONDOOS_ADMIN,
+        ["jardim-das-acacias", "mirante-do-vale"],
+    ),
+    (
+        "Gabriela Pires Rocha",
+        "gabriela.revisora@condoos.example.com",
+        PlatformRole.CONDOOS_REVIEWER,
+        ["mirante-do-vale"],
+    ),
+]
+STAFF_NS = uuid.UUID("6f1c2a52-6d0e-4d8e-9a57-0d5f2b3c4e11")
+
 
 @dataclass(frozen=True)
 class ExpectedFinding:
@@ -577,6 +598,7 @@ def build_seed() -> SeedResult:
         condo = Condominium(
             id=_uuid(rng),
             management_company_id=company.id,
+            management_company_reviews=True,  # the manager validates, as before D74
             name=cspec.name,
             slug=cspec.slug,
             cnpj=generate_cnpj(rng),
@@ -728,12 +750,36 @@ def build_seed() -> SeedResult:
         for month, pct in sorted(series.items())
     ]
 
+    staff_users: list[Base] = []
+    staff_rows: list[Base] = []
+    for name, email, prole, slugs in STAFF:
+        sid = uuid.uuid5(STAFF_NS, email)
+        staff_users.append(AppUser(id=sid, name=name, email=email, is_active=True))
+        staff_rows.append(
+            PlatformRoleGrant(
+                id=uuid.uuid5(STAFF_NS, f"{email}:role"),
+                user_id=sid,
+                role=prole.value,
+                reason="Equipe CondoOS do piloto (seed)",
+            )
+        )
+        for slug in slugs:
+            staff_rows.append(
+                CondoAssignment(
+                    id=uuid.uuid5(STAFF_NS, f"{email}:{slug}"),
+                    condominium_id=condos[slug].id,
+                    user_id=sid,
+                    platform_role=prole.value,
+                    reason="Equipe CondoOS do piloto (seed)",
+                )
+            )
+
     result.objects = [
         [company, *index_rows],
         list(suppliers.values()) + b.extra_suppliers,
         list(condos.values()),
-        users,
-        memberships + board_members + contracts + planted_contracts + competences,
+        users + staff_users,
+        staff_rows + memberships + board_members + contracts + planted_contracts + competences,
         b.expenses,
         b.transactions + b.approvals,
     ]

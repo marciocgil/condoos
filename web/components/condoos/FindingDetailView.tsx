@@ -111,6 +111,12 @@ export function FindingDetailView({
           administradora
         </p>
       )}
+      {f.validated_by_condoos && (
+        <p className="inline-flex items-center gap-2 text-[13px] text-fg-2">
+          <ShieldCheck size={16} className="text-success" aria-hidden /> Revisado pela equipe
+          CondoOS
+        </p>
+      )}
 
       <section aria-labelledby="history">
         <h2 id="history" className="mb-3 text-base font-semibold">

@@ -30,8 +30,10 @@ from sqlalchemy import (
 from sqlalchemy.dialects.postgresql import JSONB, TSVECTOR, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
+from app.core.time import DEFAULT_TIMEZONE
 from app.db.base import Base, IdTimestampMixin
 from app.db.enums import (
+    MEMBERSHIP_ROLES,
     AdjustmentIndex,
     BankTransactionOrigin,
     BoardPosition,
@@ -43,7 +45,8 @@ from app.db.enums import (
     ExtractionStatus,
     FindingStatus,
     JobStatus,
-    Role,
+    PlatformRole,
+    ReviewRequirement,
     Severity,
 )
 
@@ -91,6 +94,15 @@ class Condominium(IdTimestampMixin, Base):
     rule_params: Mapped[dict[str, Any]] = mapped_column(Json, default=dict)
     expense_categories: Mapped[list[str]] = mapped_column(Json, default=list)
     retention_years: Mapped[int] = mapped_column(Integer, default=5)
+    # IANA time zone for deadlines, agenda and "today" (ADR-P07, migration 0011).
+    timezone: Mapped[str] = mapped_column(
+        String(64), default=DEFAULT_TIMEZONE, server_default=DEFAULT_TIMEZONE
+    )
+    # Whether the management company's manager may review findings (D74). Optional by design:
+    # the condominium is the client and never depends on a management company (D73).
+    management_company_reviews: Mapped[bool] = mapped_column(
+        Boolean, default=False, server_default="false"
+    )
 
 
 class AppUser(IdTimestampMixin, Base):
@@ -107,7 +119,10 @@ class Membership(IdTimestampMixin, Base):
 
     __tablename__ = "membership"
     __table_args__ = (
-        _enum_check("role", Role),
+        CheckConstraint(
+            "role IN (" + ", ".join(f"'{r.value}'" for r in MEMBERSHIP_ROLES) + ")",
+            name="role_valid",
+        ),
         CheckConstraint(
             "(condominium_id IS NULL) <> (management_company_id IS NULL)",
             name="exactly_one_scope",
@@ -125,6 +140,50 @@ class Membership(IdTimestampMixin, Base):
         "management_company.id", nullable=True
     )
     role: Mapped[str] = mapped_column(String(20))
+    # Temporary and revocable access for external participants (D77, migration 0011).
+    # All NULL = permanent access, as before. A revoked row is kept (history) and can be
+    # reactivated by granting the same access again.
+    invited_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    accepted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class PlatformRoleGrant(IdTimestampMixin, Base):
+    """A CondoOS staff role (admin or reviewer). Grants no condominium by itself: access to
+    each condominium needs a ``condo_assignment`` (least privilege, D77)."""
+
+    __tablename__ = "platform_role"
+    __table_args__ = (_enum_check("role", PlatformRole), UniqueConstraint("user_id", "role"))
+
+    user_id: Mapped[uuid.UUID] = _uuid_fk("app_user.id", ondelete="CASCADE")
+    role: Mapped[str] = mapped_column(String(20))
+    granted_by_user_id: Mapped[uuid.UUID | None] = _uuid_fk(
+        "app_user.id", nullable=True, ondelete="SET NULL"
+    )
+    reason: Mapped[str] = mapped_column(String(300))
+    expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class CondoAssignment(IdTimestampMixin, Base):
+    """A CondoOS staff member assigned to one condominium, with an optional end date."""
+
+    __tablename__ = "condo_assignment"
+    __table_args__ = (
+        _enum_check("platform_role", PlatformRole),
+        UniqueConstraint("condominium_id", "user_id", "platform_role"),
+    )
+
+    condominium_id: Mapped[uuid.UUID] = _uuid_fk("condominium.id")
+    user_id: Mapped[uuid.UUID] = _uuid_fk("app_user.id", ondelete="CASCADE")
+    platform_role: Mapped[str] = mapped_column(String(20))
+    granted_by_user_id: Mapped[uuid.UUID | None] = _uuid_fk(
+        "app_user.id", nullable=True, ondelete="SET NULL"
+    )
+    reason: Mapped[str] = mapped_column(String(300))
+    valid_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
 class BoardMember(IdTimestampMixin, Base):
@@ -443,6 +502,32 @@ class Finding(IdTimestampMixin, Base):
     supplier_id: Mapped[uuid.UUID | None] = _uuid_fk("supplier.id", nullable=True)
     # Same rule + same subject => same finding when the pipeline is re-run (idempotency).
     dedupe_key: Mapped[str] = mapped_column(String(200))
+    # Review proportional to risk (D74, migration 0012): what the policy required and which
+    # policy version decided it. ``confidence`` and ``category`` are filled by future rules.
+    review_requirement: Mapped[str] = mapped_column(
+        String(20), default=ReviewRequirement.NONE.value, server_default="none"
+    )
+    review_policy_version: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    confidence: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    category: Mapped[str | None] = mapped_column(String(40), nullable=True)
+
+
+class ReviewPolicy(IdTimestampMixin, Base):
+    """Versioned review policy (D74). ``condominium_id`` NULL = the platform default, which
+    every condominium reads; a condominium row overrides it from ``valid_from`` on. Append
+    only: a change is a new version."""
+
+    __tablename__ = "review_policy"
+    __table_args__ = (UniqueConstraint("condominium_id", "version"),)
+
+    condominium_id: Mapped[uuid.UUID | None] = _uuid_fk("condominium.id", nullable=True)
+    version: Mapped[int] = mapped_column(Integer)
+    valid_from: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    created_by_user_id: Mapped[uuid.UUID | None] = _uuid_fk(
+        "app_user.id", nullable=True, ondelete="SET NULL"
+    )
+    rules: Mapped[list[dict[str, Any]]] = mapped_column(Json, default=list)
+    reason: Mapped[str] = mapped_column(String(300))
 
 
 class Decision(IdTimestampMixin, Base):
@@ -454,7 +539,7 @@ class Decision(IdTimestampMixin, Base):
     condominium_id: Mapped[uuid.UUID] = _uuid_fk("condominium.id")
     finding_id: Mapped[uuid.UUID] = _uuid_fk("finding.id")
     user_id: Mapped[uuid.UUID] = _uuid_fk("app_user.id")
-    action: Mapped[str] = mapped_column(String(10))
+    action: Mapped[str] = mapped_column(String(25))
     comment: Mapped[str | None] = mapped_column(Text, nullable=True)
     decided_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
@@ -593,7 +678,9 @@ RLS_TABLES: dict[str, str] = {
     "expense_document": "condominium_id",
     "match_issue": "condominium_id",
     "document_chunk": "condominium_id",
+    "condo_assignment": "condominium_id",
+    "review_policy": "condominium_id",
 }
 
 # Tables the application role may only read and insert into (never update or delete).
-APPEND_ONLY_TABLES: tuple[str, ...] = ("decision", "audit_log")
+APPEND_ONLY_TABLES: tuple[str, ...] = ("decision", "audit_log", "review_policy")

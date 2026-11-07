@@ -42,12 +42,12 @@ Precedência (pacote de prompts): requisitos aprovados > decisões aceitas > có
 - **Proposta:** tabela `opportunity` (campos da §6.3) ligada a achados/contratos/despesas; o cálculo de economia fica em código determinístico; estados da §6.4 do Plano. Achado continua sendo o "indício"; oportunidade é a recomendação acionável.
 - **Afeta:** WP-13/14/15. Ampliação da decisão: cinco estágios de economia em `savings_record` (só inclusão).
 
-### ADR-P08 — Papéis de plataforma com atribuição por condomínio — proposta (D77)
+### ADR-P08 — Papéis de plataforma com atribuição por condomínio — **implementada (D79)**
 - **Proposta:** `platform_role` (condoos_admin, condoos_reviewer) + `condo_assignment` com prazo e revogação; terceiro ramo em `app_accessible_condominium_ids`; papéis zelador/fornecedor/morador reservados no CHECK sem permissão; `membership` com `expires_at`/`revoked_at`/convite. Detalhe em `docs/data-model.md` §2 e `docs/authorization-matrix.md`.
 - **Alternativa descartada:** papel de plataforma com visão de todos os condomínios (fere menor privilégio).
 - **Aguarda:** aprovação da migração 0011.
 
-### ADR-P09 — Política de revisão versionada — proposta (D74)
+### ADR-P09 — Política de revisão versionada — **implementada (D79)**
 - **Proposta:** `review_policy` versionada (padrão da plataforma + por condomínio), regras tipadas por objeto, regra, categoria, severidade, valor e confiança; requisitos `none / internal_review / qualified_review / pending_evidence`; status `pendente_evidencia`; política padrão reproduz o comportamento atual. Detalhe em `docs/data-model.md` §3.
 - **Aguarda:** aprovação da migração 0012.
 
@@ -55,7 +55,7 @@ Precedência (pacote de prompts): requisitos aprovados > decisões aceitas > có
 - **Proposta:** workflow com `make lint` e `pytest` contra serviço `pgvector/pgvector:pg16`; E2E fora do CI no primeiro passo (exige a stack completa). Sem segredo de LLM (modo `replay`).
 - **Afeta:** WP-01. Baixo risco; pode ser decidido pelo Claude e registrado em `decisions.md` quando implementado.
 
-### ADR-P07 — Fuso horário por condomínio
+### ADR-P07 — Fuso horário por condomínio — **implementada (D79)**
 - **Proposta:** coluna `condominium.timezone` (padrão `America/Sao_Paulo`), usada em prazos, agenda e briefing; datas continuam armazenadas em UTC.
 - **Afeta:** FR-001, WF-05, briefing.
 

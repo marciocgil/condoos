@@ -1,12 +1,13 @@
 import Link from "next/link";
 
 import { BoardCard, MembersCard, ProfileCard } from "@/components/condoos/RegistryCards";
+import { ReviewPolicyCard } from "@/components/condoos/ReviewPolicyCard";
 import { SettingsForm } from "@/components/condoos/SettingsForm";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { cx } from "@/components/ui/cx";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { apiGet } from "@/lib/api";
-import type { Me, Settings } from "@/lib/types";
+import type { Me, ReviewPolicy, Settings } from "@/lib/types";
 
 export default async function ConfiguracoesPage({
   searchParams,
@@ -20,12 +21,17 @@ export default async function ConfiguracoesPage({
     return (
       <>
         <PageHeader title="Configurações" />
-        <EmptyState title="Sem permissão">Somente o gerente configura os condomínios.</EmptyState>
+        <EmptyState title="Sem permissão">
+          Somente o gerente ou a administração CondoOS configura os condomínios.
+        </EmptyState>
       </>
     );
   }
   const current = condos.find((c) => c.id === condominio) ?? condos[0]!;
-  const settings = await apiGet<Settings>(`/condominiums/${current.id}/settings`);
+  const [settings, policy] = await Promise.all([
+    apiGet<Settings>(`/condominiums/${current.id}/settings`),
+    apiGet<ReviewPolicy>(`/condominiums/${current.id}/review-policy`),
+  ]);
   return (
     <>
       <PageHeader
@@ -57,6 +63,7 @@ export default async function ConfiguracoesPage({
             condominiumId={current.id}
             profile={settings.profile}
           />
+          <ReviewPolicyCard key={`r-${current.id}`} condominiumId={current.id} policy={policy} />
           <BoardCard key={`b-${current.id}`} condominiumId={current.id} board={settings.board} />
           <MembersCard
             key={`m-${current.id}`}

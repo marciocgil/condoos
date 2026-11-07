@@ -16,7 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.br import format_cnpj
 from app.core.time import add_months, utcnow
-from app.db.enums import VISIBLE_TO_BOARD, FindingStatus
+from app.db.enums import NOT_AT_RISK, UNDER_REVIEW, VISIBLE_TO_BOARD
 from app.db.models import (
     AppUser,
     BankTransaction,
@@ -352,16 +352,7 @@ async def build_month_report(
         for d in documents
     ]
 
-    open_ = [
-        f
-        for f in finding_rows
-        if f.status
-        not in (
-            FindingStatus.IGNORADO.value,
-            FindingStatus.DESCARTADO.value,
-            FindingStatus.SUPERADO.value,
-        )
-    ]
+    open_ = [f for f in finding_rows if f.status not in NOT_AT_RISK]
     status = comp.status if comp else "aberta"
     return MonthReport(
         condominium=condo.name,
@@ -439,7 +430,7 @@ async def pending_for_month(
                 select(Finding.id).where(
                     Finding.condominium_id == condominium_id,
                     Finding.competence == month,
-                    Finding.status == FindingStatus.AGUARDANDO_VALIDACAO.value,
+                    Finding.status.in_([s.value for s in UNDER_REVIEW]),
                 )
             )
         )

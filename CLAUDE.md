@@ -104,7 +104,8 @@ make pilot         # aceite do Marco 6 (após reset + up) → docs/pilot/run.md
 ```
 
 - Web: http://localhost:3000 · API: http://localhost:8000/docs · E-mails: http://localhost:8025
-- Usuários do seed: `ana.sindica@acacias.example.com` (síndica), `bruno.conselho@acacias.example.com` (conselheiro), `carla.sindica@mirante.example.com` (síndica), `diego.gerente@atlantida.example.com` (gerente), `elisa.analista@atlantida.example.com` (analista).
+- Usuários do seed: `ana.sindica@acacias.example.com` (síndica), `bruno.conselho@acacias.example.com` (conselheiro), `carla.sindica@mirante.example.com` (síndica), `diego.gerente@atlantida.example.com` (gerente), `elisa.analista@atlantida.example.com` (analista), `fabio.admin@condoos.example.com` (Admin CondoOS, nos dois condomínios), `gabriela.revisora@condoos.example.com` (Reviewer CondoOS, só Mirante).
+- Equipe CondoOS (D79): `python -m app.platform grant-role|revoke-role|assign|unassign ...` (papel dono do banco) cria o primeiro Admin; depois o Admin atribui pela API `/condominiums/{id}/assignments`.
 - Testes do backend: `TEST_DATABASE_ADMIN_URL` (padrão `postgresql+asyncpg://postgres:postgres@localhost:5432/postgres`). A suíte recria o banco `condoos_test`, aplica as migrações e carrega o seed.
 - E2E com um Chromium do sistema: `PW_CHROMIUM_PATH=/caminho/do/chrome make e2e`.
 - LLM: sem `ANTHROPIC_API_KEY`, o modo é `replay` (só respostas gravadas; o resto vai para a fila). Para gravar respostas reais: `LLM_MODE=record`. A suíte de testes nunca chama a API.
@@ -127,6 +128,8 @@ make pilot         # aceite do Marco 6 (após reset + up) → docs/pilot/run.md
 - **Achados** nunca usam "fraude", "desvio" ou "irregularidade comprovada" (o motor recusa).
 - **Explicações por IA** só citam números dos dados da regra e das evidências; `findings/explain.py` confere por código.
 - **Decisões** seguem `findings/decisions.py` (quem pode o quê); a interface mostra só `allowed_actions`.
+- **Acesso** (D79): papéis vêm de `membership` ativa (sem `revoked_at`, dentro de `expires_at`) e, para a equipe CondoOS, de `platform_role` + `condo_assignment` vigentes. Monte permissões sempre com `auth/deps.py::access_for` (aplica `management_company_reviews`). Nenhum papel recebe `frozenset(Permission)`; validar e aprovar ficam em papéis separados (`tests/test_access_model.py`). Remover acesso revoga, não apaga.
+- **Revisão** (D74, D79): o status inicial de um achado vem da política (`app/review/`), não da severidade direto. Status novo precisa entrar em `NOT_AT_RISK`/`UNDER_REVIEW` (`db/enums.py`) quando couber.
 - **Telas da administradora** aceitam `?condominio=<id>` (filtro por condomínio, D69); o menu lateral mantém a escolha.
 - **Interface:** use os tokens e os componentes de `components/ui` e `components/condoos`; status sempre com texto e ícone, nunca só cor; verde-lima só em ação primária e item ativo.
 - **Casamento ambíguo** vai para `match_issue`, nunca é escolhido ao acaso.

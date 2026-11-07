@@ -1,6 +1,6 @@
 # Modelo de dados — evolução após as decisões DV-01..DV-05
 
-Data: 07/11/2026. Decisões de origem: D73–D77 (`docs/decisions.md`). **Status: proposta aguardando aprovação do Marcio.** Nenhuma migração foi escrita ainda; este documento apresenta impacto, relacionamentos, plano de migração e critérios de validação, como pedido antes de qualquer mudança persistente.
+Data: 07/11/2026. Decisões de origem: D73–D77 (`docs/decisions.md`). **Status:** plano aprovado pelo Marcio; **0011 e 0012 implementadas** (D79), 0013 (VS-01) e 0014 (VS-03) ainda não. Diferenças em relação ao texto abaixo: a tabela de papéis de plataforma chama `platform_role` (modelo `PlatformRoleGrant`); o padrão da plataforma não tem regra de `pending_evidence` automática (o estado nasce da ação `solicitar_evidencia`), porque R04/R07 sem IA não geram achado.
 
 Princípios da evolução:
 - **Somente acréscimos.** Nenhuma tabela ou coluna existente é removida ou renomeada. Achado, decisão, aprovação (R12), contratos, despesas e regras continuam como estão.

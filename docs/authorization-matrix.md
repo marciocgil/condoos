@@ -1,6 +1,6 @@
 # Matriz de autorização — papéis, permissões e ações
 
-Data: 07/11/2026. Decisão de origem: D77 (DV-05). Estado atual em `api/app/auth/rbac.py`; o que está marcado **(novo)** é proposta, ainda não implementada (ver `docs/data-model.md` §2).
+Data: 07/11/2026. Decisão de origem: D77 (DV-05); implementado em D79 (`api/app/auth/rbac.py`). Ainda **não** têm rota: `manage_cases`, `update_task` (VS-01) e `view_opportunity_draft`, `review_opportunity`, `approve_in_condo` (VS-03), que já estão declaradas.
 
 Princípios (DV-05):
 - Escopo sempre por condomínio; usuário de plataforma só vê condomínios atribuídos (`condo_assignment`).
@@ -19,7 +19,7 @@ Legenda: ✅ tem · ◐ condicionado (ver nota) · — não tem. Colunas: Sín =
 |---|---|---|---|---|---|---|---|---|
 | `view` | Resumo, achados publicados, contratos, histórico, chat | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `view_pending_findings` | Achados aguardando revisão ou evidência | — | — | — | ✅ | ✅ | ✅ | ✅ |
-| `decide_finding` | Confirmar, contestar, ignorar | ✅ | — | — | — | — | — | — |
+| `decide_finding` | Confirmar, contestar, ignorar | ✅ | — | — | ✅⁶ | — | — | — |
 | `comment_finding` | Comentar | ✅ | ✅ | ✅ | ✅ | — | — | ✅ |
 | `validate_finding` | Validar/descartar/reabrir achado em revisão | — | — | — | ◐¹ | — | — | ✅ |
 | `upload_document` | Enviar documentos | ✅ | — | — | ✅ | ✅ | ✅ | ✅ |
@@ -43,6 +43,7 @@ Notas:
 3. Só em assuntos/tarefas em que a administradora foi envolvida (atribuição ou vínculo), não em todos.
 4. Sempre dentro das alçadas e competências; valores acima da alçada pedem aprovação do órgão competente (conselho/assembleia), registrada como hoje (R12).
 5. Síndico configura só as autorizações operacionais do próprio condomínio; a regra "recomendação de economia exige revisão interna" não é editável por condomínio no piloto.
+6. Mantido do comportamento anterior a D77, quando o gerente tinha todas as permissões. Rever quando a administradora deixar de ser o operador padrão.
 
 ## 2. Ações sensíveis e quem decide
 

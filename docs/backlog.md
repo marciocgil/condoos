@@ -20,7 +20,7 @@ Data: 07/11/2026 (revisado com D73–D77). Prioridade e ordem seguem `docs/produ
 - Premissa: a suíte roda sem a stack completa (já é assim localmente).
 
 ### Feature F-01.2 — Lacunas de identidade e tenant
-**CB-002 — Fuso horário do condomínio** (ADR-P07) · P · FR-001 · movido para o incremento 2 (migração 0011)
+**CB-002 — Fuso horário do condomínio** (ADR-P07) · P · FR-001 · ✅ entregue (D79)
 - Aceite: `condominium.timezone` com padrão `America/Sao_Paulo`, validado contra a base IANA; editável em Configurações (gerente); migração sem RLS nova (coluna); agenda e "em atraso" usam o fuso; teste com fuso diferente.
 
 **CB-003 — Evento de segurança em acesso negado** (DV-06) · P · FR-003, US-001 · ✅ entregue (D78; também no 403)
@@ -45,16 +45,21 @@ Data: 07/11/2026 (revisado com D73–D77). Prioridade e ordem seguem `docs/produ
 
 ## Épico EP-09 — Modelo de acesso e revisão proporcional (D73, D74, D77) · WP-02, WP-03 · P0 · *migrações 0011–0012 aguardam aprovação*
 
-**CB-013 — Papéis de plataforma com atribuição por condomínio** (ADR-P08, migração 0011) · G · FR-002, FR-004, FR-008
+**CB-013 — Papéis de plataforma com atribuição por condomínio** (ADR-P08, migração 0011) · G · FR-002, FR-004, FR-008 · ✅ entregue (D79; tela de atribuição pendente → CB-018)
 - Aceite: `condoos_admin` e `condoos_reviewer` existem só com `condo_assignment` vigente; sem atribuição = 404; revogação/vencimento cortam o acesso na próxima requisição; Admin atribui e revoga com motivo (auditado); papéis zelador/fornecedor/morador aceitos no CHECK e sem permissão; critérios de `docs/data-model.md` §8 (0011).
-**CB-014 — Acesso externo temporário e convite** (migração 0011) · M · FR-002, US-001, US-002
+**CB-014 — Acesso externo temporário e convite** (migração 0011) · M · FR-002, US-001, US-002 · ✅ entregue (D79; convite pendente sem prazo próprio)
 - Aceite: acesso com prazo opcional, convite pendente até o primeiro login, reenvio e revogação; tudo auditado; gerente da administradora continua dando acesso como hoje.
-**CB-015 — Política de revisão versionada** (ADR-P09, migração 0012) · G · FR-006, FR-046
+**CB-015 — Política de revisão versionada** (ADR-P09, migração 0012) · G · FR-006, FR-046 · ✅ entregue (D79; tela do síndico pendente → CB-019)
 - Aceite: política padrão da plataforma reproduz o comportamento atual (graves aguardam, demais publicam; `test_planted_cases.py` exato); `review_requirement` e versão gravados no achado; nova versão não altera achados decididos; leitura da política no Configurações (somente leitura para o síndico nesta fase).
-**CB-016 — Reviewer opera a fila e valida** · M · FR-046, D73
+**CB-016 — Reviewer opera a fila e valida** · M · FR-046, D73 · ✅ entregue (D79)
 - Aceite: reviewer atribuído vê a fila de exceções, corrige extração, resolve casamento, valida/descarta graves e fecha o mês do condomínio sem administradora; o gerente só valida se `management_company_reviews`; ação `solicitar_evidencia` leva a `pendente_evidencia` (fora do relatório e do valor em risco).
-**CB-017 — Separação validar × aprovar** · P · D77
+**CB-017 — Separação validar × aprovar** · P · D77 · ✅ entregue (D79)
 - Aceite: teste garante que `review_*` não concede `approve_in_condo` e vice-versa, para todo papel; a interface mostra só as ações permitidas.
+
+**CB-018 — Tela de atribuição da equipe CondoOS** · M · D77 · *novo, sobra do incremento 2*
+- Aceite: o Admin lista, atribui (com motivo e prazo opcional) e remove pessoas da equipe CondoOS em Configurações, usando a API existente; status com texto e ícone.
+**CB-019 — Política de revisão na tela do síndico** · P · D74 · *novo, sobra do incremento 2*
+- Aceite: o síndico vê quem revisa os achados e liga/desliga a revisão pela administradora no celular, usando a API existente.
 
 ## Épico EP-03 — Assuntos e tarefas (VS-01) · WP-04, WP-07 · P0 · *ADR-P01 aceita (D75); migração 0013 aguarda aprovação*
 

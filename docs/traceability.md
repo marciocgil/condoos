@@ -1,15 +1,15 @@
 # Rastreabilidade — FR ↔ tarefa ↔ código ↔ teste ↔ entrega
 
-Data: 07/11/2026. Atualizar ao fim de cada fatia (CLAUDE.md, item 6). "Entrega" = marco do MVP auditor (Marco 1–6, 05/11/2026) ou decisão pós-piloto (D65–D71) em que o código entrou. Testes citados existem no repositório. Última execução local completa: 07/11/2026, 230 passaram (D78).
+Data: 07/11/2026. Atualizar ao fim de cada fatia (CLAUDE.md, item 6). "Entrega" = marco do MVP auditor (Marco 1–6, 05/11/2026) ou decisão pós-piloto (D65–D71) em que o código entrou. Testes citados existem no repositório. Última execução local completa: 07/11/2026, 252 passaram (D79); E2E: 18 fluxos passaram contra a stack local.
 
 | FR | Tarefa(s) | Código | Teste(s) | Entrega |
 |---|---|---|---|---|
-| FR-001 | CB-002 | `models.Condominium`, `routers/registry.py` (`POST /portfolio/condominiums`), `app/onboarding/` | `test_registry.py::test_manager_creates_a_condominium`, `test_onboarding.py` | Marco 1, Marco 6, D67 |
-| FR-002 | CB-004, CB-013, CB-014 | `routers/registry.py` (members), `auth/service.py`, `auth/tokens.py` | `test_auth.py`, `test_registry.py` | Marco 1, D67 |
+| FR-001 | CB-002 | `models.Condominium` (`timezone`), `core/time.py::local_today`, `routers/registry.py` (`POST /portfolio/condominiums`, perfil), `app/onboarding/`, migração 0011 | `test_registry.py::test_manager_creates_a_condominium`, `test_onboarding.py`, `test_access_model.py::test_condominium_time_zone`, `::test_admin_creates_direct_condominium_and_is_assigned` | Marco 1, Marco 6, D67, D79 |
+| FR-002 | CB-004, CB-013, CB-014 | `routers/registry.py` (members), `auth/service.py` (aceite do convite), `auth/deps.py` (acesso ativo), `app/platform/`, `routers/platform.py`, migração 0011 | `test_auth.py`, `test_registry.py`, `test_access_model.py` | Marco 1, D67, D79 |
 | FR-003 | CB-001, CB-003 | `db/models.py::RLS_TABLES`, migração `0002_security.py`, `auth/deps.py`, `core/audit.py::record_security_event`, `.github/workflows/ci.yml` | `test_isolation.py` (10), `test_access_revocation.py` (2 de evento) | Marco 1, D78 |
 | FR-004 | CB-004 | `auth/rbac.py`, `auth/deps.py::require` | `test_rbac.py`, `test_findings_api.py`, `test_access_revocation.py` (revogação e desativação) | Marco 1, D78 |
 | FR-005 | CB-010, CB-012 | `core/audit.py`, `models.AuditLog`, `models.Decision` | `test_isolation.py::test_append_only_tables`, `test_auth.py::test_login_is_audited` | Marco 1, Marco 4 |
-| FR-006 | CB-010, CB-012 | `routers/settings.py` (alçadas, parâmetros) | `test_registry.py` (parcial) | Marco 4 |
+| FR-006 | CB-010, CB-012, CB-015 | `routers/settings.py` (alçadas, parâmetros), `app/review/` e `routers/review_policy.py` (política de revisão versionada), migração 0012 | `test_registry.py` (parcial), `test_review_policy.py` | Marco 4, D79 |
 | FR-007 | CB-011 | — | — | — |
 | FR-008 | — | `routers/portfolio.py`, filtro `?condominio=` | `test_isolation.py::test_gerente_sees_whole_portfolio` | Marco 1, D69 |
 | FR-009 / FR-010 | — | — | — | — |
@@ -36,7 +36,7 @@ Data: 07/11/2026. Atualizar ao fim de cada fatia (CLAUDE.md, item 6). "Entrega" 
 | FR-043 | — | `extraction/*`, `ingestion/bank/` (OFX, CSV, CNAB) | `test_extraction.py`, `test_bank_parsers.py` | Marco 2 |
 | FR-044 | CB-061 | `rules/r02_above_contract.py`, `r03_adjustment.py`, `r04_scope.py`, `rules/contracts.py`, `enrichment/indices.py` | `test_rules.py`, `test_planted_cases.py` | Marco 3 |
 | FR-045 | CB-061, CB-064 | (valor em risco em `models.Finding`) | — | — |
-| FR-046 | CB-015, CB-016, CB-062 | (validação de graves em `findings/decisions.py`) | `test_rbac.py::test_pending_findings_visibility` | Marco 4; política em D74 |
+| FR-046 | CB-015, CB-016, CB-062 | `app/review/`, `rules/engine.py` (requisito por política), `findings/decisions.py` (revisão interna só da equipe CondoOS, `solicitar_evidencia`), `auth/rbac.py` | `test_rbac.py`, `test_review_policy.py`, `test_access_model.py::test_manager_reviews_only_when_the_condominium_allows`, `test_planted_cases.py`, e2e `condoos-staff.spec.ts` | Marco 4, D79 |
 | FR-047 | — | — | — | — |
 | FR-048 | — | `matching/bank.py`, `models.MatchIssue` | `test_matching.py` | Marco 3 |
 | FR-049 / FR-050 | CB-063 (050) | — | — | — |

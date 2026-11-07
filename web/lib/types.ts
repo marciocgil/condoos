@@ -1,4 +1,14 @@
-export type Role = "sindico" | "subsindico" | "conselheiro" | "gerente" | "analista";
+export type Role =
+  | "sindico"
+  | "subsindico"
+  | "conselheiro"
+  | "gerente"
+  | "analista"
+  | "zelador"
+  | "fornecedor"
+  | "morador"
+  | "condoos_admin"
+  | "condoos_reviewer";
 
 export interface CondoMembership {
   id: string;
@@ -15,6 +25,8 @@ export interface Me {
   email: string;
   condominiums: CondoMembership[];
   management_companies: { id: string; name: string; roles: Role[] }[];
+  /** CondoOS staff roles (D77): condoos_admin | condoos_reviewer. */
+  platform_roles: Role[];
 }
 
 export interface Condominium {
@@ -66,7 +78,8 @@ export type FindingStatus =
   | "contestado"
   | "ignorado"
   | "descartado"
-  | "superado";
+  | "superado"
+  | "pendente_evidencia";
 
 export interface Finding {
   id: string;
@@ -108,6 +121,7 @@ export interface FindingDetail extends Finding {
   decisions: DecisionItem[];
   comments: { id: string; body: string; user_name: string; created_at: string }[];
   validated_by_management: boolean;
+  validated_by_condoos?: boolean;
   allowed_actions: string[];
   can_comment: boolean;
   approval_expense_id?: string | null;
@@ -191,7 +205,15 @@ export interface Settings {
     defaults: Record<string, unknown>;
     overrides: Record<string, unknown>;
   }[];
-  members: { id: string | null; name: string; email: string; role: string; scope: string }[];
+  members: {
+    id: string | null;
+    name: string;
+    email: string;
+    role: string;
+    scope: string; // condominio | administradora | condoos
+    status?: string; // convidado | ativo
+    expires_at?: string | null;
+  }[];
   board: {
     id: string | null;
     full_name: string;
@@ -200,7 +222,15 @@ export interface Settings {
     term_end: string | null;
     has_login: boolean;
   }[];
-  profile: { name: string; cnpj: string; units: number; address: string; retention_years: number };
+  profile: {
+    name: string;
+    cnpj: string;
+    units: number;
+    address: string;
+    retention_years: number;
+    timezone: string;
+    management_company_reviews: boolean;
+  };
 }
 
 export interface QueueItem {
@@ -393,4 +423,19 @@ export interface Agenda {
   start: string;
   end: string;
   events: AgendaEvent[];
+}
+
+/** Review policy of a condominium (D74). */
+export interface ReviewPolicy {
+  version: number;
+  condominium_specific: boolean;
+  rules: {
+    object: "finding" | "opportunity";
+    match?: { severity?: string[]; rule_code?: string[]; min_amount?: string };
+    requirement: "none" | "qualified_review" | "internal_review" | "pending_evidence";
+    reviewers?: string[];
+  }[];
+  has_management_company: boolean;
+  management_company_reviews: boolean;
+  can_configure: boolean;
 }

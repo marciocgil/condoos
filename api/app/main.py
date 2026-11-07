@@ -16,10 +16,12 @@ from app.routers import (
     documents,
     findings,
     me,
+    platform,
     portfolio,
     queue,
     registry,
     reports,
+    review_policy,
     settings,
 )
 
@@ -55,6 +57,8 @@ def create_app() -> FastAPI:
     app.include_router(approvals.router)
     app.include_router(registry.router)
     app.include_router(agenda.router)
+    app.include_router(platform.router)
+    app.include_router(review_policy.router)
 
     @app.get("/health", tags=["health"])
     async def health() -> dict[str, str]:

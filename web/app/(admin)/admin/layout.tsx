@@ -7,7 +7,10 @@ import type { Me, QueueCount } from "@/lib/types";
 
 export default async function AdminLayout({ children }: { children: ReactNode }) {
   const [me, queue] = await Promise.all([apiGet<Me>("/me"), apiGet<QueueCount>("/queue/count")]);
-  const company = me.management_companies[0]?.name ?? "Administradora";
+  // CondoOS staff (D77) see "CondoOS"; the management company sees its own name.
+  const company =
+    me.management_companies[0]?.name ??
+    (me.platform_roles.length > 0 ? "CondoOS" : "Administradora");
   return (
     <div className="flex min-h-dvh">
       <Suspense fallback={<div className="w-[232px] shrink-0 border-r border-line bg-bg-2" />}>

@@ -121,6 +121,7 @@ async def test_manager_validates_and_discards_serious_findings(
     assert (await client.get(f"{base}/{to_validate}")).json()["allowed_actions"] == [
         "validar",
         "descartar",
+        "solicitar_evidencia",  # D74: inconclusive findings wait for evidence
     ]
     r = await client.post(f"{base}/{to_validate}/decisions", json={"action": "validar"})
     assert r.json()["status"] == "publicado"

@@ -18,6 +18,7 @@ const FIELD_LABEL: Record<string, string> = {
   start_date: "início da vigência",
   end_date: "fim da vigência",
   slug: "endereço curto (slug)",
+  timezone: "fuso horário",
 };
 
 type Detail = string | { loc?: (string | number)[]; msg?: string }[] | undefined;

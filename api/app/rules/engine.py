@@ -18,7 +18,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.audit import record_audit
 from app.core.jobs import enqueue
-from app.db.enums import FindingStatus, Severity
+from app.db.enums import FindingStatus
 from app.db.models import (
     Approval,
     BankTransaction,
@@ -36,6 +36,8 @@ from app.db.models import (
     Supplier,
 )
 from app.enrichment.indices import load_index_table
+from app.review import Policy, current_policy, initial_status
+from app.review import evaluate as evaluate_policy
 from app.rules.base import FindingDraft, Rule, RuleContext
 from app.rules.r01_duplicate import DuplicatePayment
 from app.rules.r02_above_contract import AboveContract
@@ -160,10 +162,17 @@ async def run_rules(ctx: RuleContext, rules: list[Rule] | None = None) -> list[F
     return drafts
 
 
-def initial_status(severity: Severity) -> FindingStatus:
-    return (
-        FindingStatus.AGUARDANDO_VALIDACAO if severity == Severity.ALTA else FindingStatus.PUBLICADO
+def _review(policy: Policy, d: FindingDraft) -> tuple[str, FindingStatus, int]:
+    """Review requirement, initial status and policy version for a draft (D74)."""
+    outcome = evaluate_policy(
+        policy,
+        "finding",
+        rule_code=d.rule_code,
+        severity=d.severity.value,
+        amount=d.amount_at_risk,
+        ai_assisted=d.ai_assisted,
     )
+    return outcome.requirement.value, initial_status(outcome.requirement), outcome.version
 
 
 async def persist(
@@ -171,6 +180,7 @@ async def persist(
 ) -> tuple[int, int]:
     created = updated = 0
     to_explain: list[uuid.UUID] = []
+    policy = await current_policy(session, ctx.condominium.id)
     for d in drafts:
         existing = await session.scalar(
             select(Finding).where(
@@ -190,11 +200,14 @@ async def persist(
             "supplier_id": d.supplier_id,
         }
         if existing is None:
+            requirement, status, version = _review(policy, d)
             finding = Finding(
                 id=uuid.uuid4(),
                 condominium_id=ctx.condominium.id,
                 dedupe_key=d.subject_key,
-                status=initial_status(d.severity).value,
+                status=status.value,
+                review_requirement=requirement,
+                review_policy_version=version,
                 explanation_source="regra",
                 **values,
             )
@@ -212,7 +225,10 @@ async def persist(
             for key, value in values.items():
                 setattr(existing, key, value)
             if existing.status == FindingStatus.SUPERADO.value:  # detected again
-                existing.status = initial_status(d.severity).value
+                requirement, status, version = _review(policy, d)
+                existing.status = status.value
+                existing.review_requirement = requirement
+                existing.review_policy_version = version
             updated += 1
     await session.flush()
     await supersede_stale(session, ctx, drafts)

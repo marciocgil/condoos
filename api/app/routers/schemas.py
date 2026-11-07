@@ -45,6 +45,7 @@ class MeOut(BaseModel):
     email: str
     condominiums: list[CondoMembershipOut]
     management_companies: list[CompanyMembershipOut]
+    platform_roles: list[str] = []  # condoos_admin | condoos_reviewer (D77)
 
 
 class CondominiumOut(ORM):
