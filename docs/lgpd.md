@@ -14,6 +14,8 @@ Mapeia cada requisito de privacidade (seção 12 da especificação e boas prát
 
 **Moradores:** o MVP não guarda dados de moradores. A receita de condomínio entra só como lançamento agregado do extrato, sem nome de unidade.
 
+**Pedidos de documentos (D97):** nome de quem recebe o pedido (obrigatório) e e-mail (opcional, só de referência; o sistema não envia nada). O link de envio é guardado só como hash, vale 7 dias e pode ser revogado. A página pública mostra apenas o nome do condomínio, o assunto e a lista pedida.
+
 ## Checklist
 
 | # | Item | Status | Onde |

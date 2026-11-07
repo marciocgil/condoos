@@ -10,7 +10,8 @@
 | LF1 Blueprint | ✅ aprovado pelo Marcio (gate LG1, D89) | `02`–`06` deste diretório |
 | LF2 Primeiro valor | **pronto_para_validar**: LF2-a..d entregues (D90–D93); gate **LG2** atendido no código e no E2E local, aguarda validação do Marcio | `05-backlog.md`, D90–D93, `web/tests/e2e/launch.spec.ts` |
 | LF3 Dados e reconciliação | **pronto_para_validar**: LF3-a (D94), LF3-b (D95, migração 0020) e LF3-c (D96) entregues; gate **LG3** atendido no código e no E2E local, aguarda validação do Marcio | `05-backlog.md`, D94, ADR-L05 em `03-arquitetura-e-dados.md` |
-| LF4–LF8 | nao_iniciado | `05-backlog.md` |
+| LF4 Colaborativo | **em_desenvolvimento**: LF4-a entregue (D97, migração 0021); gate **LG4** atendido no código e no E2E local, aguarda validação; LF4-b (painel do que está delegado, contato sem login) a fazer | `05-backlog.md`, D97 |
+| LF5–LF8 | nao_iniciado | `05-backlog.md` |
 
 Código do Launch: `api/app/launch/`, `api/app/routers/launch.py`, migração 0018; testes `api/tests/test_launch.py` e `api/tests/test_prompt_injection.py` (D90).
 
@@ -57,7 +58,9 @@ LF2-a entregue em 07/11/2026 (D90; escolhas registradas lá, entre elas LM1 sem 
 
 **Gate LG3 (critérios do `05-backlog.md`) × evidência:** documentos **contraditórios** (`test_data_issues.py`, e2e `data-issues.spec.ts`); **ausentes** (C8 e cobertura: `test_launch.py::test_expected_documents_capability`, `::test_reconciliation_in_both_directions`); **duplicados** (mesmo arquivo pelo hash: `test_launch.py::test_upload_edges_leave_no_phantom_document`; mesma nota paga duas vezes: R01 com caso plantado); **ilegíveis** (`nao_identificado` no cartão, "para revisão" no envio em lote: `test_upload_edges_leave_no_phantom_document`, `test_validation_center.py::test_batch_upload_follow_up`); **nenhum relatório parcial descrito como completo** (`test_launch.py::test_coverage_label_never_says_complete`, `::test_report_says_its_coverage`, `test_briefing.py::test_stale_data_is_reported`). Pendente: validação do Marcio; o tipo `duplicidade_suspeita` da `data_issue` ainda não é detectado (a R01 cobre o caso de pagamento).
 
-**Próximo do Launch: LF4 — colaborativo** (pedido delegado com link de envio sem conta, ADR-L04; Q-L02 respondida: o síndico envia o link, nada sai do sistema). Exige **migração própria** (`delegation_request` e `delegation_upload_token`) e decidir antes a **ADR-L06** (triagem de arquivo enviado por terceiros; ClamAV é GPL e não entra). Pedir aprovação das duas antes de escrever.
+**LF4 — colaborativo.** LF4-a entregue em 07/11/2026 (D97, migração 0021 e ADR-L06 aprovadas): pedido de documentos com link só de envio, autorizado pelo síndico, texto pronto (nada sai do sistema), estados separados, triagem por formato e limites, e tudo o que chega passa por uma pessoa. **Gate LG4 × evidência:** síndico e administradora simulados (`test_delegation.py::test_sindica_delegates_and_the_administradora_sends`, e2e `delegation.spec.ts`); revogação imediata (`::test_revocation_is_immediate_and_a_new_link_replaces_the_old`, e2e); link de A não grava em B (`::test_a_link_of_a_never_writes_in_b`). Pendente: validação do Marcio.
+
+**Próximo: LF4-b** — LB-044 (painel "o que você decide × o que está delegado": decisões, aprovações e pedidos abertos num só lugar) e LB-046 (contato sem login de fornecedor ou zelador, mínimo: nome, papel e telefone/e-mail para reaproveitar em pedidos). LB-046 guarda dado pessoal novo: pedir aprovação do modelo antes.
 
 ## Ritual de cada incremento
 

@@ -18,6 +18,13 @@ export default async function EnviarPage({ params }: { params: Promise<{ id: str
         Você também pode encaminhar notas e boletos por e-mail para o endereço do condomínio.
       </p>
       <UploadForm condominiumId={id} />
+      <p className="text-sm text-fg-2">
+        Os documentos estão com a administradora ou um fornecedor?{" "}
+        <Link href={`/condominio/${id}/pedidos`} className="text-fg underline">
+          Peça por um link
+        </Link>
+        .
+      </p>
     </>
   );
 }

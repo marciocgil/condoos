@@ -889,3 +889,47 @@ export interface DataIssue {
   resolution: Record<string, unknown> | null;
   can_resolve: boolean;
 }
+
+// --------------------------------------------------------------------------- delegation (D97)
+
+export type DelegationStatus =
+  | "rascunho"
+  | "link_gerado"
+  | "compartilhado"
+  | "arquivo_recebido"
+  | "concluido"
+  | "revogado"
+  | "expirado";
+
+export interface Delegation {
+  id: string;
+  recipient_name: string;
+  recipient_email: string | null;
+  scope: string;
+  items: { label: string; done: boolean }[];
+  due_date: string | null;
+  status: DelegationStatus;
+  link_expires_at: string | null;
+  files_received: number;
+  created_at: string;
+  authorized_at: string | null;
+  shared_at: string | null;
+  documents: DocumentStatus[];
+}
+
+export interface DelegationLink {
+  request: Delegation;
+  link: string;
+  message: string;
+}
+
+export interface PublicDelegation {
+  condominium: string;
+  recipient_name: string;
+  scope: string;
+  items: string[];
+  due_date: string | null;
+  expires_at: string;
+  files_received: number;
+  max_files: number;
+}

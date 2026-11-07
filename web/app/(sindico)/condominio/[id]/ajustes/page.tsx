@@ -1,3 +1,6 @@
+import { ChevronRight } from "lucide-react";
+import Link from "next/link";
+
 import { AutomationPausesCard } from "@/components/condoos/AutomationPausesCard";
 import { DataIssuesCard } from "@/components/condoos/DataIssuesCard";
 import { ReadinessCard } from "@/components/condoos/ReadinessCard";
@@ -20,6 +23,18 @@ export default async function AjustesPage({ params }: { params: Promise<{ id: st
   return (
     <>
       <h1 className="text-xl font-semibold">Ajustes</h1>
+      <Link
+        href={`/condominio/${id}/pedidos`}
+        className="flex items-center justify-between rounded-[var(--radius-card)] border border-line bg-surface px-4 py-3 text-sm hover:bg-elevated"
+      >
+        <span>
+          <span className="font-medium">Pedidos de documentos</span>
+          <span className="block text-[13px] text-fg-2">
+            Peça documentos a terceiros por um link que só recebe arquivos
+          </span>
+        </span>
+        <ChevronRight size={16} aria-hidden />
+      </Link>
       <ReadinessCard
         readiness={launch.readiness}
         resolve={{

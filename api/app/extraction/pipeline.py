@@ -20,7 +20,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.chat.search import INDEX_JOB, INDEXED_TYPES
 from app.core.jobs import enqueue
-from app.db.enums import DocumentType, ExtractionStatus
+from app.db.enums import DocumentOrigin, DocumentType, ExtractionStatus
 from app.db.models import Condominium, Document
 from app.extraction.confidence import assess
 from app.extraction.convert import Converted, convert
@@ -205,12 +205,19 @@ async def process_document(session: AsyncSession, payload: dict[str, Any]) -> No
     doc.extracted = analysis.values
     doc.field_confidence = analysis.confidence
     doc.field_provenance = analysis.provenance
-    doc.needs_review = not analysis.complete
-    doc.review_reasons = [] if analysis.complete else analysis.reasons
+    # A file sent by a third party through a delegation link is always seen by a person
+    # before it is used (ADR-L04, ADR-L06, D97): it never matches or becomes a contract alone.
+    from_link = doc.origin == DocumentOrigin.PEDIDO.value
+    complete = analysis.complete and not from_link
+    doc.needs_review = not complete
+    reasons = [] if analysis.complete else list(analysis.reasons)
+    if from_link:
+        reasons.insert(0, "Recebido por link de envio: confira antes de usar.")
+    doc.review_reasons = reasons
     doc.extraction_status = (
-        ExtractionStatus.DONE if analysis.complete else ExtractionStatus.NEEDS_REVIEW
+        ExtractionStatus.DONE if complete else ExtractionStatus.NEEDS_REVIEW
     ).value
-    if analysis.complete:
+    if complete:
         await enqueue_match(session, doc)
     if doc.doc_type in INDEXED_TYPES and doc.text_content:
         await enqueue_index(session, doc)

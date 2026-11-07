@@ -52,6 +52,7 @@ from app.db.enums import (
     DataIssueKind,
     DataIssueStatus,
     DecisionAction,
+    DelegationStatus,
     DocumentOrigin,
     DocumentType,
     ExtractionStatus,
@@ -358,6 +359,13 @@ class Document(IdTimestampMixin, Base):
     version: Mapped[int] = mapped_column(Integer, default=1, server_default="1")
     supersedes_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("document.id", ondelete="SET NULL"), nullable=True
+    )
+    # The request it answered, when it came through a delegation link (D97).
+    delegation_request_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("delegation_request.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
     )
     needs_review: Mapped[bool] = mapped_column(Boolean, default=False)
     # Why the document is in the exception queue (pt-BR, shown to the analyst).
@@ -1093,6 +1101,53 @@ class DataIssue(IdTimestampMixin, Base):
     resolution: Mapped[dict[str, Any] | None] = mapped_column(Json, nullable=True)
 
 
+# --------------------------------------------------------------------------- delegation (D97)
+
+
+class DelegationRequest(IdTimestampMixin, Base):
+    """A request for documents to someone outside the system (F02, ADR-L04): who, what is
+    expected and until when. The síndico authorizes it, which creates a send-only link; the
+    síndico shares the link through their own channel (Q-L02: nothing leaves the system)."""
+
+    __tablename__ = "delegation_request"
+    __table_args__ = (_enum_check("status", DelegationStatus),)
+
+    condominium_id: Mapped[uuid.UUID] = _uuid_fk("condominium.id")
+    recipient_name: Mapped[str] = mapped_column(String(200))
+    recipient_email: Mapped[str | None] = mapped_column(String(320), nullable=True)
+    scope: Mapped[str] = mapped_column(Text)
+    # [{"label": "Contrato da portaria", "done": false}]: what is expected, ticked by a person.
+    items: Mapped[list[dict[str, Any]]] = mapped_column(Json, default=list)
+    due_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    status: Mapped[str] = mapped_column(String(20), default=DelegationStatus.RASCUNHO.value)
+    created_by_user_id: Mapped[uuid.UUID | None] = _uuid_fk(
+        "app_user.id", nullable=True, ondelete="SET NULL"
+    )
+    authorized_by_user_id: Mapped[uuid.UUID | None] = _uuid_fk(
+        "app_user.id", nullable=True, ondelete="SET NULL"
+    )
+    authorized_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    shared_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    concluded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class DelegationUploadToken(IdTimestampMixin, Base):
+    """The send-only link of a request. Only the SHA-256 of the token is stored. Like
+    ``magic_link_token``, it is looked up only by that hash, so it carries no RLS policy; the
+    upload then runs scoped to the request's condominium. A new link revokes the previous."""
+
+    __tablename__ = "delegation_upload_token"
+
+    condominium_id: Mapped[uuid.UUID] = _uuid_fk("condominium.id")
+    request_id: Mapped[uuid.UUID] = _uuid_fk("delegation_request.id", ondelete="CASCADE")
+    token_hash: Mapped[str] = mapped_column(String(64), unique=True)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    max_files: Mapped[int] = mapped_column(Integer, default=30)
+    files_received: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+
+
 # Tables protected by Row-Level Security, with the column holding the tenant id.
 RLS_TABLES: dict[str, str] = {
     "condominium": "id",
@@ -1130,6 +1185,7 @@ RLS_TABLES: dict[str, str] = {
     "condominium_settings_version": "condominium_id",
     "launch_state": "condominium_id",
     "data_issue": "condominium_id",
+    "delegation_request": "condominium_id",
 }
 
 # Tables the application role may only read and insert into (never update or delete).

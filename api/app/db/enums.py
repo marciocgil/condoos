@@ -75,6 +75,7 @@ class DocumentOrigin(StrEnum):
     UPLOAD = "upload"
     EMAIL = "email"
     SEED = "seed"
+    PEDIDO = "pedido"  # sent by a third party through a delegation link (D97)
 
 
 class ExtractionStatus(StrEnum):
@@ -371,3 +372,25 @@ class DataIssueStatus(StrEnum):
     ABERTO = "aberto"
     RESOLVIDO = "resolvido"
     DESCARTADO = "descartado"
+
+
+class DelegationStatus(StrEnum):
+    """A request for documents to a third party (F02, ADR-L04, D97). Nothing is sent by the
+    system: the síndico shares the link through their own channel."""
+
+    RASCUNHO = "rascunho"
+    LINK_GERADO = "link_gerado"  # authorized by the síndico; the link exists
+    COMPARTILHADO = "compartilhado"  # the síndico says they sent it
+    ARQUIVO_RECEBIDO = "arquivo_recebido"
+    CONCLUIDO = "concluido"
+    REVOGADO = "revogado"
+
+
+# Statuses in which the link accepts files (expiry is checked apart).
+DELEGATION_OPEN: frozenset[DelegationStatus] = frozenset(
+    {
+        DelegationStatus.LINK_GERADO,
+        DelegationStatus.COMPARTILHADO,
+        DelegationStatus.ARQUIVO_RECEBIDO,
+    }
+)

@@ -17,6 +17,7 @@ from app.routers import (
     chat,
     condominiums,
     data_issues,
+    delegations,
     documents,
     findings,
     launch,
@@ -71,6 +72,8 @@ def create_app() -> FastAPI:
     app.include_router(actions.router)
     app.include_router(launch.router)
     app.include_router(data_issues.router)
+    app.include_router(delegations.router)
+    app.include_router(delegations.public_router)
 
     @app.get("/health", tags=["health"])
     async def health() -> dict[str, str]:

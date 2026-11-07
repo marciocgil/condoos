@@ -31,6 +31,7 @@ Legenda: ✅ tem · ◐ condicionado (ver nota) · — não tem. Colunas: Sín =
 | `manage_cases` **(novo)** | Criar/editar assunto, vincular, atribuir tarefa | ✅ | — | — | ◐³ | ◐³ | ✅ | ✅ |
 | `update_task` **(novo)** | Atualizar tarefa atribuída a si | ✅ | — | — | ✅ | ✅ | ✅ | ✅ |
 | `resolve_data_issue` **(D95)** | Escolher a versão prevalente de um conflito de dados, com motivo, ou descartá-lo (ver é `view`) | ✅ | — | — | ◐¹ | — | ✅ | ✅ |
+| Pedido de documentos (D97) | Redigir, marcar itens, concluir, revogar: `manage_cases`; autorizar e gerar o link: só síndico (`approve_in_condo`); ver: `view` | — | — | — | — | — | — | — |
 | `manage_launch` **(D90)** | Escolher o objetivo da jornada, adiar passo, ocultar o cartão (preferências; a leitura da jornada é `view`) | ✅ | — | — | — | — | ✅ | — |
 | `view_opportunity_draft` **(novo)** | Ver oportunidade antes da revisão | — | — | — | — | — | ✅ | ✅ |
 | `review_opportunity` **(novo)** | Aprovar/ajustar/devolver/rejeitar oportunidade; registrar "estimada validada" | — | — | — | — | — | — | ✅ |
