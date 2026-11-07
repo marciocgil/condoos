@@ -79,3 +79,17 @@ Precedência (pacote de prompts): requisitos aprovados > decisões aceitas > có
 ## 4. Decisões da Especificação §23.2 (D-01..D-12 da Especificação)
 
 Sobrepõem-se às do Plano. As que ainda não têm correspondente acima: Espec. D-02 (Advisor embutido no Optimize — recomendação da própria Especificação, coerente com o produto atual), Espec. D-05 (histórico mínimo para anomalia — hoje R11 usa média e desvio de 12 meses, D23), Espec. D-06 (regras delegáveis pelo síndico — necessária antes de qualquer L4), Espec. D-08 (modelo de cobertura de contrato por ativo/posto/serviço — necessária antes de WP-17), Espec. D-12 (fornecedores de IA externos — ligada a D54 e ao checklist LGPD).
+
+## 5. CondoOS Launch — divergências e perguntas (D88)
+
+Detalhe em `docs/condoos-planning/launch/01-diagnostico-as-is.md` §4 e `00-status-e-proximos-passos.md`.
+
+| # | Tema | Situação |
+|---|---|---|
+| DL-01 / Q-L01 | Síndico cria o próprio condomínio × só gerente ou Admin CondoOS cria (`registry.py`) | Aberta; hipótese: implantação assistida no piloto |
+| DL-02 / Q-L02 | Delegação e lembretes com envio × nada sai do sistema (D83, Plano D-04) | Aberta; hipótese: link e texto gerados, síndico envia |
+| DL-03 | Revisor convidado pela jornada × atribuído pelo Admin (D79) | Proposta: manter D79 |
+| DL-04 | Tabelas de fato extraído × `field_provenance` (D85) | Proposta: reusar (ADR-L03 no Launch) |
+| DL-05 | `OnboardingTask` × `case_task` (D80) | Proposta: reusar `case_task` |
+| DL-06 / Q-L03 | Fases e gates do Launch × caminho crítico do Plano (VS-06) | Aberta; hipótese: LF2 antes da VS-06 |
+| Q-L04 | Migração 0018 (`launch_state`) e alçadas opcionais no cadastro | Aguarda aprovação |
