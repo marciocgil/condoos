@@ -170,3 +170,74 @@ NOT_AT_RISK: frozenset[FindingStatus] = frozenset(
 UNDER_REVIEW: frozenset[FindingStatus] = frozenset(
     {FindingStatus.AGUARDANDO_VALIDACAO, FindingStatus.PENDENTE_EVIDENCIA}
 )
+
+
+# --------------------------------------------------------------------------- cases (D75, D80)
+
+
+class CaseStatus(StrEnum):
+    """Spec §8.2. ``suspenso_justificadamente`` is the only open state without a due date."""
+
+    NOVO = "novo"
+    EM_TRIAGEM = "em_triagem"
+    EM_PLANEJAMENTO = "em_planejamento"
+    AGUARDANDO_APROVACAO = "aguardando_aprovacao"
+    EM_EXECUCAO = "em_execucao"
+    AGUARDANDO_TERCEIRO = "aguardando_terceiro"
+    AGUARDANDO_VALIDACAO = "aguardando_validacao"
+    RESOLVIDO = "resolvido"
+    CANCELADO = "cancelado"
+    REABERTO = "reaberto"
+    SUSPENSO = "suspenso_justificadamente"
+
+
+CLOSED_CASE: frozenset[CaseStatus] = frozenset({CaseStatus.RESOLVIDO, CaseStatus.CANCELADO})
+
+
+class CaseOrigin(StrEnum):
+    FINDING = "finding"
+    OPPORTUNITY = "opportunity"
+    HUMAN_REQUEST = "human_request"
+    MAINTENANCE = "maintenance"
+    OBLIGATION = "obligation"
+    EXTERNAL_EVENT = "external_event"
+
+
+class CaseSeverity(StrEnum):
+    BAIXA = "baixa"
+    MEDIA = "media"
+    ALTA = "alta"
+    CRITICA = "critica"
+
+
+class CaseCategory(StrEnum):
+    FINANCEIRO = "financeiro"
+    CONTRATO = "contrato"
+    MANUTENCAO = "manutencao"
+    CONFORMIDADE = "conformidade"
+    ADMINISTRATIVO = "administrativo"
+    ATENDIMENTO = "atendimento"
+    SEGURANCA = "seguranca"
+    OBRA = "obra"
+    OUTRO = "outro"
+
+
+class CaseLinkTarget(StrEnum):
+    FINDING = "finding"
+    OPPORTUNITY = "opportunity"  # accepted by the schema; the Optimize slice enables it
+    DOCUMENT = "document"
+    CONTRACT = "contract"
+    SUPPLIER = "supplier"
+    EXPENSE = "expense"
+    CASE = "case"
+
+
+class TaskStatus(StrEnum):
+    ABERTA = "aberta"
+    EM_ANDAMENTO = "em_andamento"
+    BLOQUEADA = "bloqueada"
+    CONCLUIDA = "concluida"
+    CANCELADA = "cancelada"
+
+
+CLOSED_TASK: frozenset[TaskStatus] = frozenset({TaskStatus.CONCLUIDA, TaskStatus.CANCELADA})

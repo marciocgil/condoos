@@ -31,6 +31,10 @@ class Permission(StrEnum):
     REVIEW_OPPORTUNITY = "review_opportunity"  # internal CondoOS review of a recommendation
     APPROVE_IN_CONDO = "approve_in_condo"  # the condominium's own decision, within its limits
     MANAGE_PLATFORM = "manage_platform"  # assign CondoOS staff to this condominium
+    # Cases (D75, D80). MANAGE_CASES: create, edit, link, assign and move any case.
+    # UPDATE_TASK: work on what is one's own (tasks assigned to them, cases they own).
+    MANAGE_CASES = "manage_cases"
+    UPDATE_TASK = "update_task"
 
 
 P = Permission
@@ -49,6 +53,7 @@ _MANAGEMENT_COMPANY = frozenset(
         P.CORRECT_EXTRACTION,
         P.RECORD_APPROVAL,
         P.EXPORT,
+        P.UPDATE_TASK,
     }
 )
 
@@ -62,6 +67,8 @@ ROLE_PERMISSIONS: dict[Role, frozenset[Permission]] = {
             P.EXPORT,
             P.CONFIGURE_POLICY,
             P.APPROVE_IN_CONDO,
+            P.MANAGE_CASES,
+            P.UPDATE_TASK,
         }
     ),
     Role.SUBSINDICO: frozenset({P.VIEW, P.COMMENT_FINDING, P.EXPORT}),
@@ -93,6 +100,8 @@ ROLE_PERMISSIONS: dict[Role, frozenset[Permission]] = {
             P.EXPORT,
             P.VIEW_OPPORTUNITY_DRAFT,
             P.MANAGE_PLATFORM,
+            P.MANAGE_CASES,
+            P.UPDATE_TASK,
         }
     ),
     Role.CONDOOS_REVIEWER: frozenset(
@@ -109,6 +118,8 @@ ROLE_PERMISSIONS: dict[Role, frozenset[Permission]] = {
             P.EXPORT,
             P.VIEW_OPPORTUNITY_DRAFT,
             P.REVIEW_OPPORTUNITY,
+            P.MANAGE_CASES,
+            P.UPDATE_TASK,
         }
     ),
 }

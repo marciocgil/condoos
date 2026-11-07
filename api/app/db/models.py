@@ -37,6 +37,11 @@ from app.db.enums import (
     AdjustmentIndex,
     BankTransactionOrigin,
     BoardPosition,
+    CaseCategory,
+    CaseLinkTarget,
+    CaseOrigin,
+    CaseSeverity,
+    CaseStatus,
     ChatRole,
     CompetenceStatus,
     DecisionAction,
@@ -48,6 +53,7 @@ from app.db.enums import (
     PlatformRole,
     ReviewRequirement,
     Severity,
+    TaskStatus,
 )
 
 Json = JSON().with_variant(JSONB(), "postgresql")
@@ -659,6 +665,108 @@ class AuditLog(IdTimestampMixin, Base):
     details: Mapped[dict[str, Any]] = mapped_column(Json, default=dict)
 
 
+# --------------------------------------------------------------------------- cases (D75, D80)
+
+
+class CaseRecord(IdTimestampMixin, Base):
+    """Assunto: a situation to organise, follow and close with evidence (spec §8). Linked to
+    findings and other records, never a kind of finding (D75). ``case`` is a reserved SQL
+    word, hence ``case_record``."""
+
+    __tablename__ = "case_record"
+    __table_args__ = (
+        _enum_check("status", CaseStatus),
+        _enum_check("origin", CaseOrigin),
+        _enum_check("severity", CaseSeverity),
+        _enum_check("category", CaseCategory),
+        UniqueConstraint("condominium_id", "number"),
+    )
+
+    condominium_id: Mapped[uuid.UUID] = _uuid_fk("condominium.id")
+    number: Mapped[str] = mapped_column(String(20))  # A-2026-0001, per condominium
+    title: Mapped[str] = mapped_column(String(200))
+    description: Mapped[str] = mapped_column(Text, default="")
+    category: Mapped[str] = mapped_column(String(20))
+    origin: Mapped[str] = mapped_column(String(20))
+    severity: Mapped[str] = mapped_column(String(10))
+    status: Mapped[str] = mapped_column(String(30))
+    owner_user_id: Mapped[uuid.UUID | None] = _uuid_fk(
+        "app_user.id", nullable=True, ondelete="SET NULL"
+    )
+    next_action: Mapped[str | None] = mapped_column(String(300), nullable=True)
+    next_action_due_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    suspended_until: Mapped[date | None] = mapped_column(Date, nullable=True)
+    suspension_reason: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    resolution_criterion: Mapped[str] = mapped_column(String(500))
+    requires_evidence: Mapped[bool] = mapped_column(Boolean, default=True)
+    created_by_user_id: Mapped[uuid.UUID | None] = _uuid_fk(
+        "app_user.id", nullable=True, ondelete="SET NULL"
+    )
+    closed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class CaseEvent(IdTimestampMixin, Base):
+    """Timeline of a case (FR-023). Append only, like ``decision``; details hold ids only."""
+
+    __tablename__ = "case_event"
+
+    condominium_id: Mapped[uuid.UUID] = _uuid_fk("condominium.id")
+    case_id: Mapped[uuid.UUID] = _uuid_fk("case_record.id")
+    actor_user_id: Mapped[uuid.UUID | None] = _uuid_fk(
+        "app_user.id", nullable=True, ondelete="SET NULL"
+    )
+    actor_kind: Mapped[str] = mapped_column(String(10), default="user")  # user | system | ai
+    kind: Mapped[str] = mapped_column(String(30))
+    from_value: Mapped[str | None] = mapped_column(String(300), nullable=True)
+    to_value: Mapped[str | None] = mapped_column(String(300), nullable=True)
+    reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    details: Mapped[dict[str, Any]] = mapped_column(Json, default=dict)
+
+
+class CaseLink(IdTimestampMixin, Base):
+    """N:N between a case and another record. Unlinking only fills ``unlinked_at``."""
+
+    __tablename__ = "case_link"
+    __table_args__ = (_enum_check("target_type", CaseLinkTarget),)
+
+    condominium_id: Mapped[uuid.UUID] = _uuid_fk("condominium.id")
+    case_id: Mapped[uuid.UUID] = _uuid_fk("case_record.id")
+    target_type: Mapped[str] = mapped_column(String(20))
+    target_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), index=True)
+    as_evidence: Mapped[bool] = mapped_column(Boolean, default=False)
+    reason: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    linked_by_user_id: Mapped[uuid.UUID | None] = _uuid_fk(
+        "app_user.id", nullable=True, ondelete="SET NULL"
+    )
+    unlinked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    unlinked_by_user_id: Mapped[uuid.UUID | None] = _uuid_fk(
+        "app_user.id", nullable=True, ondelete="SET NULL"
+    )
+
+
+class CaseTask(IdTimestampMixin, Base):
+    __tablename__ = "case_task"
+    __table_args__ = (_enum_check("status", TaskStatus),)
+
+    condominium_id: Mapped[uuid.UUID] = _uuid_fk("condominium.id")
+    case_id: Mapped[uuid.UUID] = _uuid_fk("case_record.id")
+    title: Mapped[str] = mapped_column(String(200))
+    assignee_user_id: Mapped[uuid.UUID | None] = _uuid_fk(
+        "app_user.id", nullable=True, ondelete="SET NULL"
+    )
+    assignee_label: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    due_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    status: Mapped[str] = mapped_column(String(20), default=TaskStatus.ABERTA.value)
+    blocked_reason: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    requires_evidence: Mapped[bool] = mapped_column(Boolean, default=False)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    completed_by_user_id: Mapped[uuid.UUID | None] = _uuid_fk(
+        "app_user.id", nullable=True, ondelete="SET NULL"
+    )
+
+
 # Tables protected by Row-Level Security, with the column holding the tenant id.
 RLS_TABLES: dict[str, str] = {
     "condominium": "id",
@@ -680,7 +788,11 @@ RLS_TABLES: dict[str, str] = {
     "document_chunk": "condominium_id",
     "condo_assignment": "condominium_id",
     "review_policy": "condominium_id",
+    "case_record": "condominium_id",
+    "case_event": "condominium_id",
+    "case_link": "condominium_id",
+    "case_task": "condominium_id",
 }
 
 # Tables the application role may only read and insert into (never update or delete).
-APPEND_ONLY_TABLES: tuple[str, ...] = ("decision", "audit_log", "review_policy")
+APPEND_ONLY_TABLES: tuple[str, ...] = ("decision", "audit_log", "review_policy", "case_event")
