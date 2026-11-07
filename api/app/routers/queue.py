@@ -34,6 +34,7 @@ from app.db.session import DbSession
 from app.extraction.confidence import COUNTERPARTY_CNPJ, OWN_CNPJ
 from app.extraction.fields import REVIEW_THRESHOLD, SPECS, InvalidValue, normalize, specs_for
 from app.extraction.pipeline import enqueue_match
+from app.extraction.provenance import confirmed as confirmed_provenance
 from app.storage.base import get_storage
 
 router = APIRouter(tags=["queue"])
@@ -70,6 +71,7 @@ class ReviewOut(BaseModel):
     fields_by_type: dict[str, list[FieldSpecOut]]
     values: dict[str, Any]
     confidence: dict[str, float]
+    provenance: dict[str, Any] = {}  # source, page and excerpt per field (CB-030)
     reasons: list[str]
     threshold: float
     file_url: str
@@ -222,6 +224,7 @@ async def get_review(
         },
         values=doc.extracted,
         confidence=doc.field_confidence,
+        provenance=doc.field_provenance or {},
         reasons=doc.review_reasons,
         threshold=REVIEW_THRESHOLD,
         file_url=await asyncio.to_thread(get_storage().presigned_url, doc.storage_key),
@@ -311,6 +314,13 @@ async def save_review(
                 )
             )
 
+    doc.field_provenance = confirmed_provenance(
+        {} if type_changed else (doc.field_provenance or {}),
+        {} if type_changed else (doc.extracted or {}),
+        values,
+        str(access.user_id),
+        utcnow().isoformat(),
+    )
     doc.doc_type = doc_type.value
     doc.extracted = values
     doc.field_confidence = {name: 1.0 for name in values}  # verified by a person

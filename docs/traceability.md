@@ -1,6 +1,6 @@
 # Rastreabilidade — FR ↔ tarefa ↔ código ↔ teste ↔ entrega
 
-Data: 07/11/2026. Atualizar ao fim de cada fatia (CLAUDE.md, item 6). "Entrega" = marco do MVP auditor (Marco 1–6, 05/11/2026) ou decisão pós-piloto (D65–D71) em que o código entrou. Testes citados existem no repositório. Última execução local completa: 07/11/2026, 296 passaram (D84); E2E: 28 fluxos passaram contra a stack local.
+Data: 07/11/2026. Atualizar ao fim de cada fatia (CLAUDE.md, item 6). "Entrega" = marco do MVP auditor (Marco 1–6, 05/11/2026) ou decisão pós-piloto (D65–D71) em que o código entrou. Testes citados existem no repositório. Última execução local completa: 07/11/2026, 307 passaram (D85); E2E: 29 fluxos passaram contra a stack local.
 
 | FR | Tarefa(s) | Código | Teste(s) | Entrega |
 |---|---|---|---|---|
@@ -9,16 +9,15 @@ Data: 07/11/2026. Atualizar ao fim de cada fatia (CLAUDE.md, item 6). "Entrega" 
 | FR-003 | CB-001, CB-003 | `db/models.py::RLS_TABLES`, migração `0002_security.py`, `auth/deps.py`, `core/audit.py::record_security_event`, `.github/workflows/ci.yml` | `test_isolation.py` (10), `test_access_revocation.py` (2 de evento) | Marco 1, D78 |
 | FR-004 | CB-004 | `auth/rbac.py`, `auth/deps.py::require` | `test_rbac.py`, `test_findings_api.py`, `test_access_revocation.py` (revogação e desativação) | Marco 1, D78 |
 | FR-005 | CB-010, CB-012 | `core/audit.py`, `models.AuditLog`, `models.Decision` | `test_isolation.py::test_append_only_tables`, `test_auth.py::test_login_is_audited` | Marco 1, Marco 4 |
-| FR-006 | CB-010, CB-012, CB-015 | `routers/settings.py` (alçadas, parâmetros), `app/review/` e `routers/review_policy.py` (política de revisão versionada), migração 0012 | `test_registry.py` (parcial), `test_review_policy.py` | Marco 4, D79 |
+| FR-006 | CB-010, CB-012, CB-015 | `condo_settings.py` e `routers/settings.py` (alçadas e parâmetros versionados, D85), `app/review/` e `routers/review_policy.py` (política de revisão versionada), migração 0012 | `test_registry.py` (parcial), `test_review_policy.py` | Marco 4, D79 |
 | FR-007 | CB-011 | `app/policy/__init__.py` (`active_pause`, `job_paused`), `core/jobs.py::run_one` (job pausado volta à fila), `routers/actions.py` (pausas), `db/models.py::AutomationPause`, migração 0016; `components/condoos/AutomationPausesCard.tsx` | `test_actions.py::test_kill_switch_stops_requests_and_the_worker`, e2e `actions.spec.ts` | D83 |
 | FR-008 | — | `routers/portfolio.py`, filtro `?condominio=` | `test_isolation.py::test_gerente_sees_whole_portfolio` | Marco 1, D69 |
 | FR-009 / FR-010 | — | — | — | — |
 | FR-011 | — | `ingestion/documents.py`, `ingestion/filetypes.py`, `ingestion/email.py`, `storage/s3.py`, `routers/documents.py` | `test_ingestion.py` | Marco 2 |
-| FR-012 | CB-030 | `extraction/pipeline.py`, `fields.py`, `confidence.py`, `llm_extract.py`, `heuristics.py` | `test_extraction.py` (20), `make accuracy` | Marco 2 |
+| FR-012, FR-016 | CB-030 | `extraction/pipeline.py`, `extraction/provenance.py`, `routers/queue.py`, `components/ReviewForm.tsx`, migração 0017 | `test_extraction.py`, `test_provenance.py`, `test_queue.py`, `make accuracy` | Marco 2, D85 |
 | FR-013 | CB-040 | `chat/search.py`, `models.DocumentChunk` | `test_document_search.py` | Marco 5 |
 | FR-014 | CB-024 | `models.ExpenseDocument`, `Contract.source_document_id`, `Approval.document_id`, `matching/documents.py` | `test_matching.py` | Marco 3, D59, D65 |
-| FR-015 | CB-031 | `Document.sha256`, `models.ContractAmendment` | `test_contract_reading.py`, `test_ingestion.py` | Marco 2, D66 |
-| FR-016 | CB-030 | `extraction/confidence.py`, `routers/queue.py` | `test_extraction.py`, `test_queue.py` | Marco 2 |
+| FR-015 | CB-031 | `Document.sha256`, `Document.version`/`supersedes_id`, `routers/documents.py::upload_new_version`, `chat/search.py` (só a vigente), `models.ContractAmendment`, `DocumentNewVersion.tsx` | `test_document_versions.py`, `test_contract_reading.py`, `test_ingestion.py` | Marco 2, D66, D85 |
 | FR-017 | — | `chat/search.py` (job `document.index`), `rules/engine.py` (superado) | `test_supersede.py` | Marco 5, D61 |
 | FR-018 | — | `ingestion/documents.py` (hash), `matching/documents.py` (boleto, D63) | `test_ingestion.py`, `test_matching.py` | Marco 2, D63 |
 | FR-019 | — | `reports/pdf.py`, `reports/xlsx.py`, `routers/reports.py` | `test_reports.py` | Marco 5 |
@@ -32,8 +31,8 @@ Data: 07/11/2026. Atualizar ao fim de cada fatia (CLAUDE.md, item 6). "Entrega" 
 | FR-033 | CB-041 | `findings/explain.py`, `chat/service.py` (ação sugerida) | `test_explain.py` | Marco 4, Marco 5 |
 | FR-034 | CB-010, CB-050 | `app/policy/__init__.py` (nega por padrão), `app/actions/__init__.py` (aprovação, outbox, despacho sem envio), `routers/actions.py`, migração 0016; telas `aprovacoes/` (celular e desktop), `ActionDetailView.tsx`, `ActionForm.tsx` | `test_actions.py` (10), `test_isolation.py` (só inclusão em `action_decision`), e2e `actions.spec.ts` (2) | D83 |
 | FR-035..040 | — | — | — | — |
-| FR-041 | CB-060 | `extraction/fields.py` (contrato), `matching/documents.py`, `routers/registry.py` (contratos) | `test_contract_reading.py`, `test_onboarding.py`, `test_registry.py` | Marco 6, D59, D66–D68, D70 |
-| FR-042 | CB-060 | `agenda.py`, `rules/contracts.py` | `test_agenda.py` | D71 |
+| FR-041 | CB-060 | `extraction/fields.py` (contrato), `extraction/clauses.py`, `matching/documents.py`, `routers/registry.py` (contratos), `ContractClauses.tsx` | `test_contract_reading.py`, `test_contract_clauses.py`, `test_onboarding.py`, `test_registry.py` | Marco 6, D59, D66–D68, D70, D85 |
+| FR-042 | CB-060 | `agenda.py` (prazo do aviso prévio), `rules/contracts.py` | `test_agenda.py`, `test_contract_clauses.py` | D71, D85 |
 | FR-043 | — | `extraction/*`, `ingestion/bank/` (OFX, CSV, CNAB) | `test_extraction.py`, `test_bank_parsers.py` | Marco 2 |
 | FR-044 | CB-061 | `rules/r02_above_contract.py`, `r03_adjustment.py`, `r04_scope.py`, `rules/contracts.py`, `enrichment/indices.py` | `test_rules.py`, `test_planted_cases.py` | Marco 3 |
 | FR-045 | CB-061, CB-064 | `app/opportunities/__init__.py` (cálculo `excesso_mensal_v1`, estágios), `routers/opportunities.py`, `db/models.py` (`Opportunity`, `SavingsRecord`), migração 0014; telas `web/app/(admin)/admin/oportunidades/`, `web/app/(sindico)/condominio/[id]/oportunidades/`, `components/condoos/SavingsStages.tsx` | `test_opportunities.py::test_potential_savings_are_reproducible` e fluxo, e2e `opportunities.spec.ts` | D81 |
@@ -57,8 +56,8 @@ Data: 07/11/2026. Atualizar ao fim de cada fatia (CLAUDE.md, item 6). "Entrega" 
 | WF-06 (rejeitada não dispara) | Coberto (D83): recusa não cria evento no outbox | `test_actions.py::test_rejected_action_is_never_dispatched` |
 | Outbox idempotente | Coberto (D83): despacho repetido da mesma aprovação não duplica | `test_actions.py` |
 | SEC-10 (revogado com sessão antiga) | Coberto (D78) | `test_access_revocation.py` |
-| DOC-01 (campo ausente) | Parcial: obrigatório < 0,9 vai para fila | `test_extraction.py`; CB-030 |
-| DOC-02 (versão vigente) | Parcial (aditivos) | CB-031 |
+| DOC-01 (campo ausente) | Coberto (D85): campo sem valor é "não disponível", nunca inventado; obrigatório < 0,9 vai para fila | `test_provenance.py`, `test_extraction.py` |
+| DOC-02 (versão vigente) | Coberto (D85): versão nova preservando a anterior; busca e contrato usam a vigente | `test_document_versions.py` |
 | FIN-01 (reajuste reproduzível) | Coberto, também na economia estimada (D81) | `test_rules.py` (R03), `test_opportunities.py` |
 | FIN-02 (escopo não comparável) | Parcial (R04 com IA) | `test_rules.py`; CB-061 |
 | OPT-01 (sem revisão, não publica) | Coberto: oportunidade 404 para o condomínio antes da revisão (D81) | `test_opportunities.py` |

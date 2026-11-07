@@ -13,7 +13,7 @@ Data: 07/11/2026 (FR-046 revisto após D74). Fonte dos requisitos: Especificaç�
 | FR-003 | P0 | WP-02 | real | RLS em 17 tabelas, filtro duplo, 404 com evento de segurança (D78), CI | Falta teste de storage cruzado | `test_isolation.py` (10), `test_access_revocation.py` | pronto_para_validar |
 | FR-004 | P0 | WP-02 | real | `rbac.py` (5 papéis × 11 permissões), `require()` no backend | Papéis futuros (zelador, fornecedor…) | `test_rbac.py`, `test_findings_api.py` | pronto_para_validar |
 | FR-005 | P0 | WP-03 | parcial | `audit_log` e `decision` append-only (D14) | Versão de política/aplicação e motivo em todas as mudanças críticas; estado anterior/novo | `test_isolation.py::test_append_only_tables` | em_analise |
-| FR-006 | P0 | WP-03 | parcial | Alçadas e parâmetros de regra por condomínio (`settings.py`) | Política versionada, com responsável e vigência; níveis L1–L5 | `test_registry.py` (parcial) | em_analise |
+| FR-006 | P0 | WP-03 | real (D85) | Alçadas e parâmetros versionados com autor, motivo e início; regras usam a versão vigente no mês; política de revisão versionada (D79) e motor de ações (D83) | Níveis L1–L5 configuráveis pelo condomínio | `test_settings_versions.py`, `test_review_policy.py`, `test_actions.py` | pronto_para_validar |
 | FR-007 | P0 | WP-03 | real (D83) | Pausa por condomínio e tipo (`automation_pause`); o worker não roda job pausado; pedidos novos recusados | Pausa global da plataforma | `test_actions.py::test_kill_switch_stops_requests_and_the_worker`, e2e `actions.spec.ts` | pronto_para_validar |
 | FR-008 | P1 | WP-02 | parcial | Carteira multi-condomínio do gerente, filtro `?condominio=` (D69) | Síndico profissional com vários condomínios sem administradora (D3 cobre via `gerente`) | `test_isolation.py::test_gerente_sees_whole_portfolio` | em_analise |
 | FR-009 | P1 | WP-19 | inexistente | — | Preferências de canal/horário | — | nao_iniciado |
@@ -24,11 +24,11 @@ Data: 07/11/2026 (FR-046 revisto após D74). Fonte dos requisitos: Especificaç�
 | FR | P | WP | Repo | O que existe | Lacuna | Evidência | Status |
 |---|---|---|---|---|---|---|---|
 | FR-011 | P0 | WP-05 | real | Upload/e-mail privado, `cond/<id>/`, tipo e MIME (`filetypes.py`), permissão `upload_document` | Antivírus (NFR-006) | `test_ingestion.py` | pronto_para_validar |
-| FR-012 | P0 | WP-05 | parcial | Classificação, extração por tipo, confiança por campo, `extraction_source` | Página/trecho de origem por campo | `test_extraction.py` (20), `docs/extraction_accuracy.md` | em_analise |
+| FR-012 | P0 | WP-05 | real (D85) | Classificação, extração por tipo, confiança e origem por campo, com página e trecho | Meta de 90% sem revisão ainda não medida com o LLM | `test_extraction.py`, `test_provenance.py`, `docs/extraction_accuracy.md` | pronto_para_validar |
 | FR-013 | P0 | WP-06 | real | Busca híbrida com RLS (contratos, convenção, atas) | Visibilidade por papel em documentos restritos (SEC-07) quando houver | `test_document_search.py` (3) | pronto_para_validar |
 | FR-014 | P0 | WP-04 | parcial | `expense_document`, `contract.source_document_id`, `approval.document_id` | Vínculo genérico documento ↔ caso/ativo (`EntityLink`) | `test_matching.py` | em_analise |
-| FR-015 | P0 | WP-05 | parcial | Hash SHA-256; aditivo não substitui o original (D66) | Cadeia de versões de documento e "versão vigente" | `test_contract_reading.py` | em_analise |
-| FR-016 | P0 | WP-05 | parcial | Campo < 0,9 vai para fila; documento revisado não é reprocessado | Rótulo explícito CONFIRMADO/EXTRAÍDO/INFERIDO/NÃO DISPONÍVEL/CONFLITANTE nas telas e na API | `test_extraction.py`, `test_queue.py` | em_analise |
+| FR-015 | P0 | WP-05 | real (D85) | Hash SHA-256; versão de documento com a anterior preservada e fora da busca; aditivo não substitui o original (D66) | Detecção automática de "mesmo documento" | `test_document_versions.py`, `test_contract_reading.py` | pronto_para_validar |
+| FR-016 | P0 | WP-05 | parcial (D85) | Campo < 0,9 vai para fila; origem por campo (XML, texto, IA, pessoa), "não disponível" e "confirmado" com autor | Classes "inferido" e "conflitante" | `test_provenance.py`, `test_queue.py` | em_desenvolvimento |
 | FR-017 | P1 | WP-06 | parcial | `document.index` idempotente; reavaliação de meses e superação de achados (D61) | Invalidação de respostas/recomendações dependentes | `test_supersede.py` | em_analise |
 | FR-018 | P1 | WP-05 | parcial | Hash, boleto pela linha digitável (D63), nota pelo número | Decisão revisável de duplicata | `test_ingestion.py` | em_analise |
 | FR-019 | P1 | WP-15 | parcial | Relatório PDF/XLSX, trilha PDF (D57) | Dossiê por assunto/recomendação (PDF/CSV/ZIP) | `test_reports.py` | em_analise |
@@ -68,8 +68,8 @@ Data: 07/11/2026 (FR-046 revisto após D74). Fonte dos requisitos: Especificaç�
 
 | FR | P | WP | Repo | O que existe | Lacuna | Evidência | Status |
 |---|---|---|---|---|---|---|---|
-| FR-041 | P0 | WP-11 | parcial | Contrato a partir do documento: fornecedor, valor, índice, mês-base, vigência, escopo, periodicidade, aditivos (D59, D66, D68, D70) | Aviso prévio, multa, SLA, garantia; trecho de origem | `test_contract_reading.py` (5), `test_onboarding.py` | em_analise |
-| FR-042 | P0 | WP-11 | parcial | Agenda com reajustes e fim de contrato (D71) | Alerta antes do aviso prévio (campo inexistente) | `test_agenda.py` | em_analise |
+| FR-041 | P0 | WP-11 | real (D85) | Contrato a partir do documento (D59, D66, D68, D70) e aviso prévio, renovação automática e multa com o trecho | SLA e garantia | `test_contract_reading.py`, `test_contract_clauses.py` | pronto_para_validar |
+| FR-042 | P0 | WP-11 | real (D85) | Agenda com reajustes, prazo do aviso prévio e fim de contrato (D71) | Alerta fora do app | `test_agenda.py`, `test_contract_clauses.py` | pronto_para_validar |
 | FR-043 | P0 | WP-12 | real | NFS-e, NF-e, boleto, recibo, XML, OFX, CSV, CNAB; competência normalizada | Planilha/balancete de ERP | `test_extraction.py`, `test_bank_parsers.py` (12) | pronto_para_validar |
 | FR-044 | P0 | WP-13 | real | R02 (acima do contrato), R03 (reajuste), R04 (escopo) com cálculo determinístico e índices BCB reais | Rótulo "divergência aparente" até validação (já é "indício") | `test_rules.py` (23), `test_planted_cases.py` | pronto_para_validar |
 | FR-045 | P0 | WP-13 | real | `opportunity` com tipo, risco, prontidão, status e fonte; economia em `savings_record` por estágio, calculada por código (D81) | Métodos além de R02/R03 | `test_opportunities.py` | pronto_para_validar |
@@ -111,7 +111,7 @@ Data: 07/11/2026 (FR-046 revisto após D74). Fonte dos requisitos: Especificaç�
 | Operate etc. (051–065) | 15 | 0 | 1 | 14 |
 | **Total** | **65** | **17** | **20** | **28** |
 
-P0 (29 FRs): 18 real, 11 parcial, 0 inexistente (FR-007 e FR-034 entraram com a VS-05, D83; FR-025 com D84). FR-021 e FR-022 entraram com a VS-01 (D80). FR-045 (oportunidade) e FR-046 (revisão interna) são parciais, mas centrais ao Optimize, e FR-046 foi decidido em D74 (revisão proporcional ao risco).
+P0 (29 FRs): 23 real, 6 parcial, 0 inexistente (FR-007 e FR-034 entraram com a VS-05, D83; FR-025 com D84; FR-006, FR-012, FR-015, FR-041 e FR-042 com D85). FR-021 e FR-022 entraram com a VS-01 (D80). FR-045 (oportunidade) e FR-046 (revisão interna) são parciais, mas centrais ao Optimize, e FR-046 foi decidido em D74 (revisão proporcional ao risco).
 
 ## 8. Cobertura por CAP
 

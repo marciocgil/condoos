@@ -503,3 +503,32 @@ O CondoOS não move dinheiro: a agenda não tem ação de pagar nem de agendar p
   - sessões do corpo diretivo;
   - economia anual por estágio, estimada validada e realizada, sempre separadas.
   - Horas poupadas e falso positivo real continuam fora do produto (diário e revisão amostral).
+
+## Itens do backlog com migração (0017)
+
+**D85 — Versões, proveniência e cláusulas de rescisão** (CB-012, CB-030, CB-031, CB-060; 07/11/2026; migração 0017 aprovada pelo Marcio no mesmo dia). Migração toda aditiva; ida e volta verificada.
+- **CB-012, alçadas e parâmetros versionados.**
+  - Nova tabela `condominium_settings_version` (RLS, só inclusão). A versão 1 sai dos valores atuais.
+  - Mudar alçada ou parâmetro em Configurações cria uma versão com autor, motivo e início. Salvar os mesmos valores não cria versão.
+  - As regras avaliam cada mês com a versão vigente no fim dele; meses anteriores à primeira versão usam a primeira. A R12 registra a versão que decidiu (`versao_alcadas`).
+  - `condominium.approval_limits` e `rule_params` continuam com o valor atual, então nada que já os lia mudou.
+  - O motor de ações (D83) usa a alçada atual, porque a decisão é agora.
+- **CB-030, proveniência por campo** (`document.field_provenance`).
+  - Cada campo guarda a origem (XML, texto, IA) e, quando o texto mostra o valor, a página e o trecho. O trecho é localizado por código nos formatos brasileiros (R$ 1.234,56, 05/10/2026, CNPJ e CPF formatados) e nunca é inventado.
+  - Campo sem valor fica "não disponível".
+  - A revisão por pessoa marca todos os campos como "confirmado", com autor e data. O trecho é mantido quando o valor não mudou.
+  - A tela de correção mostra origem, página e trecho de cada campo. A IA que não tem trecho localizado aparece como "confira no arquivo".
+- **CB-031, versão de documento** (`document.version`, `document.supersedes_id`).
+  - Nova rota `POST .../documents/{id}/versions`: o arquivo novo vira a versão seguinte.
+  - A anterior fica guardada, com o ponteiro para a nova, e sai da busca do chat.
+  - Os contratos que vinham dela passam a apontar para a nova.
+  - Só uma versão mais nova por documento; o mesmo arquivo de novo é recusado.
+  - O contrato tem "Enviar nova versão do contrato".
+- **CB-060, aviso prévio, renovação e multa** (`contract.notice_days`, `auto_renewal`, `termination_penalty`, `clause_evidence`).
+  - Lidos por regra do texto do contrato, com o trecho; o que o texto não diz fica vazio.
+  - Aplicados quando o contrato nasce do documento e no seed. Para bancos existentes: `python -m app.extraction.clauses`. Valor posto por pessoa é mantido.
+  - A agenda mostra o prazo do aviso prévio ("previsto"); as telas de contrato mostram os termos ou "não disponível".
+- **Limites:**
+  - a leitura de cláusulas é por regra (sem IA) e cobre as redações comuns;
+  - não há tela para editar os termos lidos;
+  - a versão do documento é marcada pela pessoa (não há detecção automática de "mesmo documento").

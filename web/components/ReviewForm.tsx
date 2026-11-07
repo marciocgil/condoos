@@ -6,7 +6,7 @@ import { useState, type FormEvent } from "react";
 import { buttonClass } from "@/components/ui/Button";
 import { controlClass, textareaClass } from "@/components/ui/Field";
 import { DOC_TYPE_LABEL } from "@/lib/labels";
-import type { FieldSpec, Review } from "@/lib/types";
+import type { FieldSpec, ProvenanceItem, Review } from "@/lib/types";
 
 const INDEXES = [
   ["IPCA", "IPCA"],
@@ -183,6 +183,7 @@ export function ReviewForm({ review }: { review: Review }) {
                 onChange={(e) => onChange(e.target.value)}
               />
             )}
+            {sameType && <Provenance item={review.provenance?.[spec.name]} />}
             {errors[spec.name] && (
               <p className="mt-1 text-xs text-danger" role="alert">
                 {errors[spec.name]}
@@ -229,5 +230,34 @@ export function ReviewForm({ review }: { review: Review }) {
         </div>
       )}
     </form>
+  );
+}
+
+const SOURCE_LABEL: Record<string, string> = {
+  xml: "XML da nota",
+  texto: "texto do documento",
+  ia: "leitura por IA",
+  pessoa: "conferido por uma pessoa",
+};
+
+/** Where the value came from (CB-030): source, page and excerpt; never an invented excerpt. */
+function Provenance({ item }: { item?: ProvenanceItem }) {
+  if (!item) return null;
+  if (item.source === "nao_disponivel")
+    return <p className="mt-1 text-xs text-muted">Não disponível no documento.</p>;
+  return (
+    <p className="mt-1 text-xs text-fg-2">
+      {item.status === "confirmado" ? "Confirmado" : "Origem"}:{" "}
+      {SOURCE_LABEL[item.source] ?? item.source}
+      {item.page ? ` · pág. ${item.page}` : ""}
+      {item.excerpt ? (
+        <>
+          {" "}
+          — <q className="text-muted">{item.excerpt}</q>
+        </>
+      ) : item.source === "ia" ? (
+        " · trecho não localizado no texto: confira no arquivo"
+      ) : null}
+    </p>
   );
 }

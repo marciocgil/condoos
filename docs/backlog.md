@@ -40,7 +40,7 @@ Data: 07/11/2026 (revisado com D73–D77). Prioridade e ordem seguem `docs/produ
 **CB-011 — Kill switch por condomínio e tipo** · M · FR-007, US-014, SEC-08 · ✅ entregue (D83; quem pausa é `configure_policy`: síndico e Admin CondoOS; o job pausado volta para a fila em vez de um estado `paused`)
 - Aceite: gerente pausa/retoma tipos de automação (ex.: `finding.explain`, `rules.evaluate` automático, futuros envios); worker consulta antes de executar; jobs pendentes do tipo ficam `paused` (não executam); auditoria de quem pausou/retomou; tela de Configurações mostra "automação pausada" com texto e ícone.
 
-**CB-012 — Política versionada de alçadas** · P · FR-006
+**CB-012 — Política versionada de alçadas** · P · FR-006 · ✅ entregue (D85)
 - Aceite: alteração de `approval_limits`/`rule_params` gera nova versão com responsável e vigência; histórico consultável; regras usam a versão vigente na data avaliada.
 
 ## Épico EP-09 — Modelo de acesso e revisão proporcional (D73, D74, D77) · WP-02, WP-03 · P0 · *migrações 0011–0012 aguardam aprovação*
@@ -85,9 +85,9 @@ Data: 07/11/2026 (revisado com D73–D77). Prioridade e ordem seguem `docs/produ
 
 ## Épico EP-04 — Informação confiável (G2) · WP-05 · P0
 
-**CB-030 — Proveniência por campo** (ADR-P04) · M · FR-012, FR-016, DOC-01
+**CB-030 — Proveniência por campo** (ADR-P04) · M · FR-012, FR-016, DOC-01 · ✅ entregue (D85; classe "inferido" e "conflitante" ainda não distinguidas)
 - Aceite: cada campo extraído tem página (quando houver), trecho e classe de proveniência; campo ausente = "não disponível", nunca valor inventado; correção humana vira "confirmado" com autor; tela de correção mostra o trecho.
-**CB-031 — Versão de documento** · M · FR-015, DOC-02
+**CB-031 — Versão de documento** · M · FR-015, DOC-02 · ✅ entregue (D85; versão marcada pela pessoa)
 - Aceite: novo arquivo do mesmo documento lógico vira versão; versão vigente identificada; busca usa a vigente; anteriores preservadas.
 
 ## Épico EP-05 — Advisor · WP-06, WP-08, WP-09 · P0
@@ -106,7 +106,7 @@ Data: 07/11/2026 (revisado com D73–D77). Prioridade e ordem seguem `docs/produ
 
 ## Épico EP-07 — Optimize com revisão interna (VS-03) · WP-11, WP-13, WP-14 · P0 · *D73, D74, D76 aceitas; migração 0014 aguarda aprovação*
 
-**CB-060 — Cláusulas de aviso prévio e rescisão** · M · FR-041, FR-042
+**CB-060 — Cláusulas de aviso prévio e rescisão** · M · FR-041, FR-042 · ✅ entregue (D85; SLA e garantia ficam de fora)
 - Aceite: extração de aviso prévio (dias), multa e renovação automática com trecho; agenda mostra a data-limite de aviso; testes com contratos do corpus.
 **CB-061 — Oportunidade e economia potencial** (ADR-P05, D76) · G · FR-045, US-010, FIN-01/02 · ✅ entregue (D81)
 - Aceite: `opportunity` com tipo, risco, prontidão e status; reúne N achados ou nasce sem achado; economia **potencial** gravada em `savings_record` por função de cálculo versionada (`method_code`), com baseline, premissas, evidências, confiança, custos e riscos; reproduzível em teste; escopos não comparáveis marcados.

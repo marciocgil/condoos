@@ -87,3 +87,27 @@ test("síndica filtra a fila e vincula um contrato ao assunto", async ({ page })
   await expect(page.getByRole("button", { name: "Vincular registro" })).toBeVisible();
   await expect(page.getByText("Nenhum registro vinculado.")).toHaveCount(0);
 });
+
+// CB-060 and CB-012: the contract shows its notice period with the excerpt; settings keep the
+// history of the approval limits.
+test("contrato mostra o aviso prévio e Configurações mostram as versões", async ({ page }) => {
+  test.skip(test.info().project.name !== "admin-desktop", "fluxo do desktop");
+  await loginAs(page, "diego.gerente@atlantida.example.com");
+  const me = (await (await page.request.get("/api/me")).json()) as {
+    condominiums: { id: string; name: string }[];
+  };
+  const condo = me.condominiums.find((c) => c.name.includes("Acácias"))!;
+  const contracts = (await (
+    await page.request.get(`/api/condominiums/${condo.id}/contracts`)
+  ).json()) as { id: string; notice_days: number | null }[];
+  const withNotice = contracts.find((c) => c.notice_days)!;
+  await page.goto(`/admin/contratos/${condo.id}/${withNotice.id}`);
+  await expect(page.getByText("Rescisão e renovação")).toBeVisible();
+  await expect(page.getByText(`${withNotice.notice_days} dias`, { exact: true })).toBeVisible();
+  await expect(page.getByText(/aviso prévio de \d+ dias/).first()).toBeVisible();
+  await expect(page.getByRole("button", { name: "Enviar nova versão do contrato" })).toBeVisible();
+
+  await page.goto(`/admin/configuracoes?condominio=${condo.id}`);
+  await expect(page.getByText("Histórico das alçadas e parâmetros")).toBeVisible();
+  await expect(page.getByLabel("Motivo da mudança")).toBeVisible();
+});

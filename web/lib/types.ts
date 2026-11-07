@@ -291,6 +291,7 @@ export interface Review {
   fields_by_type: Record<string, FieldSpec[]>;
   values: Record<string, unknown>;
   confidence: Record<string, number>;
+  provenance?: Record<string, ProvenanceItem | undefined>;
   reasons: string[];
   threshold: number;
   file_url: string;
@@ -724,4 +725,12 @@ export interface StaffAssignment {
   reason: string;
   valid_until: string | null;
   active: boolean;
+}
+
+export interface ProvenanceItem {
+  source: string;
+  page?: number;
+  excerpt?: string;
+  status?: string;
+  confirmed_by?: string;
 }
