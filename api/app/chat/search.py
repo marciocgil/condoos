@@ -22,7 +22,17 @@ from app.db.models import Document, DocumentChunk
 
 logger = logging.getLogger(__name__)
 
-INDEXED_TYPES = {DocumentType.CONTRATO.value, DocumentType.CONVENCAO.value, DocumentType.ATA.value}
+INDEXED_TYPES = {
+    DocumentType.CONTRATO.value,
+    DocumentType.CONVENCAO.value,
+    DocumentType.ATA.value,
+    # LB-020 (D93): searchable by the chat, with citation; no structured extraction.
+    DocumentType.APOLICE.value,
+    DocumentType.BALANCETE.value,
+    DocumentType.REGIMENTO.value,
+    DocumentType.LAUDO.value,
+    DocumentType.PLANO_MANUTENCAO.value,
+}
 INDEX_JOB = "document.index"
 CHUNK_CHARS = 900
 OVERLAP_CHARS = 150

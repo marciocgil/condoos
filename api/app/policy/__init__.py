@@ -18,7 +18,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.enums import PolicyDecision
 from app.db.models import AutomationPause, Condominium
 
-POLICY_VERSION = 1
+# Version 2 (D89, D93): a condominium without the síndico's approval limit configured gets
+# no action request at all (capability C7 "nao_configurado"), whatever the cost.
+POLICY_VERSION = 2
 ALL_AUTOMATIONS = "*"
 # How long an approval is valid (spec §9.5: the executor checks it again at the moment of
 # the action). Expired approvals need a new decision.
@@ -131,13 +133,18 @@ async def evaluate(
         return PolicyResult(
             PolicyDecision.DENY, f"{spec.label} só é permitido sem custo (teto R$ 0,00)."
         )
+    limit = approval_limit(condo, category)
+    if limit is None and approval_limit(condo) is None:
+        return PolicyResult(
+            PolicyDecision.DENY,
+            "A alçada do síndico ainda não foi configurada: configure-a antes de pedir ações.",
+        )
     if await active_pause(session, condo.id, "action.dispatch") is not None:
         return PolicyResult(
             PolicyDecision.PAUSE, "As ações estão pausadas neste condomínio (kill switch)."
         )
-    limit = approval_limit(condo, category)
     if cost_cap > 0:
-        if limit is None:
+        if limit is None:  # unreachable while the default limit exists; kept as a guard
             return PolicyResult(
                 PolicyDecision.REQUIRE_REVIEW,
                 "Ação com custo e sem alçada configurada: configure a alçada antes de aprovar.",

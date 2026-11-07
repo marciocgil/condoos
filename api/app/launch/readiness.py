@@ -14,16 +14,25 @@ from dataclasses import dataclass, field
 from datetime import date
 from typing import Any
 
-from sqlalchemy import exists, func, select
+from sqlalchemy import exists, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.chat.search import INDEXED_TYPES
 from app.config import get_settings
-from app.core.time import local_today, month_start
-from app.db.enums import AdjustmentIndex, DocumentType, ExtractionStatus
-from app.db.models import Condominium, Contract, Document, DocumentChunk, Expense, IndexValue
+from app.core.time import local_today, month_start, utcnow
+from app.db.enums import AdjustmentIndex, DocumentType, ExtractionStatus, Role
+from app.db.models import (
+    Condominium,
+    Contract,
+    Document,
+    DocumentChunk,
+    Expense,
+    IndexValue,
+    Membership,
+)
 from app.launch.journey import month_coverage
 from app.llm.client import resolve_mode
+from app.policy import active_pause, approval_limit
 
 NAO_CONFIGURADO = "nao_configurado"
 ANALISE_PARCIAL = "analise_parcial"
@@ -280,9 +289,52 @@ async def c3_charges(session: AsyncSession, condo: Condominium, c2: Readiness) -
     )
 
 
+async def c7_actions(session: AsyncSession, condo: Condominium) -> Readiness:
+    """Operational actions (D83): the policy only takes requests with the síndico's limit
+    set (policy v2, D93), someone who approves, and automations not paused."""
+    limit = approval_limit(condo)
+    now = utcnow()
+    approver = await session.scalar(
+        select(Membership.id).where(
+            Membership.condominium_id == condo.id,
+            Membership.role == Role.SINDICO.value,
+            Membership.revoked_at.is_(None),
+            Membership.accepted_at.is_not(None),
+            or_(Membership.expires_at.is_(None), Membership.expires_at > now),
+        )
+    )
+    paused = await active_pause(session, condo.id, "action.dispatch") is not None
+    return Readiness(
+        "C7",
+        "Ações com sua aprovação",
+        [
+            Requirement(
+                "alcada_configurada",
+                "Alçada do síndico configurada",
+                limit is not None,
+                "" if limit is not None else "Sem alçada, nenhuma ação é pedida.",
+                entry=True,
+            ),
+            Requirement(
+                "sindico_ativo",
+                "Síndico com acesso para aprovar",
+                approver is not None,
+                "" if approver else "O síndico ainda não fez o primeiro acesso.",
+            ),
+            Requirement(
+                "acoes_nao_pausadas",
+                "Ações não pausadas",
+                not paused,
+                "As ações estão pausadas neste condomínio." if paused else "",
+            ),
+        ],
+    )
+
+
 async def readiness(session: AsyncSession, condo: Condominium) -> list[Readiness]:
-    """C1-C3 (LF2). The other capabilities enter in later Launch phases."""
+    """C1-C3 and C7 (LF2). The other capabilities enter in later Launch phases."""
     c1 = await c1_documents(session, condo)
     c2 = await c2_contracts(session, condo)
     c3 = await c3_charges(session, condo, c2)
-    return [c1, c2, c3]
+    c7 = await c7_actions(session, condo)
+    return [c1, c2, c3, c7]

@@ -26,6 +26,11 @@ DOC_TYPE_LABEL = {
     "cnab_retorno": "um arquivo de retorno do banco",
     "convencao": "a convenção do condomínio",
     "ata": "uma ata",
+    "apolice": "uma apólice de seguro",
+    "balancete": "um balancete",
+    "regimento": "o regimento interno",
+    "laudo": "um laudo técnico",
+    "plano_manutencao": "um plano de manutenção",
     "outro": "um documento de outro tipo",
 }
 

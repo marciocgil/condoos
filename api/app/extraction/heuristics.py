@@ -88,6 +88,25 @@ def classify_text(text: str, reference: date) -> Classification:
     ) or (clauses >= 3 and "contratante" in t):
         signals.append("contrato: partes e cláusulas")
         return Classification(DocumentType.CONTRATO, 0.93, signals)
+    # Governance and maintenance documents (LB-020, D93), told by their title only (the first
+    # line): minutes and receipts often mention a "laudo" or the "regimento" in their body.
+    first_line = next((ln for ln in text.splitlines() if ln.strip()), "")
+    title = fold(first_line)[:120]
+    if "regimento interno" in title:
+        signals.append("título de regimento interno")
+        return Classification(DocumentType.REGIMENTO, 0.92, signals)
+    if "apolice" in title and ("seguro" in t or "seguradora" in t):
+        signals.append("apólice de seguro")
+        return Classification(DocumentType.APOLICE, 0.92, signals)
+    if "balancete" in title or "prestacao de contas" in title:
+        signals.append("balancete / prestação de contas")
+        return Classification(DocumentType.BALANCETE, 0.9, signals)
+    if "plano de manutencao" in title:
+        signals.append("plano de manutenção")
+        return Classification(DocumentType.PLANO_MANUTENCAO, 0.9, signals)
+    if re.search(r"\blaudo\b", title):
+        signals.append("título de laudo")
+        return Classification(DocumentType.LAUDO, 0.9, signals)
     if "danfe" in t or ("nota fiscal eletronica" in t and _CHAVE.search(text)):
         signals.append("DANFE/chave de acesso")
         return Classification(DocumentType.NFE, 0.95, signals)

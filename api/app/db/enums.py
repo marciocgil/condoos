@@ -62,6 +62,12 @@ class DocumentType(StrEnum):
     CONTRATO = "contrato"
     CONVENCAO = "convencao"
     ATA = "ata"
+    # Governance and maintenance documents (LB-020, D93): classified and searchable only.
+    APOLICE = "apolice"
+    BALANCETE = "balancete"
+    REGIMENTO = "regimento"
+    LAUDO = "laudo"
+    PLANO_MANUTENCAO = "plano_manutencao"
     OUTRO = "outro"
 
 

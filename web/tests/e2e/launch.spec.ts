@@ -46,7 +46,7 @@ test("síndica nova escolhe o objetivo, envia o contrato e vê a leitura", async
         cnpj: cnpj(),
         units: 24,
         address: "Rua Fictícia, 20 — Cidade Modelo/SP",
-        approval_limits: { default: "5000.00", by_category: {} },
+        approval_limits: null, // assisted onboarding may leave the limit for later (D93)
       },
       board: [{ name: "Síndica Bosque", position: "sindico", term_start: "2026-01-01", email }],
     },
@@ -86,6 +86,13 @@ test("síndica nova escolhe o objetivo, envia o contrato e vê a leitura", async
   await expect(reading).toBeVisible();
   const progress = (await card.getByText(/Sua implantação/).textContent()) ?? "";
   expect(progress).toMatch(/\d de 5 marcos/);
+
+  // Gate LG2 (D93): without the síndico's limit, actions are off and the screen says why.
+  await page.getByRole("link", { name: "Ajustes" }).click();
+  const actions = page.getByTestId("readiness").locator('[data-capability="C7"]');
+  await expect(actions.getByText("Ainda não configurado")).toBeVisible();
+  await expect(actions.getByText("Falta: Alçada do síndico configurada")).toBeVisible();
+  await page.goto(`/condominio/${id}/resumo`);
 
   // The journey lives on the server: another device sees the same goal and progress.
   const cookies = await page.context().cookies();

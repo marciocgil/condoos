@@ -90,6 +90,10 @@ export default async function ConfiguracoesPage({
               sem_campo_a_confirmar: queue,
               contratos_com_documento: send,
               faturas_casadas: send,
+              alcada_configurada: {
+                href: `/admin/configuracoes?condominio=${current.id}#limit-default`,
+                label: "Configurar a alçada",
+              },
             }}
           />
           <ReviewPolicyCard key={`r-${current.id}`} condominiumId={current.id} policy={policy} />

@@ -46,7 +46,10 @@ export function NewCondoForm() {
         cnpj: c.cnpj,
         units: Number(c.units),
         address: c.address,
-        approval_limits: { default: c.limit, by_category: c.obras ? { obras: c.obras } : {} },
+        // Optional (LB-009, D93): without it, actions stay off until the limit is set.
+        approval_limits: c.limit.trim()
+          ? { default: c.limit, by_category: c.obras ? { obras: c.obras } : {} }
+          : null,
       },
       board: [
         { name: s.name, position: "sindico", term_start: s.term_start, email: s.email || null },
@@ -130,7 +133,11 @@ export function NewCondoForm() {
                 onChange={(e) => setC({ ...c, units: e.target.value })}
               />
             </Field>
-            <Field id="n-limit" label="Alçada do síndico (R$)" required>
+            <Field
+              id="n-limit"
+              label="Alçada do síndico (R$)"
+              hint="Pode ficar para depois. Sem ela, nenhuma ação é pedida pelo CondoOS."
+            >
               <input
                 id="n-limit"
                 inputMode="decimal"

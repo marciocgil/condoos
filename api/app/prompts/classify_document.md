@@ -6,9 +6,14 @@ Tipos possíveis:
 - boleto: boleto bancário ou conta de concessionária (água, luz, gás).
 - recibo: recibo de pagamento.
 - extrato: extrato bancário.
-- contrato: contrato de prestação de serviços.
+- contrato: contrato de prestação de serviços ou termo aditivo de contrato.
 - convencao: convenção do condomínio.
 - ata: ata de assembleia.
+- apolice: apólice de seguro do condomínio.
+- balancete: balancete ou prestação de contas mensal do condomínio.
+- regimento: regimento interno do condomínio.
+- laudo: laudo técnico ou de vistoria (elétrica, estrutura, elevadores, incêndio).
+- plano_manutencao: plano de manutenção preventiva.
 - outro: qualquer outra coisa.
 
 Escolha um único tipo. `confidence` é sua probabilidade, de 0 a 1, de que o tipo esteja certo. Em `motivo`, diga em uma frase o que no documento indica o tipo.

@@ -32,7 +32,7 @@ from app.db.models import (
 )
 from app.db.session import sessionmaker_for
 from app.main import create_app
-from app.policy import evaluate, job_paused
+from app.policy import POLICY_VERSION, evaluate, job_paused
 from tests.helpers import (
     ADMIN_CONDOOS,
     CONSELHEIRO_ACACIAS,
@@ -118,8 +118,11 @@ async def test_policy_is_deny_by_default(admin_engine: AsyncEngine) -> None:
         assert await decide(condo, "visita.agendar", "1000") == PolicyDecision.REQUIRE_APPROVAL
         assert await decide(condo, "visita.agendar", "1000.01") == PolicyDecision.DENY
         assert await decide(condo, "visita.agendar", "-1") == PolicyDecision.DENY
-        assert await decide(no_limit, "visita.agendar", "10") == PolicyDecision.REQUIRE_REVIEW
-        assert await decide(no_limit, "fornecedor.cobrar", "0") == PolicyDecision.REQUIRE_APPROVAL
+        # Policy v2 (D93): without the síndico's limit, no action request at all.
+        assert await decide(no_limit, "visita.agendar", "10") == PolicyDecision.DENY
+        assert await decide(no_limit, "fornecedor.cobrar", "0") == PolicyDecision.DENY
+        only_category = Condominium(id=uuid.uuid4(), approval_limits={"by_category": {}})
+        assert await decide(only_category, "orcamento.solicitar", "0") == PolicyDecision.DENY
         # No version of this policy ever answers ALLOW: nothing runs without a person.
         assert await decide(condo, "fornecedor.cobrar", "0") != PolicyDecision.ALLOW
 
@@ -162,7 +165,10 @@ async def test_vs05_request_approve_dispatch_execute(
         action = r.json()
         url = f"{base}/{action['id']}"
         assert action["status"] == "aguardando_aprovacao"
-        assert action["policy_decision"] == "require_approval" and action["policy_version"] == 1
+        assert (
+            action["policy_decision"] == "require_approval"
+            and action["policy_version"] == POLICY_VERSION
+        )
         assert action["level"] == "L4" and Decimal(action["approval_limit"]) == Decimal("8000")
         assert action["case_number"] == case.json()["number"]
         # Same idempotency key: the same request, not a second one.

@@ -574,3 +574,16 @@ Verificação local: 328 testes do backend (6 novos nesta fatia), `ruff`, `black
 
 Verificação local: 331 testes do backend (3 novos nesta fatia), lint completo, 32 fluxos E2E em banco recriado (2 novos: Ajustes com a prontidão; Carteira com implantações para o Admin e sem a seção para o gerente). O teste antigo da revisora na Carteira passou a localizar a tabela pelo nome ("Condomínios da carteira"), porque agora há duas tabelas na tela.
 
+**D93 — LF2-d do Launch: cadastro assistido sem alçada obrigatória, C7, política v2 e tipos de documento** (07/11/2026; migração 0019 aprovada pelo Marcio). Entregue:
+- **LB-009:** `approval_limits` passa a opcional em `OnboardingIn` e em "Novo condomínio" (campo com a dica "Pode ficar para depois"). Sem alçada, as regras seguem (R12 já ignora categoria sem limite).
+- **Política v2** (`POLICY_VERSION = 2`): sem a alçada padrão do síndico, **qualquer** pedido de ação é negado com o motivo "A alçada do síndico ainda não foi configurada". Na v1 o pedido sem custo passava e o com custo ia para revisão; a mudança vem da resposta Q-L04 (D89). O teste `test_policy_is_deny_by_default` foi atualizado para a v2.
+- **C7 "Ações com sua aprovação"** em `readiness.py`: alçada configurada (entrada), síndico com acesso para aprovar, ações não pausadas. A política não importa o Launch: ela confere a alçada por conta própria, e a C7 mostra o mesmo requisito na tela.
+- **LB-020 e migração 0019:** tipos `apolice`, `balancete`, `regimento`, `laudo` e `plano_manutencao`, classificados pelo título (primeira linha do texto) e guardados só como texto pesquisável pelo chat, sem extração de campos. A volta da migração transforma esses documentos em `outro`, sem perder texto nem arquivo.
+
+Escolhas do Claude, reversíveis:
+1. **"Termo aditivo" não virou tipo próprio**, embora o backlog o listasse: hoje ele entra como `contrato` e vira `contract_amendment` ligado ao contrato original (D66); um tipo separado quebraria esse fluxo. O prompt de classificação passou a dizer que o aditivo é contrato.
+2. **Título é a primeira linha:** menções no corpo ("emissão do laudo", "aprovado o novo regimento") não mudam o tipo, e um contrato que cita "plano de manutenção" continua contrato (testes positivos e negativos em `tests/test_document_types.py`).
+3. **Exemplos dos tipos novos em teste, não no corpus:** o corpus de 30 documentos mede a extração de campos, e os tipos novos não têm campos. Com o mesmo conversor, `corpus.accuracy` dá o mesmo resultado antes e depois da mudança (nesta sessão sem Docling; o relatório salvo, feito com Docling, não foi regravado).
+
+Verificação local: 340 testes do backend (9 novos nesta fatia), lint completo, migração 0019 ida e volta com documento de tipo novo no banco, 32 fluxos E2E em banco recriado (o F01 agora cria o condomínio sem alçada e confere a C7 em Ajustes). Com isso a LF2 fica completa e o gate LG2 atendido no código; falta a validação do Marcio.
+

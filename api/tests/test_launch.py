@@ -80,7 +80,7 @@ def _cap(view: dict[str, Any], capability: str) -> dict[str, Any]:
     return next(r for r in view["readiness"] if r["capability"] == capability)
 
 
-async def _new_condo(admin_engine: AsyncEngine) -> tuple[Condominium, str]:
+async def _new_condo(admin_engine: AsyncEngine, with_limit: bool = True) -> tuple[Condominium, str]:
     tag = uuid.uuid4().hex[:8]
     email = f"sindica.{tag}@launch.example.com"
     spec = OnboardingIn.model_validate(
@@ -92,7 +92,7 @@ async def _new_condo(admin_engine: AsyncEngine) -> tuple[Condominium, str]:
                 "cnpj": generate_cnpj(random.Random(tag)),
                 "units": 24,
                 "address": "Rua Fictícia, 20 — Cidade Modelo/SP",
-                "approval_limits": {"default": "5.000,00"},
+                "approval_limits": {"default": "5.000,00"} if with_limit else None,
             },
             "board": [
                 {
@@ -225,7 +225,13 @@ async def test_new_condominium_has_only_lm1_after_the_first_access(
         await login(c, mailer, email)
         view = (await c.get(f"/condominiums/{condo.id}/launch")).json()
     assert _done(view) == {"LM1"}
-    assert {r["state"] for r in view["readiness"]} == {"nao_configurado"}
+    states = {r["capability"]: r["state"] for r in view["readiness"]}
+    assert states == {
+        "C1": "nao_configurado",
+        "C2": "nao_configurado",
+        "C3": "nao_configurado",
+        "C7": "supervisionada",  # limit set at onboarding, síndica logged in
+    }
     assert view["steps"][0]["key"] == "enviar_contrato" and view["steps"][0]["primary"]
 
 
@@ -738,6 +744,7 @@ async def test_implementation_metrics_come_from_records(admin_engine: AsyncEngin
         "C1": "nao_configurado",  # the only document still waits for review
         "C2": "analise_parcial",
         "C3": "nao_configurado",
+        "C7": "supervisionada",
     }
     assert email not in str(row)  # ids and counts only
 
@@ -752,8 +759,58 @@ async def test_implementations_are_for_the_condoos_team_only(
             "Condomínio Residencial Jardim das Acácias",
             "Condomínio Edifício Mirante do Vale",
         }
-        assert all(set(r["readiness"]) == {"C1", "C2", "C3"} for r in rows)
+        assert all(set(r["readiness"]) == {"C1", "C2", "C3", "C7"} for r in rows)
     for email in (GERENTE, SINDICA_ACACIAS):  # management company and board: not theirs
         async with _client() as c:
             await login(c, mailer, email)
             assert (await c.get("/portfolio/launch")).json() == []
+
+
+# --------------------------------------------------------------------------- C7 (LF2-d)
+
+
+async def test_condominium_without_limit_gets_no_action_until_it_is_set(
+    mailer: MemoryMailer, admin_engine: AsyncEngine
+) -> None:
+    """LB-009 (D89, D93): the CondoOS admin may create a condominium without the síndico's
+    limit. C7 is then "nao_configurado" and the policy denies any action request, with the
+    reason, until the limit is set; nothing else of the journey depends on it."""
+    condo, email = await _new_condo(admin_engine, with_limit=False)
+    async with sessionmaker_for(admin_engine)() as s:
+        stored = await s.get(Condominium, condo.id)
+        assert stored is not None and stored.approval_limits == {}
+    body = {
+        "action_type": "orcamento.solicitar",
+        "title": "Pedir orçamento de manutenção",
+        "cost_cap": "0",
+        "payload": {
+            "effect": "Pedir um orçamento sem compromisso ao fornecedor do elevador.",
+            "reason": "Comparar o preço atual com o mercado antes da renovação.",
+            "executor": "Síndica",
+        },
+        "idempotency_key": f"launch-{uuid.uuid4()}",
+    }
+    async with _client() as c:
+        await login(c, mailer, email)
+        view = (await c.get(f"/condominiums/{condo.id}/launch")).json()
+        c7 = _cap(view, "C7")
+        assert c7["state"] == "nao_configurado"
+        assert [r["key"] for r in c7["requirements"] if not r["met"]] == ["alcada_configurada"]
+        r = await c.post(f"/condominiums/{condo.id}/actions", json=body)
+        assert r.status_code == 422, r.text
+        assert r.json()["detail"]["policy_decision"] == "deny"
+        assert "alçada" in r.json()["detail"]["message"]
+
+    async with sessionmaker_for(admin_engine)() as s, s.begin():
+        stored = await s.get(Condominium, condo.id)
+        assert stored is not None
+        stored.approval_limits = {"default": "3000.00"}
+    async with _client() as c:
+        await login(c, mailer, email)
+        assert (
+            _cap((await c.get(f"/condominiums/{condo.id}/launch")).json(), "C7")["state"]
+            == "supervisionada"
+        )
+        body["idempotency_key"] = f"launch-{uuid.uuid4()}"
+        r = await c.post(f"/condominiums/{condo.id}/actions", json=body)
+        assert r.status_code == 201, r.text
