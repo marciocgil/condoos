@@ -76,6 +76,7 @@ class DocumentOrigin(StrEnum):
     UPLOAD = "upload"
     EMAIL = "email"
     SEED = "seed"
+    PEDIDO = "pedido"  # sent through a delegated request link (D95)
 
 
 class ExtractionStatus(StrEnum):
@@ -374,3 +375,49 @@ class DataIssueEventKind(StrEnum):
     DESCARTADO = "descartado"
     SUPERADO = "superado"  # no longer detected, and nobody had acted on it (like D61)
     REABERTO = "reaberto"
+
+
+# --------------------------------------------------------------------------- delegation (D95)
+
+
+class DelegationStatus(StrEnum):
+    RASCUNHO = "rascunho"
+    AUTORIZADO = "autorizado"
+    AGUARDANDO_ENVIO = "aguardando_envio"
+    RECEBENDO = "recebendo"
+    CONCLUIDO = "concluido"
+    ENCERRADO = "encerrado"
+    EXPIRADO = "expirado"
+    REVOGADO = "revogado"
+
+
+CLOSED_DELEGATION: frozenset[DelegationStatus] = frozenset(
+    {
+        DelegationStatus.CONCLUIDO,
+        DelegationStatus.ENCERRADO,
+        DelegationStatus.EXPIRADO,
+        DelegationStatus.REVOGADO,
+    }
+)
+
+
+class DelegationRecipientRole(StrEnum):
+    ADMINISTRADORA = "administradora"
+    FORNECEDOR = "fornecedor"
+    CONTADOR = "contador"
+    ZELADOR = "zelador"
+    OUTRO = "outro"
+
+
+class DelegationEventKind(StrEnum):
+    CRIADO = "criado"
+    AUTORIZADO = "autorizado"
+    LINK_GERADO = "link_gerado"
+    COMPARTILHADO = "compartilhado"  # declared by the síndico: the system sends nothing
+    ARQUIVO_RECEBIDO = "arquivo_recebido"
+    ARQUIVO_RECUSADO = "arquivo_recusado"
+    ITEM_ATENDIDO = "item_atendido"
+    CONCLUIDO = "concluido"
+    ENCERRADO = "encerrado"
+    EXPIRADO = "expirado"
+    REVOGADO = "revogado"

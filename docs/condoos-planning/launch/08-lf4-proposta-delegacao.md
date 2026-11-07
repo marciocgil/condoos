@@ -1,6 +1,6 @@
 # Launch LF4 — proposta: pedido de documentos a terceiros com link de envio (migração 0021)
 
-Data: 07/11/2026. **Proposta para aprovação do Marcio. Nada desta fase foi escrito no código.** Detalha a ADR-L04 e a ADR-L06 (`03-arquitetura-e-dados.md`), os itens LB-040..LB-046 de `05-backlog.md` e o fluxo F02. Segue a decisão Q-L02 (D89): **o CondoOS gera o link e o texto; quem envia é o síndico, pelo canal dele. Nada sai do sistema.**
+Data: 07/11/2026. **Aprovada pelo Marcio em 07/11/2026 e implementada (D95).** O texto abaixo é a proposta original; diferenças da implementação estão em D95 (PDF só com restrição de uso passa; PDF corrompido é guardado e a leitura diz que não leu). Detalha a ADR-L04 e a ADR-L06 (`03-arquitetura-e-dados.md`), os itens LB-040..LB-046 de `05-backlog.md` e o fluxo F02. Segue a decisão Q-L02 (D89): **o CondoOS gera o link e o texto; quem envia é o síndico, pelo canal dele. Nada sai do sistema.**
 
 ## 1. Problema
 

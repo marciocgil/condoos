@@ -91,7 +91,7 @@ Data: 07/11/2026. IDs **LB-xxx** (sem colidir com CB-xxx do `docs/backlog.md`). 
 
 ## LF4 — Colaborativo (P1)
 
-- **LB-040** `delegation_request` + token de envio (ADR-L04) · G. **LB-041** Rota pública de envio só-escrita com rate limit · M. **LB-042** Estados separados (rascunho → concluído/expirado/revogado) · M. **LB-043** Texto pronto para o síndico enviar (sem envio pelo sistema) · P. **LB-044** Painel "o que você decide × o que está delegado" · M. **LB-045** Triagem de arquivo (ADR-L06) · M. **LB-046** Contato sem login (fornecedor/zelador), mínimo · M.
+- **LB-040** `delegation_request` + token de envio (ADR-L04) · G · ✅ (D95). **LB-041** Rota pública de envio só-escrita com rate limit · M · ✅ (D95; limite por link e arquivo, sem limite por IP). **LB-042** Estados separados (rascunho → concluído/expirado/revogado) · M · ✅ (D95). **LB-043** Texto pronto para o síndico enviar (sem envio pelo sistema) · P · ✅ (D95). **LB-044** Painel "o que você decide × o que está delegado" · M · parcial (D95: lista de pedidos com progresso; painel unificado pendente). **LB-045** Triagem de arquivo (ADR-L06) · M · ✅ (D95, em todo envio). **LB-046** Contato sem login (fornecedor/zelador), mínimo · M · ✅ por decisão: só nome e papel no pedido, sem contato guardado (D95).
 - **Gate LG4:** síndico e administradora simulados; revogação imediata; token de A não grava em B.
 
 ## LF5 — Captura recorrente e canais (P1)

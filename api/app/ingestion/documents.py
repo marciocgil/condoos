@@ -18,6 +18,7 @@ from app.core.jobs import enqueue
 from app.db.enums import DocumentOrigin, DocumentType, ExtractionStatus
 from app.db.models import Document
 from app.ingestion.filetypes import UnsupportedFile, sniff
+from app.ingestion.triage import Rejected, triage
 from app.storage.base import get_storage
 from app.storage.s3 import document_key
 
@@ -56,6 +57,10 @@ async def ingest_file(
     try:
         mime = sniff(safe_name, data)
     except UnsupportedFile as exc:
+        return IngestOutcome(safe_name, None, error=str(exc))
+    try:  # active content and image payloads are refused or removed (ADR-L06, D95)
+        data = await asyncio.to_thread(triage, mime, data)
+    except Rejected as exc:
         return IngestOutcome(safe_name, None, error=str(exc))
 
     sha = hashlib.sha256(data).hexdigest()

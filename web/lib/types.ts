@@ -849,3 +849,64 @@ export interface DataIssue {
   created_at: string | null;
   can_resolve: boolean;
 }
+
+// Delegated document requests (D95).
+export type DelegationStatus =
+  | "rascunho"
+  | "autorizado"
+  | "aguardando_envio"
+  | "recebendo"
+  | "concluido"
+  | "encerrado"
+  | "expirado"
+  | "revogado";
+
+export interface DelegationItem {
+  key: string;
+  label: string;
+  kind: string;
+  contract_id?: string;
+  competence?: string;
+  attended_at?: string;
+  attended_by?: string;
+}
+
+export interface DelegationSummary {
+  id: string;
+  recipient_name: string;
+  recipient_role: string;
+  status: DelegationStatus;
+  due_date: string;
+  shared_at: string | null;
+  created_at: string | null;
+  progress: { attended: number; total: number };
+}
+
+export interface DelegationDetail extends DelegationSummary {
+  scope: string;
+  items: DelegationItem[];
+  events: { kind: string; by_person: boolean; at: string }[];
+  documents: {
+    id: string;
+    filename: string;
+    doc_type_label: string;
+    extraction_status: string;
+  }[];
+  can: { authorize: boolean; issue_link: boolean; attend: boolean; finish: boolean };
+}
+
+export interface DelegationLinkOut {
+  url: string;
+  expires_at: string;
+  text: string;
+  request: DelegationDetail;
+}
+
+export interface PublicDelegation {
+  condominium: string;
+  recipient_name: string;
+  items: { label: string; attended: boolean }[];
+  due_date: string;
+  expires_at: string;
+  remaining_files: number;
+}

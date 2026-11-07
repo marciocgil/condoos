@@ -13,7 +13,7 @@ test.describe("equipe CondoOS (D77)", () => {
   test("revisora vê só o condomínio atribuído e não configura", async ({ page }) => {
     await loginAs(page, REVISORA);
     await expect(page).toHaveURL(/\/admin\/carteira$/);
-    const table = page.getByRole("table");
+    const table = page.getByRole("table", { name: "Condomínios da carteira" });
     await expect(table).toContainText("Mirante do Vale");
     await expect(table).not.toContainText("Jardim das Acácias");
     await expect(page.getByRole("link", { name: "Novo condomínio" })).toHaveCount(0);

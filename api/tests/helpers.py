@@ -38,3 +38,16 @@ GERENTE = "diego.gerente@atlantida.example.com"
 ANALISTA = "elisa.analista@atlantida.example.com"
 ADMIN_CONDOOS = "fabio.admin@condoos.example.com"  # CondoOS admin: both condominiums
 REVISORA = "gabriela.revisora@condoos.example.com"  # CondoOS reviewer: Mirante do Vale only
+
+
+def jpeg_bytes(tag: str = "") -> bytes:
+    """A small real JPEG (triage opens and saves images again, D95). ``tag`` changes the
+    pixels so two calls with different tags are different files."""
+    import io
+
+    from PIL import Image
+
+    shade = sum(tag.encode()) % 200 + 30
+    buf = io.BytesIO()
+    Image.new("RGB", (32, 32), (shade, shade, shade)).save(buf, format="JPEG")
+    return buf.getvalue()

@@ -65,6 +65,14 @@ CATALOGUE: dict[str, Step] = {
             "enviar",
         ),
         Step(
+            "pedir_documentos",
+            "Peça os documentos que faltam a quem tem",
+            "Algumas notas fiscais dos contratos ainda não chegaram. Eu preparo o link e o "
+            "texto; você envia pelo seu canal.",
+            "Documentos esperados dos contratos",
+            "pedidos/novo",
+        ),
+        Step(
             "criar_assunto",
             "Conte uma pendência que está te preocupando",
             "Eu registro com responsável, próxima ação e prazo, e acompanho até resolver.",
@@ -75,11 +83,29 @@ CATALOGUE: dict[str, Step] = {
 }
 
 ORDER: dict[str | None, tuple[str, ...]] = {
-    "economizar": ("enviar_contrato", "enviar_faturas", "enviar_extrato", "enviar_convencao"),
+    "economizar": (
+        "enviar_contrato",
+        "enviar_faturas",
+        "pedir_documentos",
+        "enviar_extrato",
+        "enviar_convencao",
+    ),
     "pendencias": ("criar_assunto", "enviar_convencao", "enviar_contrato", "enviar_faturas"),
-    "fornecedores": ("enviar_contrato", "enviar_faturas", "enviar_extrato", "criar_assunto"),
+    "fornecedores": (
+        "enviar_contrato",
+        "pedir_documentos",
+        "enviar_faturas",
+        "enviar_extrato",
+        "criar_assunto",
+    ),
     "panorama": ("enviar_convencao", "enviar_contrato", "enviar_faturas", "criar_assunto"),
-    None: ("enviar_contrato", "enviar_convencao", "criar_assunto", "enviar_faturas"),
+    None: (
+        "enviar_contrato",
+        "enviar_convencao",
+        "pedir_documentos",
+        "criar_assunto",
+        "enviar_faturas",
+    ),
 }
 
 
@@ -101,6 +127,9 @@ def unmet(readiness: list[Readiness], open_cases: int) -> set[str]:
             out.add("enviar_extrato")
     if open_cases == 0:
         out.add("criar_assunto")
+    c8 = by_key.get("C8")
+    if c8 is not None and c8.state == "analise_parcial":
+        out.add("pedir_documentos")  # invoices expected and not received (D95)
     return out
 
 

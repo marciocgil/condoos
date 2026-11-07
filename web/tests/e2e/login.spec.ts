@@ -18,8 +18,10 @@ test("gerente entra e vê a carteira com os dois condomínios", async ({ page },
   test.skip(info.project.name !== "admin-desktop");
   await loginAs(page, "diego.gerente@atlantida.example.com");
   await expect(page).toHaveURL(/\/admin\/carteira/);
-  await expect(page.getByRole("cell", { name: /Jardim das Acácias/ })).toBeVisible();
-  await expect(page.getByRole("cell", { name: /Mirante do Vale/ })).toBeVisible();
+  // The Carteira also lists implementations (D90): look at the portfolio table only.
+  const portfolio = page.getByRole("table", { name: "Condomínios da carteira" });
+  await expect(portfolio.getByRole("cell", { name: /Jardim das Acácias/ })).toBeVisible();
+  await expect(portfolio.getByRole("cell", { name: /Mirante do Vale/ })).toBeVisible();
 });
 
 test("link inválido mostra mensagem de erro", async ({ page }) => {

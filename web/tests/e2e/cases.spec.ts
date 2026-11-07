@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 import { loginAs } from "./auth";
+import { uniquePng } from "./files";
 
 const SINDICA = "ana.sindica@acacias.example.com";
 const ADMIN = "fabio.admin@condoos.example.com";
@@ -54,14 +55,14 @@ test.describe("assuntos", () => {
     await page.getByRole("button", { name: "Concluir", exact: true }).click();
     await expect(page.getByText("Concluída", { exact: true })).toBeVisible();
     await page.getByLabel("Arquivo (foto, laudo, nota)").setInputFiles({
-      name: "teto-seco.jpg",
-      mimeType: "image/jpeg",
-      // JPEG signature + unique bytes (a new file each run, not a duplicate document).
-      buffer: Buffer.concat([Buffer.from([0xff, 0xd8, 0xff, 0xe0]), Buffer.from(` ${Date.now()}`)]),
+      name: "teto-seco.png",
+      mimeType: "image/png",
+      // A real image, different on each run (not a duplicate document).
+      buffer: uniquePng(),
     });
     await page.getByLabel("O que este arquivo comprova").fill("Foto do teto após o reparo");
     await page.getByRole("button", { name: "Anexar evidência" }).click();
-    await expect(page.getByRole("link", { name: "teto-seco.jpg" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "teto-seco.png" })).toBeVisible();
 
     // The reason form stayed open after the refused attempt; open it only if closed.
     const reasonField = page.getByLabel("Como o critério foi atendido?");

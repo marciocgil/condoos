@@ -24,6 +24,7 @@ from tests.helpers import (
     SINDICA_ACACIAS,
     SINDICA_MIRANTE,
     condo_id,
+    jpeg_bytes,
     login,
 )
 
@@ -134,9 +135,7 @@ async def test_vs01_first_case_end_to_end(mailer: MemoryMailer, admin_engine: As
         assert r.status_code == 422 and "evidência" in r.json()["detail"]
         up = await manager.post(
             f"{url}/evidence/upload",
-            files={
-                "file": ("teto-seco.jpg", b"\xff\xd8\xff\xe0fake-jpeg-evidence-1", "image/jpeg")
-            },
+            files={"file": ("teto-seco.jpg", jpeg_bytes("evidence-1"), "image/jpeg")},
             data={"description": "Foto do teto após o reparo"},
         )
         assert up.status_code == 201, up.text

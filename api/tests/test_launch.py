@@ -567,3 +567,26 @@ async def test_batch_status_of_an_upload(
     assert body["done"] is False
     review = next(i for i in body["items"] if i["state"] == "a_conferir")
     assert review["reasons"] == ["Valor: baixa confiança"] and review["doc_type_label"] == "Recibo"
+
+
+def test_ask_for_missing_documents_step() -> None:
+    """D95: when expected invoices did not arrive (C8 partial), the next steps offer to ask
+    whoever has them; never when nothing is missing."""
+    today = date(2026, 11, 7)
+    ready = [
+        _r("C1", "supervisionada", documentos_lidos=1),
+        _r("C2", "supervisionada"),
+        _r(
+            "C3",
+            "supervisionada",
+            mes="2026-10",
+            contratos_vigentes=2,
+            contratos_com_cobranca=2,
+            movimentos_bancarios=3,
+        ),
+        _r("C8", "analise_parcial", esperados=2, recebidos=1),
+    ]
+    keys = [s["key"] for s in next_steps("economizar", ready, 1, {}, today)]
+    assert keys == ["pedir_documentos"]
+    ready[-1] = _r("C8", "supervisionada", esperados=2, recebidos=2)
+    assert next_steps("economizar", ready, 1, {}, today) == []

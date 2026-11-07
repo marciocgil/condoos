@@ -1,6 +1,6 @@
 # Rastreabilidade — FR ↔ tarefa ↔ código ↔ teste ↔ entrega
 
-Data: 07/11/2026. Atualizar ao fim de cada fatia (CLAUDE.md, item 6). "Entrega" = marco do MVP auditor (Marco 1–6, 05/11/2026) ou decisão pós-piloto (D65–D71) em que o código entrou. Testes citados existem no repositório. Última execução local completa: 07/11/2026, 339 passaram (D94); E2E: 29 fluxos passaram contra a stack local (D85); `launch.spec.ts` (D89) passou numa stack local sem Docker.
+Data: 07/11/2026. Atualizar ao fim de cada fatia (CLAUDE.md, item 6). "Entrega" = marco do MVP auditor (Marco 1–6, 05/11/2026) ou decisão pós-piloto (D65–D71) em que o código entrou. Testes citados existem no repositório. Última execução local completa: 07/11/2026, 352 passaram (D95); E2E: 29 fluxos passaram contra a stack local (D85); `launch.spec.ts` (D89) passou numa stack local sem Docker.
 
 | FR | Tarefa(s) | Código | Teste(s) | Entrega |
 |---|---|---|---|---|
@@ -95,3 +95,5 @@ Data: 07/11/2026. Atualizar ao fim de cada fatia (CLAUDE.md, item 6). "Entrega" 
 | LB-036 "inferido" | `extraction/confidence.py` (`Assessment.inferred`), `extraction/provenance.py::build`, `extraction/pipeline.py`, `launch/first_value.py`, `ReviewForm.tsx`, `FirstValueCard.tsx` | `test_provenance.py::test_values_filled_by_a_rule_are_inferred_never_read`, `test_launch.py` | D94 |
 | LB-033 envio em lote | `routers/launch.py::batch_status`, `components/condoos/BatchProgress.tsx`, `UploadForm.tsx` | `test_launch.py::test_batch_status_of_an_upload`, e2e `launch.spec.ts` | D94 |
 | Gate LG3 | cenário único: conflito, ausência, duplicidade, ilegível, cobertura | `test_lg3_gate.py` | D94 |
+| LB-045 triagem de arquivos | `ingestion/triage.py`, `ingestion/documents.py::ingest_file` | `test_triage.py` (9), `test_delegation.py` | D95 |
+| LB-040..043 pedido delegado | `app/delegation/`, `routers/delegations.py`, migração 0021, telas `pedidos/*`, `/enviar/[token]`, `DelegationForm`, `DelegationDetailView`, `PublicUpload` | `test_delegation.py` (3), `test_launch.py::test_ask_for_missing_documents_step`, e2e `delegation.spec.ts` | D95 |

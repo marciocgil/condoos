@@ -28,6 +28,8 @@ APPROVAL_VALID_DAYS = 7
 PAUSABLE_JOBS: dict[str, str] = {
     "action.dispatch": "Despacho de ações aprovadas",
     "finding.explain": "Reescrita das explicações por IA",
+    # Not a job: pausing it makes every upload link of the condominium stop (D95).
+    "delegation.link": "Links de envio de documentos",
 }
 
 

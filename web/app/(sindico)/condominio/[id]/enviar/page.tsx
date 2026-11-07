@@ -1,4 +1,4 @@
-import { ChevronLeft } from "lucide-react";
+import { ChevronLeft, Send } from "lucide-react";
 import Link from "next/link";
 
 import { UploadForm } from "@/components/UploadForm";
@@ -18,6 +18,12 @@ export default async function EnviarPage({ params }: { params: Promise<{ id: str
         Você também pode encaminhar notas e boletos por e-mail para o endereço do condomínio.
       </p>
       <UploadForm condominiumId={id} />
+      <Link
+        href={`/condominio/${id}/pedidos/novo`}
+        className="inline-flex items-center gap-1 text-sm text-fg-2 hover:text-fg"
+      >
+        <Send size={14} aria-hidden /> Não está com você? Peça a quem tem os documentos
+      </Link>
     </>
   );
 }

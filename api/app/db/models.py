@@ -53,6 +53,9 @@ from app.db.enums import (
     DataIssueKind,
     DataIssueStatus,
     DecisionAction,
+    DelegationEventKind,
+    DelegationRecipientRole,
+    DelegationStatus,
     DocumentOrigin,
     DocumentType,
     ExtractionStatus,
@@ -369,6 +372,10 @@ class Document(IdTimestampMixin, Base):
     reviewed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     reviewed_by_user_id: Mapped[uuid.UUID | None] = _uuid_fk(
         "app_user.id", nullable=True, ondelete="SET NULL"
+    )
+    # Sent through a delegated request link (D95).
+    delegation_request_id: Mapped[uuid.UUID | None] = _uuid_fk(
+        "delegation_request.id", nullable=True, ondelete="SET NULL"
     )
 
 
@@ -1101,6 +1108,66 @@ class DataIssueEvent(IdTimestampMixin, Base):
     payload: Mapped[dict[str, Any]] = mapped_column(Json, default=dict)
 
 
+class DelegationRequest(IdTimestampMixin, Base):
+    """A request for documents to someone without a login (D95, ADR-L04). The CondoOS makes
+    the link and the text; the síndico sends them through their own channel. The recipient
+    is kept by name and role only: no e-mail or phone (nothing is sent by the system)."""
+
+    __tablename__ = "delegation_request"
+    __table_args__ = (
+        _enum_check("status", DelegationStatus),
+        _enum_check("recipient_role", DelegationRecipientRole),
+    )
+
+    condominium_id: Mapped[uuid.UUID] = _uuid_fk("condominium.id")
+    prepared_by_user_id: Mapped[uuid.UUID | None] = _uuid_fk(
+        "app_user.id", nullable=True, ondelete="SET NULL"
+    )
+    authorized_by_user_id: Mapped[uuid.UUID | None] = _uuid_fk(
+        "app_user.id", nullable=True, ondelete="SET NULL"
+    )
+    authorized_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    recipient_name: Mapped[str] = mapped_column(String(200))
+    recipient_role: Mapped[str] = mapped_column(String(20))
+    scope: Mapped[str] = mapped_column(Text, default="")
+    # [{"key", "label", "kind", "contract_id"?, "competence"?, "attended_at"?, "attended_by"?}]
+    items: Mapped[list[dict[str, Any]]] = mapped_column(Json, default=list)
+    due_date: Mapped[date] = mapped_column(Date)
+    status: Mapped[str] = mapped_column(String(20), default=DelegationStatus.RASCUNHO.value)
+    case_id: Mapped[uuid.UUID | None] = _uuid_fk("case_record.id", nullable=True)
+    shared_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    closed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class DelegationLink(IdTimestampMixin, Base):
+    """The upload link of a request: only the SHA-256 of the token is stored."""
+
+    __tablename__ = "delegation_link"
+    __table_args__ = (UniqueConstraint("token_hash"),)
+
+    condominium_id: Mapped[uuid.UUID] = _uuid_fk("condominium.id")
+    request_id: Mapped[uuid.UUID] = _uuid_fk("delegation_request.id")
+    token_hash: Mapped[str] = mapped_column(String(64))
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    max_files: Mapped[int] = mapped_column(Integer, default=30)
+    files_count: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    last_used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class DelegationEvent(IdTimestampMixin, Base):
+    """History of a request (append only). External uploads have no user; ids only."""
+
+    __tablename__ = "delegation_event"
+    __table_args__ = (_enum_check("kind", DelegationEventKind),)
+
+    condominium_id: Mapped[uuid.UUID] = _uuid_fk("condominium.id")
+    request_id: Mapped[uuid.UUID] = _uuid_fk("delegation_request.id")
+    kind: Mapped[str] = mapped_column(String(20))
+    user_id: Mapped[uuid.UUID | None] = _uuid_fk("app_user.id", nullable=True, ondelete="SET NULL")
+    payload: Mapped[dict[str, Any]] = mapped_column(Json, default=dict)
+
+
 # Tables protected by Row-Level Security, with the column holding the tenant id.
 RLS_TABLES: dict[str, str] = {
     "condominium": "id",
@@ -1139,6 +1206,9 @@ RLS_TABLES: dict[str, str] = {
     "launch_state": "condominium_id",
     "data_issue": "condominium_id",
     "data_issue_event": "condominium_id",
+    "delegation_request": "condominium_id",
+    "delegation_link": "condominium_id",
+    "delegation_event": "condominium_id",
 }
 
 # Tables the application role may only read and insert into (never update or delete).
@@ -1152,4 +1222,5 @@ APPEND_ONLY_TABLES: tuple[str, ...] = (
     "action_decision",
     "condominium_settings_version",
     "data_issue_event",
+    "delegation_event",
 )

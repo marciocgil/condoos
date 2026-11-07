@@ -37,6 +37,8 @@ class Permission(StrEnum):
     UPDATE_TASK = "update_task"
     # Launch (D89): choose the journey's goal, put steps off, hide the card. Order only.
     MANAGE_LAUNCH = "manage_launch"
+    # Delegated document requests (D95): revoke a link, close a request.
+    MANAGE_DELEGATION = "manage_delegation"
 
 
 P = Permission
@@ -72,6 +74,7 @@ ROLE_PERMISSIONS: dict[Role, frozenset[Permission]] = {
             P.MANAGE_CASES,
             P.UPDATE_TASK,
             P.MANAGE_LAUNCH,
+            P.MANAGE_DELEGATION,
         }
     ),
     Role.SUBSINDICO: frozenset({P.VIEW, P.COMMENT_FINDING, P.EXPORT}),
@@ -106,6 +109,7 @@ ROLE_PERMISSIONS: dict[Role, frozenset[Permission]] = {
             P.MANAGE_CASES,
             P.UPDATE_TASK,
             P.MANAGE_LAUNCH,
+            P.MANAGE_DELEGATION,
         }
     ),
     Role.CONDOOS_REVIEWER: frozenset(
