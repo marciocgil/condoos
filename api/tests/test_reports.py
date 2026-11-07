@@ -56,7 +56,12 @@ async def test_report_for_each_seeded_condominium(
     assert "fraude" not in joined and "desvio" not in joined
 
     wb = load_workbook(io.BytesIO(month_report_xlsx(report)))
-    assert wb.sheetnames == ["Achados", "Despesas", "Fornecedores", "Contratos"]
+    assert wb.sheetnames == ["Achados", "Despesas", "Fornecedores", "Contratos", "Cobertura"]
+    # LB-037 (D92): what the report covers is always stated, in the PDF and the workbook.
+    assert any(line.startswith("Notas fiscais dos contratos") for line in report.coverage)
+    assert any("extrato" in line.lower() for line in report.coverage)
+    assert "Cobertura deste relatório" in pages[0]
+    assert wb["Cobertura"].max_row == 3 + len(report.coverage)
     for ws in wb.worksheets:
         assert ws["A1"].value == FOOTER
         assert ws.oddFooter is not None and ws.oddFooter.center.text == FOOTER

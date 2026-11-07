@@ -21,9 +21,12 @@ from sqlalchemy import and_, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.chat.search import INDEXED_TYPES
-from app.db.enums import DocumentType, ExtractionStatus
+from app.core.time import add_months, local_today
+from app.db.enums import CompetenceStatus, DocumentType, ExtractionStatus, PlatformRole
 from app.db.models import (
     BankTransaction,
+    Competence,
+    CondoAssignment,
     Condominium,
     Contract,
     Document,
@@ -31,7 +34,9 @@ from app.db.models import (
     Expense,
 )
 from app.llm.client import resolve_mode
+from app.pending import month_pending
 from app.policy import active_pause, approval_limit
+from app.reports.data import pending_for_month
 
 State = Literal["nao_configurado", "analise_parcial", "supervisionada"]
 STATE_LABEL: dict[str, str] = {
@@ -273,9 +278,124 @@ async def actions_capability(session: AsyncSession, condo_id: uuid.UUID) -> Read
     return r
 
 
-async def readiness(session: AsyncSession, condo_id: uuid.UUID) -> list[Readiness]:
+async def _reviewer_assigned(session: AsyncSession, condo_id: uuid.UUID) -> bool:
+    now = func.now()
+    found = await session.scalar(
+        select(CondoAssignment.id)
+        .where(
+            CondoAssignment.condominium_id == condo_id,
+            CondoAssignment.platform_role == PlatformRole.CONDOOS_REVIEWER.value,
+            CondoAssignment.revoked_at.is_(None),
+            or_(CondoAssignment.valid_until.is_(None), CondoAssignment.valid_until > now),
+        )
+        .limit(1)
+    )
+    return found is not None
+
+
+async def savings_capability(
+    session: AsyncSession, condo_id: uuid.UUID, billing: Readiness
+) -> Readiness:
+    """C4 — savings recommendations (Optimize): need the comparison of charges working and a
+    CondoOS reviewer, since no recommendation reaches the condominium unreviewed (D74, D81)."""
+    r = Readiness("C4", "Recomendações de economia", "nao_configurado")
+    reviewer = await _reviewer_assigned(session, condo_id)
+    r.facts = {"revisora_atribuida": reviewer}
+    if billing.state == "nao_configurado":
+        r.missing = ["Primeiro preciso confrontar cobranças com contratos."]
+        return r
+    r.state = "supervisionada"
+    if not reviewer:
+        r.state = "analise_parcial"
+        r.missing.append(
+            "Sem revisora CondoOS atribuída: oportunidades ficam internas até a revisão."
+        )
+    if billing.state != "supervisionada":
+        r.state = "analise_parcial"
+        r.missing.append("O confronto de cobranças ainda é parcial; a estimativa também será.")
+    return r
+
+
+async def expected_documents_capability(
+    session: AsyncSession, condo_id: uuid.UUID, today: date
+) -> Readiness:
+    """C8 — expected documents: the invoices the contracts in force should bring last month
+    (``pending.py``, D70). A missing invoice is "not received yet", never "not issued"."""
+    r = Readiness("C8", "Documentos esperados dos contratos", "nao_configurado")
+    month = add_months(today.replace(day=1), -1)
+    pending = await month_pending(session, condo_id, month, today)
+    expected = [c for c in pending.contracts if c.status != "aguardando"]
+    waiting = [c for c in pending.contracts if c.status == "aguardando"]
+    received = [c for c in expected if c.status == "faturado"]
+    label = month.strftime("%m/%Y")
+    r.facts = {
+        "mes": month.strftime("%Y-%m"),
+        "esperados": len(expected),
+        "recebidos": len(received),
+        "no_prazo": len(waiting),
+    }
+    if not pending.contracts:
+        r.missing = ["Nenhum contrato com faturamento periódico vigente em " + label + "."]
+        return r
+    r.state = "supervisionada"
+    missing = len(expected) - len(received)
+    if missing:
+        r.state = "analise_parcial"
+        r.missing.append(
+            f"Nota fiscal de {label} ainda não recebida para {missing} de {len(expected)} "
+            "contrato(s). Pode ter sido emitida e não enviada: confira com a administradora."
+        )
+    return r
+
+
+async def closing_capability(session: AsyncSession, condo_id: uuid.UUID) -> Readiness:
+    """C9 — closing the month: the latest competence, with its exception queue empty and
+    someone who may close it (the management's manager or a CondoOS reviewer, D77)."""
+    r = Readiness("C9", "Fechamento do mês", "nao_configurado")
+    comp = await session.scalar(
+        select(Competence)
+        .where(Competence.condominium_id == condo_id)
+        .order_by(Competence.month.desc())
+        .limit(1)
+    )
+    if comp is None:
+        r.missing = ["Nenhum mês avaliado ainda."]
+        return r
+    label = comp.month.strftime("%m/%Y")
+    condo = await session.get(Condominium, condo_id)
+    closer = (condo is not None and condo.management_company_id is not None) or (
+        await _reviewer_assigned(session, condo_id)
+    )
+    r.facts = {"mes": comp.month.strftime("%Y-%m"), "status": comp.status}
+    if comp.status == CompetenceStatus.FECHADA.value:
+        r.state = "supervisionada"
+        return r
+    queue = await pending_for_month(session, condo_id, comp.month)
+    r.facts["fila"] = queue
+    r.state = "supervisionada"
+    if any(queue.values()):
+        r.state = "analise_parcial"
+        r.missing.append(
+            f"{sum(queue.values())} item(ns) na fila de {label}; o relatório só fecha com a fila "
+            "vazia. Até lá, é prévia."
+        )
+    if not closer:
+        r.state = "analise_parcial"
+        r.missing.append("Ninguém pode fechar o mês: atribua uma revisora CondoOS.")
+    return r
+
+
+async def readiness(
+    session: AsyncSession, condo_id: uuid.UUID, today: date | None = None
+) -> list[Readiness]:
+    if today is None:
+        condo = await session.get(Condominium, condo_id)
+        today = local_today(condo.timezone if condo else None)
     c1 = await documents_capability(session, condo_id)
     c2 = await contracts_capability(session, condo_id)
     c3 = await billing_capability(session, condo_id, c2)
+    c4 = await savings_capability(session, condo_id, c3)
     c7 = await actions_capability(session, condo_id)
-    return [c1, c2, c3, c7]
+    c8 = await expected_documents_capability(session, condo_id, today)
+    c9 = await closing_capability(session, condo_id)
+    return [c1, c2, c3, c4, c7, c8, c9]

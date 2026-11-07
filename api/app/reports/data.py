@@ -11,7 +11,7 @@ from datetime import date, datetime
 from decimal import Decimal
 from typing import Any
 
-from sqlalchemy import or_, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.br import format_cnpj
@@ -154,6 +154,8 @@ class MonthReport:
     expenses_total: Decimal = Decimal("0")
     preview: bool = False
     top: list[FindingRow] = field(default_factory=list)
+    # What this report could and could not see (LB-037, D92): never "complete" by omission.
+    coverage: list[str] = field(default_factory=list)
 
 
 def month_of(value: Any) -> date | None:
@@ -375,7 +377,48 @@ async def build_month_report(
         expenses_total=sum((e.amount for e in expenses), Decimal("0")),
         preview=status != "fechada",
         top=finding_rows[:5],
+        coverage=await month_coverage(session, condominium_id, month),
     )
+
+
+async def month_coverage(
+    session: AsyncSession, condominium_id: uuid.UUID, month: date
+) -> list[str]:
+    """Plain statements of what the month's data covers (LB-037, D92): invoices received from
+    the contracts that expect one, the bank statement, and items still under review. A gap is
+    said as "not received", never as something that did not happen."""
+    from app.pending import month_pending  # pending imports rules; keep reports light
+
+    out: list[str] = []
+    label = f"{month:%m/%Y}"
+    pending = await month_pending(session, condominium_id, month, utcnow().date())
+    expected = [c for c in pending.contracts if c.status != "aguardando"]
+    if expected:
+        received = sum(c.status == "faturado" for c in expected)
+        out.append(
+            f"Notas fiscais dos contratos: {received} de {len(expected)} recebidas para {label}."
+        )
+    else:
+        out.append(f"Nenhum contrato com nota fiscal esperada para {label}.")
+    bank = await session.scalar(
+        select(func.count())
+        .select_from(BankTransaction)
+        .where(
+            BankTransaction.condominium_id == condominium_id,
+            BankTransaction.posted_at >= month,
+            BankTransaction.posted_at < add_months(month, 1),
+        )
+    )
+    out.append(
+        f"Extrato bancário de {label}: {bank} lançamento(s)."
+        if bank
+        else f"Sem extrato bancário de {label}: pagamentos não foram conferidos com o banco."
+    )
+    queue = await pending_for_month(session, condominium_id, month)
+    waiting = sum(queue.values())
+    if waiting:
+        out.append(f"{waiting} item(ns) ainda em revisão: este relatório é parcial.")
+    return out
 
 
 def document_month(doc: Document) -> date | None:

@@ -157,6 +157,11 @@ def month_report_xlsx(r: MonthReport) -> bytes:
         ws.append([c.supplier, c.object, c.monthly_value, c.index, c.base_month, c.start, c.end])
     _format(ws, [3], [6, 7])
 
+    ws = wb.create_sheet("Cobertura")
+    _sheet(ws, title, ["O que este relatório cobre"], [100])
+    for line in r.coverage:
+        ws.append([line])
+
     buffer = io.BytesIO()
     wb.save(buffer)
     return buffer.getvalue()

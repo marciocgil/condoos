@@ -182,6 +182,10 @@ def month_report_pdf(r: MonthReport) -> bytes:
     story.append(
         Paragraph("Valor em risco soma os achados ainda em análise (ignorados não entram).", SMALL)
     )
+    if r.coverage:
+        story.append(Paragraph("Cobertura deste relatório", H2))
+        for line in r.coverage:
+            story.append(Paragraph(_esc(line), SMALL))
     story.append(Paragraph("Principais achados", H2))
     if r.top:
         rows: list[list[Any]] = [["Gravidade", "Achado", "Fornecedor", "Valor em risco"]]

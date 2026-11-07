@@ -79,14 +79,14 @@ Data: 07/11/2026. IDs **LB-xxx** (sem colidir com CB-xxx do `docs/backlog.md`). 
 
 ## LF3 — Dados e reconciliação (P0/P1)
 
-- **LB-030** `data_issue` (ADR-L05, migração) · G · conflito contrato × aditivo (F05), versão prevalente com motivo.
-- **LB-031** Reconciliação bidirecional visível: fatura sem contrato e contrato sem cobrança, com cobertura por período (reusa `pending.py`) · M.
+- **LB-030** `data_issue` (ADR-L05, migração 0020 — proposta em `07-lf3-proposta-conflitos.md`, aguarda aprovação) · G · conflito contrato × aditivo (F05), versão prevalente com motivo.
+- **LB-031** Reconciliação bidirecional visível: fatura sem contrato e contrato sem cobrança, com cobertura por período (reusa `pending.py`) · M · ✅ entregue como cobertura (D92); lista detalhada segue em Pendências (D70).
 - **LB-032** Central de Validação para revisor e síndico (prioridade por valor em risco; trechos lado a lado) — reusa fila e `SidePanel` · G.
 - **LB-033** Upload em lote com acompanhamento ("Faça por mim") · M.
-- **LB-034** Prontidão C4, C8, C9 · M.
+- **LB-034** Prontidão C4, C8, C9 · M · ✅ entregue (D92).
 - **LB-035** Política consulta prontidão (ADR-L03) · M · teste: ação sobre contrato com conflito aberto → `DENY`.
 - **LB-036** Classes "inferido" e "conflitante" na proveniência (FR-016) · M.
-- **LB-037** Rótulo de cobertura em relatório e briefing (nunca "completo" com fila aberta) · P.
+- **LB-037** Rótulo de cobertura em relatório e briefing (nunca "completo" com fila aberta) · P · ✅ entregue no relatório (D92); o briefing já marca "dados parciais" (D82).
 - **Gate LG3:** documentos contraditórios, ausentes, duplicados e ilegíveis testados; nenhum relatório parcial descrito como completo.
 
 ## LF4 — Colaborativo (P1)

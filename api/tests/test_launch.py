@@ -24,6 +24,7 @@ from app.db.models import (
     Contract,
     Document,
     Expense,
+    ManagementCompany,
     Membership,
 )
 from app.db.session import sessionmaker_for
@@ -299,7 +300,7 @@ async def test_launch_api_permissions_and_isolation(
     assert body["can_manage"] is True
     assert [m["key"] for m in body["milestones"]] == ["LM1", "LM2", "LM3", "LM4", "LM5"]
     assert body["milestones"][0]["done"] is True  # she has just logged in
-    assert [r["key"] for r in body["readiness"]] == ["C1", "C2", "C3", "C7"]
+    assert [r["key"] for r in body["readiness"]] == ["C1", "C2", "C3", "C4", "C7", "C8", "C9"]
     assert len(body["next_steps"]) <= 3
 
     r = await client.put(f"{base}/goal", json={"goal": "economizar"})
@@ -439,7 +440,7 @@ async def test_portfolio_launch_and_time_to_first_value(
         row = await portfolio_row(s, condo, today)
     assert row["milestones_done"] == 1 and row["next_milestone"] == "Seu condomínio ganhou memória"
     assert row["hours_to_first_value"] == 1.5
-    assert row["days_idle"] == 0 and row["capabilities_total"] == 4
+    assert row["days_idle"] == 0 and row["capabilities_total"] == 7
 
     await login(client, mailer, SINDICA_ACACIAS)
     assert (await client.get("/portfolio/launch")).json() == []
@@ -448,3 +449,81 @@ async def test_portfolio_launch_and_time_to_first_value(
     acacias = str(await condo_id(admin_engine, "jardim-das-acacias"))
     assert acacias in {r["id"] for r in rows}
     assert all(r["milestones_total"] == 5 for r in rows)
+
+
+# --------------------------------------------------------------------------- LF3-a (D92)
+
+
+async def test_savings_expected_documents_and_closing_readiness(
+    admin_engine: AsyncEngine,
+) -> None:
+    """C4 needs the comparison and a reviewer; C8 says an invoice was not *received* (never
+    "not issued"); C9 needs the month's queue empty and someone who may close it."""
+    today = date(2026, 11, 20)
+    october = date(2026, 10, 1)
+    async with sessionmaker_for(admin_engine)() as s, s.begin():
+        condo = await _new_condo(s)  # no management company, no reviewer
+        ready = _by_key(await readiness(s, condo.id, today))
+        assert ready["C4"].state == "nao_configurado"
+        assert ready["C8"].state == "nao_configurado"
+        assert ready["C9"].state == "nao_configurado"
+
+        cnpj = generate_cnpj(random.Random(f"c8-{condo.id}"))
+        supplier = await get_or_create_supplier(s, cnpj, "Limpeza Fictícia Ltda")
+        contract = Contract(
+            id=uuid.uuid4(),
+            condominium_id=condo.id,
+            supplier_id=supplier.id,
+            object="Limpeza das áreas comuns",
+            scope_items=[],
+            monthly_value=Decimal("4800.00"),
+            adjustment_index="IPCA",
+            billing_frequency_months=1,
+            start_date=date(2026, 1, 1),
+        )
+        s.add(contract)
+        await s.flush()
+        c8 = _by_key(await readiness(s, condo.id, today))["C8"]
+        assert c8.state == "analise_parcial"
+        assert "ainda não recebida" in c8.missing[0] and "não emitida" not in c8.missing[0]
+        assert c8.facts["esperados"] == 1 and c8.facts["recebidos"] == 0
+
+        s.add(
+            Expense(
+                id=uuid.uuid4(),
+                condominium_id=condo.id,
+                supplier_id=supplier.id,
+                contract_id=contract.id,
+                competence=october,
+                issue_date=date(2026, 10, 5),
+                amount=Decimal("4800.00"),
+                category="limpeza",
+                description="Limpeza 10/2026",
+                invoice_number="501",
+            )
+        )
+        s.add(Competence(id=uuid.uuid4(), condominium_id=condo.id, month=october))
+        s.add(
+            BankTransaction(
+                id=uuid.uuid4(),
+                condominium_id=condo.id,
+                posted_at=date(2026, 10, 10),
+                amount=Decimal("-4800.00"),
+                description="Pagamento limpeza",
+                origin="ofx",
+                external_id=f"c8-{condo.id}",
+            )
+        )
+        await s.flush()
+        ready = _by_key(await readiness(s, condo.id, today))
+        assert ready["C8"].state == "supervisionada"
+        assert ready["C3"].state == "supervisionada"
+        assert ready["C4"].state == "analise_parcial"  # no CondoOS reviewer
+        assert any("revisora" in m for m in ready["C4"].missing)
+        assert ready["C9"].state == "analise_parcial"  # nobody may close
+        assert any("Ninguém pode fechar" in m for m in ready["C9"].missing)
+
+        condo.management_company_id = await s.scalar(select(ManagementCompany.id).limit(1))
+        await s.flush()
+        assert _by_key(await readiness(s, condo.id, today))["C9"].state == "supervisionada"
+        await s.rollback()
