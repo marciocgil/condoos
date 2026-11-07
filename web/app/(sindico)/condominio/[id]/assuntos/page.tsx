@@ -2,6 +2,7 @@ import { FolderKanban, Plus } from "lucide-react";
 import Link from "next/link";
 
 import { CaseCards } from "@/components/condoos/CaseCards";
+import { CaseFilters } from "@/components/condoos/CaseFilters";
 import { buttonClass } from "@/components/ui/Button";
 import { cx } from "@/components/ui/cx";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -14,18 +15,29 @@ const VIEWS = [
   { key: "encerrados", label: "Encerrados", qs: "situacao=encerrados" },
 ] as const;
 
+const FILTERS = ["responsavel", "categoria", "criticidade", "prazo"] as const;
+type Filters = Partial<Record<(typeof FILTERS)[number], string>>;
+
+function owners(rows: CaseRow[]): { id: string; name: string }[] {
+  const seen = new Map<string, string>();
+  for (const r of rows) if (r.owner) seen.set(r.owner.id, r.owner.name);
+  return [...seen].map(([id, name]) => ({ id, name })).sort((a, b) => a.name.localeCompare(b.name));
+}
+
 export default async function AssuntosPage({
   params,
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ ver?: string }>;
+  searchParams: Promise<{ ver?: string } & Filters>;
 }) {
   const { id } = await params;
-  const { ver } = await searchParams;
-  const view = VIEWS.find((v) => v.key === ver) ?? VIEWS[0];
+  const sp = await searchParams;
+  const view = VIEWS.find((v) => v.key === sp.ver) ?? VIEWS[0];
+  const qs = new URLSearchParams(view.qs);
+  for (const f of FILTERS) if (sp[f] && !qs.has(f)) qs.set(f, sp[f]);
   const [rows, me] = await Promise.all([
-    apiGet<CaseRow[]>(`/condominiums/${id}/cases?${view.qs}`),
+    apiGet<CaseRow[]>(`/condominiums/${id}/cases?${qs.toString()}`),
     apiGet<Me>("/me"),
   ]);
   const canCreate = me.condominiums.find((c) => c.id === id)?.permissions.includes("manage_cases");
@@ -54,6 +66,7 @@ export default async function AssuntosPage({
           </Link>
         ))}
       </nav>
+      <CaseFilters owners={view.key === "meus" ? [] : owners(rows)} />
       {rows.length === 0 ? (
         <EmptyState icon={<FolderKanban size={24} />} title="Nenhum assunto aqui">
           Abra um assunto para acompanhar um problema até a conclusão, com responsável, prazo e

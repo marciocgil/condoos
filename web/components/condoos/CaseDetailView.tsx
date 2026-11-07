@@ -25,6 +25,7 @@ import {
 } from "@/lib/labels";
 import type { CaseDetail, CaseEvent, CaseLink, CaseTask } from "@/lib/types";
 
+import { CaseLinkPicker } from "./CaseLinkPicker";
 import { CaseAttention, CaseStatusBadge } from "./CaseStatusBadge";
 
 function inDays(days: number): string {
@@ -681,6 +682,7 @@ export function CaseDetailView({
             </ul>
           </details>
         )}
+        {c.can_manage && open && <CaseLinkPicker condominiumId={c.condominium_id} caseId={c.id} />}
       </Card>
 
       {c.can_comment && (

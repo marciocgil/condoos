@@ -2,11 +2,10 @@ import { CheckSquare, Plus } from "lucide-react";
 import Link from "next/link";
 
 import { ActionCards } from "@/components/condoos/ActionCards";
-import { AutomationPausesCard } from "@/components/condoos/AutomationPausesCard";
 import { buttonClass } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { apiGet } from "@/lib/api";
-import type { ActionRow, AutomationPauses, Me } from "@/lib/types";
+import type { ActionRow, Me } from "@/lib/types";
 
 export default async function AprovacoesPage({
   params,
@@ -18,9 +17,8 @@ export default async function AprovacoesPage({
   const { id } = await params;
   const { situacao } = await searchParams;
   const all = situacao === "todas";
-  const [rows, pauses, me] = await Promise.all([
+  const [rows, me] = await Promise.all([
     apiGet<ActionRow[]>(`/condominiums/${id}/actions${all ? "?situacao=todas" : ""}`),
-    apiGet<AutomationPauses>(`/condominiums/${id}/automation-pauses`),
     apiGet<Me>("/me"),
   ]);
   const canRequest = me.condominiums.find((c) => c.id === id)?.permissions.includes("manage_cases");
@@ -54,7 +52,6 @@ export default async function AprovacoesPage({
       ) : (
         <ActionCards rows={rows} detailPath={`/condominio/${id}/aprovacoes/{id}`} />
       )}
-      <AutomationPausesCard condominiumId={id} pauses={pauses} />
     </>
   );
 }

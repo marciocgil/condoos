@@ -1,6 +1,7 @@
 import { FolderKanban, Plus } from "lucide-react";
 import Link from "next/link";
 
+import { CaseFilters } from "@/components/condoos/CaseFilters";
 import { CaseAttention, CaseStatusBadge } from "@/components/condoos/CaseStatusBadge";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { buttonClass } from "@/components/ui/Button";
@@ -18,16 +19,27 @@ const VIEWS = [
   { key: "encerrados", label: "Encerrados", qs: "situacao=encerrados" },
 ] as const;
 
+const FILTERS = ["responsavel", "categoria", "criticidade", "prazo"] as const;
+type Filters = Partial<Record<(typeof FILTERS)[number], string>>;
+
+function owners(rows: CaseRow[]): { id: string; name: string }[] {
+  const seen = new Map<string, string>();
+  for (const r of rows) if (r.owner) seen.set(r.owner.id, r.owner.name);
+  return [...seen].map(([id, name]) => ({ id, name })).sort((a, b) => a.name.localeCompare(b.name));
+}
+
 /** Cases of the portfolio (D80): attention first, then by due date. */
 export default async function AssuntosAdminPage({
   searchParams,
 }: {
-  searchParams: Promise<{ ver?: string; condominio?: string }>;
+  searchParams: Promise<{ ver?: string; condominio?: string } & Filters>;
 }) {
-  const { ver, condominio } = await searchParams;
-  const view = VIEWS.find((v) => v.key === ver) ?? VIEWS[0];
+  const sp = await searchParams;
+  const { condominio } = sp;
+  const view = VIEWS.find((v) => v.key === sp.ver) ?? VIEWS[0];
   const qs = new URLSearchParams(view.qs);
   if (condominio) qs.set("condominium_id", condominio);
+  for (const f of FILTERS) if (sp[f] && !qs.has(f)) qs.set(f, sp[f]);
   const [rows, me] = await Promise.all([
     apiGet<CaseRow[]>(`/portfolio/cases?${qs.toString()}`),
     apiGet<Me>("/me"),
@@ -65,6 +77,9 @@ export default async function AssuntosAdminPage({
           </Link>
         ))}
       </nav>
+      <div className="mb-4 max-w-4xl">
+        <CaseFilters owners={view.key === "meus" ? [] : owners(rows)} />
+      </div>
       <DataTable
         caption="Assuntos"
         rows={rows}

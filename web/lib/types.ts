@@ -691,3 +691,13 @@ export interface AutomationPauses {
   active: AutomationPause[];
   history: AutomationPause[];
 }
+
+export interface StaffAssignment {
+  id: string;
+  name: string;
+  email: string;
+  platform_role: string;
+  reason: string;
+  valid_until: string | null;
+  active: boolean;
+}

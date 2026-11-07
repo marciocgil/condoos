@@ -72,7 +72,8 @@ test("síndica pausa e retoma as automações", async ({ page }) => {
     condominiums: { id: string }[];
   };
   const id = me.condominiums[0]!.id;
-  await page.goto(`/condominio/${id}/aprovacoes`);
+  await page.goto(`/condominio/${id}/resumo`);
+  await page.getByRole("link", { name: "Ajustes" }).click();
   await page.getByRole("button", { name: "Pausar", exact: true }).click();
   await page.getByLabel("O que pausar").selectOption("*");
   await page.getByLabel("Motivo").fill("Teste automatizado do kill switch");

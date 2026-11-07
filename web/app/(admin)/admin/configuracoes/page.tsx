@@ -4,11 +4,12 @@ import { BoardCard, MembersCard, ProfileCard } from "@/components/condoos/Regist
 import { AutomationPausesCard } from "@/components/condoos/AutomationPausesCard";
 import { ReviewPolicyCard } from "@/components/condoos/ReviewPolicyCard";
 import { SettingsForm } from "@/components/condoos/SettingsForm";
+import { StaffAssignmentsCard } from "@/components/condoos/StaffAssignmentsCard";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { cx } from "@/components/ui/cx";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { apiGet } from "@/lib/api";
-import type { AutomationPauses, Me, ReviewPolicy, Settings } from "@/lib/types";
+import type { AutomationPauses, Me, ReviewPolicy, Settings, StaffAssignment } from "@/lib/types";
 
 export default async function ConfiguracoesPage({
   searchParams,
@@ -34,6 +35,9 @@ export default async function ConfiguracoesPage({
     apiGet<ReviewPolicy>(`/condominiums/${current.id}/review-policy`),
     apiGet<AutomationPauses>(`/condominiums/${current.id}/automation-pauses`),
   ]);
+  const staff = current.permissions.includes("manage_platform")
+    ? await apiGet<StaffAssignment[]>(`/condominiums/${current.id}/assignments`)
+    : null;
   return (
     <>
       <PageHeader
@@ -66,6 +70,13 @@ export default async function ConfiguracoesPage({
             profile={settings.profile}
           />
           <ReviewPolicyCard key={`r-${current.id}`} condominiumId={current.id} policy={policy} />
+          {staff && (
+            <StaffAssignmentsCard
+              key={`s-${current.id}`}
+              condominiumId={current.id}
+              assignments={staff}
+            />
+          )}
           <AutomationPausesCard
             key={`k-${current.id}`}
             condominiumId={current.id}

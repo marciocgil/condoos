@@ -4,7 +4,7 @@ allowed by ``app.cases``. Everyone who sees the condominium reads its cases; cha
 ``manage_cases`` or, for one's own case or task, ``update_task``."""
 
 import uuid
-from datetime import date, datetime, time
+from datetime import date, datetime, time, timedelta
 from decimal import Decimal
 from typing import Annotated, Any, Literal
 from zoneinfo import ZoneInfo
@@ -27,6 +27,7 @@ from app.cases import (
     can_update_task,
     create_case,
     is_open,
+    open_cases_linked_to,
     transition,
     unlink,
     update_case,
@@ -34,6 +35,7 @@ from app.cases import (
     user_names,
 )
 from app.config import get_settings
+from app.core.money import brl
 from app.core.time import DEFAULT_TIMEZONE, local_today, utcnow
 from app.db.enums import (
     CLOSED_CASE,
@@ -76,6 +78,8 @@ def _parse_due(value: Any) -> Any:
 
 
 Due = Annotated[datetime | date, BeforeValidator(_parse_due)]
+# Queue filter by the next action's deadline (FR-025, CB-023).
+Deadline = Literal["atrasados", "7dias", "sem_prazo"]
 
 
 # --------------------------------------------------------------------------- schemas
@@ -339,6 +343,7 @@ async def _list(
     owner: str | None,
     category: CaseCategory | None,
     severity: CaseSeverity | None,
+    deadline: Deadline | None = None,
 ) -> list[CaseRowOut]:
     if not condos:
         return []
@@ -365,6 +370,16 @@ async def _list(
         stmt = stmt.where(CaseRecord.category == category.value)
     if severity:
         stmt = stmt.where(CaseRecord.severity == severity.value)
+    now = utcnow()
+    if deadline == "atrasados":
+        stmt = stmt.where(CaseRecord.next_action_due_at < now)
+    elif deadline == "7dias":
+        stmt = stmt.where(
+            CaseRecord.next_action_due_at >= now,
+            CaseRecord.next_action_due_at <= now + timedelta(days=7),
+        )
+    elif deadline == "sem_prazo":
+        stmt = stmt.where(CaseRecord.next_action_due_at.is_(None))
     cases = list(await db.scalars(stmt.order_by(CaseRecord.next_action_due_at.asc().nulls_first())))
     names = await user_names(db, {c.owner_user_id for c in cases if c.owner_user_id})
     rows = await _rows(db, cases, names, {c.id: c for c in condos})
@@ -601,9 +616,12 @@ async def list_cases(
     responsavel: str | None = None,
     categoria: CaseCategory | None = None,
     criticidade: CaseSeverity | None = None,
+    prazo: Deadline | None = None,
 ) -> list[CaseRowOut]:
     condo = await _condo(db, access)
-    return await _list(db, [condo], access.user_id, situacao, responsavel, categoria, criticidade)
+    return await _list(
+        db, [condo], access.user_id, situacao, responsavel, categoria, criticidade, prazo
+    )
 
 
 @router.get("/portfolio/cases")
@@ -615,6 +633,7 @@ async def portfolio_cases(
     categoria: CaseCategory | None = None,
     criticidade: CaseSeverity | None = None,
     condominium_id: uuid.UUID | None = None,
+    prazo: Deadline | None = None,
 ) -> list[CaseRowOut]:
     condos = []
     for c in await db.scalars(
@@ -624,7 +643,9 @@ async def portfolio_cases(
             continue
         if (await access_for(db, principal.user.id, c)).can(Permission.VIEW):
             condos.append(c)
-    return await _list(db, condos, principal.user.id, situacao, responsavel, categoria, criticidade)
+    return await _list(
+        db, condos, principal.user.id, situacao, responsavel, categoria, criticidade, prazo
+    )
 
 
 @router.post("/condominiums/{condominium_id}/cases", status_code=status.HTTP_201_CREATED)
@@ -968,4 +989,130 @@ async def cases_of_finding(
     )
     return [
         {"id": str(c.id), "number": c.number, "title": c.title, "status": c.status} for c in rows
+    ]
+
+
+# --------------------------------------------------------------------------- link search (CB-028)
+
+
+class LinkCandidateOut(BaseModel):
+    target_type: CaseLinkTarget
+    target_id: uuid.UUID
+    label: str
+    detail: str
+    in_open_cases: list[str]  # numbers of other open cases already linked to it
+
+
+@router.get("/condominiums/{condominium_id}/cases/{case_id}/link-candidates")
+async def link_candidates(
+    condominium_id: uuid.UUID,
+    case_id: uuid.UUID,
+    access: CanView,
+    db: DbSession,
+    tipo: CaseLinkTarget,
+    q: str = "",
+) -> list[LinkCandidateOut]:
+    """Records of this condominium the person may see, to link from the case screen. Read only;
+    the link itself goes through ``POST .../links`` and its checks."""
+    case = await db.scalar(
+        select(CaseRecord).where(
+            CaseRecord.id == case_id, CaseRecord.condominium_id == access.condominium_id
+        )
+    )
+    if case is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Assunto não encontrado.")
+    cid = access.condominium_id
+    text = q.strip()
+    like = f"%{text}%"
+    limit = 20
+    found: list[tuple[uuid.UUID, str, str]] = []
+    if tipo == CaseLinkTarget.CONTRACT:
+        q_contract = (
+            select(Contract, Supplier)
+            .join(Supplier, Supplier.id == Contract.supplier_id)
+            .where(Contract.condominium_id == cid)
+        )
+        if text:
+            q_contract = q_contract.where(
+                Contract.object.ilike(like)
+                | Supplier.legal_name.ilike(like)
+                | Supplier.trade_name.ilike(like)
+            )
+        for c, s in await db.execute(q_contract.order_by(Contract.start_date.desc()).limit(limit)):
+            found.append(
+                (c.id, c.object, f"{s.trade_name or s.legal_name} · {brl(c.monthly_value)}")
+            )
+    elif tipo == CaseLinkTarget.SUPPLIER:
+        used = (
+            select(Contract.supplier_id)
+            .where(Contract.condominium_id == cid)
+            .union(
+                select(Expense.supplier_id).where(
+                    Expense.condominium_id == cid, Expense.supplier_id.is_not(None)
+                )
+            )
+        )
+        q_supplier = select(Supplier).where(Supplier.id.in_(used))
+        if text:
+            q_supplier = q_supplier.where(
+                Supplier.legal_name.ilike(like) | Supplier.trade_name.ilike(like)
+            )
+        for s in await db.scalars(q_supplier.order_by(Supplier.legal_name).limit(limit)):
+            found.append((s.id, s.trade_name or s.legal_name, s.legal_name))
+    elif tipo == CaseLinkTarget.DOCUMENT:
+        q_document = select(Document).where(Document.condominium_id == cid)
+        if text:
+            q_document = q_document.where(Document.original_filename.ilike(like))
+        for d in await db.scalars(q_document.order_by(Document.created_at.desc()).limit(limit)):
+            found.append((d.id, d.original_filename, f"{d.doc_type} · {d.created_at:%d/%m/%Y}"))
+    elif tipo == CaseLinkTarget.EXPENSE:
+        q_expense = select(Expense).where(Expense.condominium_id == cid)
+        if text:
+            q_expense = q_expense.where(
+                Expense.description.ilike(like) | Expense.invoice_number.ilike(like)
+            )
+        for e in await db.scalars(q_expense.order_by(Expense.issue_date.desc()).limit(limit)):
+            found.append((e.id, e.description, f"{brl(e.amount)} · {e.issue_date:%d/%m/%Y}"))
+    elif tipo == CaseLinkTarget.CASE:
+        q_case = select(CaseRecord).where(
+            CaseRecord.condominium_id == cid, CaseRecord.id != case.id
+        )
+        if text:
+            q_case = q_case.where(CaseRecord.title.ilike(like) | CaseRecord.number.ilike(like))
+        for k in await db.scalars(q_case.order_by(CaseRecord.created_at.desc()).limit(limit)):
+            found.append((k.id, f"{k.number} — {k.title}", k.status))
+    elif tipo == CaseLinkTarget.FINDING:
+        q_finding = select(Finding).where(Finding.condominium_id == cid)
+        if not access.can(Permission.VIEW_PENDING_FINDINGS):
+            q_finding = q_finding.where(Finding.status.in_([s.value for s in VISIBLE_TO_BOARD]))
+        if text:
+            q_finding = q_finding.where(Finding.title.ilike(like))
+        for f in await db.scalars(q_finding.order_by(Finding.created_at.desc()).limit(limit)):
+            found.append((f.id, f.title, f"{f.rule_code} · {brl(f.amount_at_risk)}"))
+    else:  # opportunities are linked from their own screen
+        return []
+    targets = [LinkTarget(tipo, tid) for tid, _, _ in found]
+    others: dict[uuid.UUID, list[str]] = {}
+    if targets:
+        open_ids = {c.id for c in await open_cases_linked_to(db, cid, targets)} - {case.id}
+        if open_ids:
+            for link, number in await db.execute(
+                select(CaseLink, CaseRecord.number)
+                .join(CaseRecord, CaseRecord.id == CaseLink.case_id)
+                .where(
+                    CaseLink.case_id.in_(open_ids),
+                    CaseLink.target_type == tipo.value,
+                    CaseLink.unlinked_at.is_(None),
+                )
+            ):
+                others.setdefault(link.target_id, []).append(number)
+    return [
+        LinkCandidateOut(
+            target_type=tipo,
+            target_id=tid,
+            label=label[:200],
+            detail=detail,
+            in_open_cases=sorted(others.get(tid, [])),
+        )
+        for tid, label, detail in found
     ]
