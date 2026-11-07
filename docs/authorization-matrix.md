@@ -1,6 +1,6 @@
 # Matriz de autorização — papéis, permissões e ações
 
-Data: 07/11/2026. Decisão de origem: D77 (DV-05); implementado em D79 (`api/app/auth/rbac.py`). `manage_cases` e `update_task` têm rota desde a VS-01 (D80). Ainda **não** têm rota: `view_opportunity_draft`, `review_opportunity`, `approve_in_condo` (VS-03), que já estão declaradas.
+Data: 07/11/2026. Decisão de origem: D77 (DV-05); implementado em D79 (`api/app/auth/rbac.py`). `manage_cases` e `update_task` têm rota desde a VS-01 (D80). `view_opportunity_draft`, `review_opportunity` e `approve_in_condo` têm rota desde a VS-03 (D81).
 
 Princípios (DV-05):
 - Escopo sempre por condomínio; usuário de plataforma só vê condomínios atribuídos (`condo_assignment`).

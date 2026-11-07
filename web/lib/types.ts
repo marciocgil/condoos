@@ -530,3 +530,58 @@ export interface CaseRef {
   title: string;
   status: string;
 }
+
+// --------------------------------------------------------------------------- opportunities (D76, D81)
+
+export interface OpportunityRow {
+  id: string;
+  condominium_id: string;
+  condominium_name: string;
+  number: string;
+  title: string;
+  opportunity_type: string;
+  status: string;
+  supplier_name: string | null;
+  presented: boolean;
+  headline_stage: string | null;
+  headline_annualized: string | null;
+  created_at: string;
+}
+
+export interface SavingsStage {
+  stage: string;
+  amount: string;
+  periodicity: string;
+  annualized_amount: string;
+  one_time_cost: string;
+  net_amount: string;
+  baseline_period_start: string;
+  baseline_period_end: string;
+  baseline_amount: string;
+  method_code: string;
+  assumptions: string[];
+  confidence: string;
+  quality_risks: string;
+  recorded_by: string;
+  recorded_at: string;
+}
+
+export interface OpportunityDetail extends OpportunityRow {
+  recommendation: string;
+  operational_impact: string;
+  legal_contractual_risk: string;
+  implementation_readiness: string;
+  review_requirement: string;
+  findings: { id: string; title: string; rule_code: string; status: string }[];
+  stages: SavingsStage[];
+  history: {
+    at: string;
+    who: string;
+    action: string;
+    from_status: string;
+    to_status: string;
+    comment: string | null;
+  }[];
+  allowed_actions: string[];
+  can_adjust: boolean;
+}

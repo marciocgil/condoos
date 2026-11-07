@@ -26,21 +26,28 @@ function inDays(days: number): string {
 export function CaseForm({
   condos,
   finding,
+  opportunity,
   detailPath,
 }: {
   condos: { id: string; name: string }[];
   finding?: { id: string; title: string; condominiumId: string };
+  opportunity?: { id: string; title: string; condominiumId: string };
   /** e.g. "/condominio/{condo}/assuntos/{case}" (a string: functions cannot cross to the client). */
   detailPath: string;
 }) {
   const detailHref = (condoId: string, caseId: string) =>
     detailPath.replace("{condo}", condoId).replace("{case}", caseId);
   const router = useRouter();
-  const [condo, setCondo] = useState(finding?.condominiumId ?? condos[0]?.id ?? "");
+  const source = finding
+    ? { type: "finding", origin: "finding", label: "achado", ...finding }
+    : opportunity
+      ? { type: "opportunity", origin: "opportunity", label: "oportunidade", ...opportunity }
+      : null;
+  const [condo, setCondo] = useState(source?.condominiumId ?? condos[0]?.id ?? "");
   const [form, setForm] = useState({
-    title: finding ? `Tratar: ${finding.title}`.slice(0, 200) : "",
+    title: source ? `Tratar: ${source.title}`.slice(0, 200) : "",
     description: "",
-    category: finding ? "financeiro" : "manutencao",
+    category: opportunity ? "contrato" : finding ? "financeiro" : "manutencao",
     severity: "media",
     next_action: "",
     next_action_due_at: inDays(7),
@@ -58,9 +65,9 @@ export function CaseForm({
     setError(null);
     const body = {
       ...form,
-      origin: finding ? "finding" : "human_request",
-      links: finding
-        ? [{ target_type: "finding", target_id: finding.id, reason: linkReason || undefined }]
+      origin: source ? source.origin : "human_request",
+      links: source
+        ? [{ target_type: source.type, target_id: source.id, reason: linkReason || undefined }]
         : [],
       create_anyway_reason: anyway || undefined,
     };
@@ -100,12 +107,13 @@ export function CaseForm({
     <Card>
       <CardTitle>Novo assunto</CardTitle>
       <div className="space-y-3">
-        {finding && (
+        {source && (
           <p className="text-[13px] text-fg-2">
-            A partir do achado <q>{finding.title}</q>. O achado continua com o próprio ciclo.
+            A partir {source.type === "finding" ? "do achado" : "da oportunidade"}{" "}
+            <q>{source.title}</q>. Ele continua com o próprio ciclo.
           </p>
         )}
-        {condos.length > 1 && !finding && (
+        {condos.length > 1 && !source && (
           <Field id="c-condo" label="Condomínio" required>
             <select
               id="c-condo"
@@ -236,8 +244,11 @@ export function CaseForm({
                 onChange={(e) => setAnyway(e.target.value)}
               />
             </Field>
-            {finding && (
-              <Field id="c-link-reason" label="Por que o achado também pertence a este assunto?">
+            {source && (
+              <Field
+                id="c-link-reason"
+                label={`Por que ${source.type === "finding" ? "o achado" : "a oportunidade"} também pertence a este assunto?`}
+              >
                 <input
                   id="c-link-reason"
                   className={controlClass}

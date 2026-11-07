@@ -12,6 +12,7 @@ import {
   Inbox,
   LayoutGrid,
   MessageSquare,
+  PiggyBank,
   Settings,
   Store,
 } from "lucide-react";
@@ -26,6 +27,7 @@ const ITEMS = [
   { href: "/admin/carteira", label: "Carteira", icon: LayoutGrid },
   { href: "/admin/fila", label: "Fila de exceções", icon: Inbox, counter: true },
   { href: "/admin/assuntos", label: "Assuntos", icon: FolderKanban },
+  { href: "/admin/oportunidades", label: "Oportunidades", icon: PiggyBank },
   { href: "/admin/pendencias", label: "Pendências", icon: ClipboardList },
   { href: "/admin/agenda", label: "Agenda", icon: CalendarDays },
   { href: "/admin/fornecedores", label: "Fornecedores", icon: Store },

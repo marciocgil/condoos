@@ -1,6 +1,6 @@
 # Rastreabilidade — FR ↔ tarefa ↔ código ↔ teste ↔ entrega
 
-Data: 07/11/2026. Atualizar ao fim de cada fatia (CLAUDE.md, item 6). "Entrega" = marco do MVP auditor (Marco 1–6, 05/11/2026) ou decisão pós-piloto (D65–D71) em que o código entrou. Testes citados existem no repositório. Última execução local completa: 07/11/2026, 263 passaram (D80); E2E: 20 fluxos passaram contra a stack local.
+Data: 07/11/2026. Atualizar ao fim de cada fatia (CLAUDE.md, item 6). "Entrega" = marco do MVP auditor (Marco 1–6, 05/11/2026) ou decisão pós-piloto (D65–D71) em que o código entrou. Testes citados existem no repositório. Última execução local completa: 07/11/2026, 271 passaram (D81); E2E: 21 fluxos passaram contra a stack local.
 
 | FR | Tarefa(s) | Código | Teste(s) | Entrega |
 |---|---|---|---|---|
@@ -36,8 +36,8 @@ Data: 07/11/2026. Atualizar ao fim de cada fatia (CLAUDE.md, item 6). "Entrega" 
 | FR-042 | CB-060 | `agenda.py`, `rules/contracts.py` | `test_agenda.py` | D71 |
 | FR-043 | — | `extraction/*`, `ingestion/bank/` (OFX, CSV, CNAB) | `test_extraction.py`, `test_bank_parsers.py` | Marco 2 |
 | FR-044 | CB-061 | `rules/r02_above_contract.py`, `r03_adjustment.py`, `r04_scope.py`, `rules/contracts.py`, `enrichment/indices.py` | `test_rules.py`, `test_planted_cases.py` | Marco 3 |
-| FR-045 | CB-061, CB-064 | (valor em risco em `models.Finding`) | — | — |
-| FR-046 | CB-015, CB-016, CB-062 | `app/review/`, `rules/engine.py` (requisito por política), `findings/decisions.py` (revisão interna só da equipe CondoOS, `solicitar_evidencia`), `auth/rbac.py` | `test_rbac.py`, `test_review_policy.py`, `test_access_model.py::test_manager_reviews_only_when_the_condominium_allows`, `test_planted_cases.py`, e2e `condoos-staff.spec.ts` | Marco 4, D79 |
+| FR-045 | CB-061, CB-064 | `app/opportunities/__init__.py` (cálculo `excesso_mensal_v1`, estágios), `routers/opportunities.py`, `db/models.py` (`Opportunity`, `SavingsRecord`), migração 0014; telas `web/app/(admin)/admin/oportunidades/`, `web/app/(sindico)/condominio/[id]/oportunidades/`, `components/condoos/SavingsStages.tsx` | `test_opportunities.py::test_potential_savings_are_reproducible` e fluxo, e2e `opportunities.spec.ts` | D81 |
+| FR-046 | CB-015, CB-016, CB-062 | `app/review/`, `app/opportunities/__init__.py` (revisão interna, `presented_at`, hash da versão), `routers/opportunities.py` (404 antes da aprovação), `findings/decisions.py`, `auth/rbac.py` | `test_opportunities.py`, `test_review_policy.py`, `test_access_model.py`, e2e `opportunities.spec.ts`, `condoos-staff.spec.ts` | D79, D81 |
 | FR-047 | — | — | — | — |
 | FR-048 | — | `matching/bank.py`, `models.MatchIssue` | `test_matching.py` | Marco 3 |
 | FR-049 / FR-050 | CB-063 (050) | — | — | — |
@@ -55,9 +55,9 @@ Data: 07/11/2026. Atualizar ao fim de cada fatia (CLAUDE.md, item 6). "Entrega" 
 | SEC-10 (revogado com sessão antiga) | Coberto (D78) | `test_access_revocation.py` |
 | DOC-01 (campo ausente) | Parcial: obrigatório < 0,9 vai para fila | `test_extraction.py`; CB-030 |
 | DOC-02 (versão vigente) | Parcial (aditivos) | CB-031 |
-| FIN-01 (reajuste reproduzível) | Coberto | `test_rules.py` (R03) |
+| FIN-01 (reajuste reproduzível) | Coberto, também na economia estimada (D81) | `test_rules.py` (R03), `test_opportunities.py` |
 | FIN-02 (escopo não comparável) | Parcial (R04 com IA) | `test_rules.py`; CB-061 |
-| OPT-01 (sem revisão, não publica) | Parcial: só graves | CB-062 |
+| OPT-01 (sem revisão, não publica) | Coberto: oportunidade 404 para o condomínio antes da revisão (D81) | `test_opportunities.py` |
 | OPS-02, WF-04, WF-10 | Cobertos no assunto: fechar sem evidência é negado; "fornecedor disse que fez" não resolve; reabrir preserva histórico (D80) | `test_cases.py` |
 | OPS-01, WF-01..03, WF-05..09 | Inexistentes (sem OS, webhook ou ERP) | — |
 | AI-01 (sem fonte suficiente) | Gabarito existe; ao vivo não rodado | `tests/chat_eval/`; CB-040 |

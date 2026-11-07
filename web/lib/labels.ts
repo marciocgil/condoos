@@ -161,3 +161,77 @@ export const LINK_TYPE_LABEL: Record<string, string> = {
   expense: "Despesa",
   case: "Assunto",
 };
+
+// --------------------------------------------------------------------------- opportunities (D76, D81)
+
+export const OPPORTUNITY_STATUS_LABEL: Record<string, string> = {
+  identificada: "Identificada",
+  em_revisao_interna: "Em revisão CondoOS",
+  devolvida: "Devolvida para ajuste",
+  rejeitada: "Rejeitada na revisão",
+  aprovada_para_cliente: "Apresentada ao condomínio",
+  aprovada_pelo_condominio: "Aprovada pelo condomínio",
+  recusada_pelo_condominio: "Recusada pelo condomínio",
+  em_execucao: "Em execução",
+  implementada: "Implementada",
+  resultado_medido: "Resultado medido",
+  encerrada: "Encerrada",
+};
+
+export const OPPORTUNITY_TYPE_LABEL: Record<string, string> = {
+  reajuste: "Reajuste",
+  cobranca_inconsistente: "Cobrança acima do contrato",
+  renegociacao: "Renegociação",
+  racionalizacao_escopo: "Ajuste de escopo",
+  recuperacao: "Recuperação",
+  compra_alternativa: "Compra alternativa",
+  eficiencia_operacional: "Eficiência operacional",
+};
+
+/** DV-04: each stage has its own name; estimates are never shown as captured savings. */
+export const SAVINGS_STAGE_LABEL: Record<string, string> = {
+  potencial: "Economia potencial identificada",
+  estimada_validada: "Economia estimada validada",
+  aprovada: "Economia aprovada para execução",
+  contratada: "Economia contratada ou negociada",
+  realizada: "Economia realizada e comprovada",
+};
+
+export const OPPORTUNITY_ACTION_LABEL: Record<string, string> = {
+  aprovar: "Aprovar para o condomínio",
+  ajustar: "Ajustar estimativa",
+  devolver: "Devolver",
+  rejeitar: "Rejeitar",
+  reabrir_revisao: "Reabrir revisão",
+  condominio_aprovar: "Aprovar e seguir",
+  condominio_recusar: "Recusar",
+};
+
+export const OPPORTUNITY_ACTION_VERB: Record<string, string> = {
+  aprovar: "aprovou na revisão CondoOS",
+  ajustar: "ajustou a estimativa",
+  devolver: "devolveu para ajuste",
+  rejeitar: "rejeitou",
+  reabrir_revisao: "reabriu a revisão",
+  condominio_aprovar: "aprovou pelo condomínio",
+  condominio_recusar: "recusou pelo condomínio",
+};
+
+export const OPPORTUNITY_NEEDS_COMMENT = new Set([
+  "devolver",
+  "rejeitar",
+  "reabrir_revisao",
+  "condominio_recusar",
+]);
+
+export const PERIODICITY_LABEL: Record<string, string> = {
+  mensal: "por mês",
+  anual: "por ano",
+  unica: "uma vez",
+};
+
+export const CONFIDENCE_LABEL: Record<string, string> = {
+  alta: "Confiança alta",
+  media: "Confiança média",
+  baixa: "Confiança baixa",
+};

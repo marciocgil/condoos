@@ -2,6 +2,7 @@ import { Download, Upload } from "lucide-react";
 import Link from "next/link";
 
 import { AgendaPreview } from "@/components/condoos/AgendaPreview";
+import { OpportunitiesPreview } from "@/components/condoos/OpportunitiesPreview";
 import { InsightCard } from "@/components/condoos/InsightCard";
 import { SEVERITY_DOT } from "@/components/condoos/SeverityBadge";
 import { MonthSelect } from "@/components/MonthSelect";
@@ -107,6 +108,8 @@ export default async function ResumoPage({
           </div>
         )}
       </section>
+
+      <OpportunitiesPreview condominiumId={id} />
 
       <AgendaPreview condominiumId={id} />
 

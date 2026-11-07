@@ -8,9 +8,10 @@ export default async function FindingPage({
   params: Promise<{ id: string; findingId: string }>;
 }) {
   const { id, findingId } = await params;
-  const [finding, cases, me] = await Promise.all([
+  const [finding, cases, opportunities, me] = await Promise.all([
     apiGet<FindingDetail>(`/condominiums/${id}/findings/${findingId}`),
     apiGet<CaseRef[]>(`/condominiums/${id}/findings/${findingId}/cases`),
+    apiGet<CaseRef[]>(`/condominiums/${id}/findings/${findingId}/opportunities`),
     apiGet<Me>("/me"),
   ]);
   const canOpen = me.condominiums.find((c) => c.id === id)?.permissions.includes("manage_cases");
@@ -23,6 +24,8 @@ export default async function FindingPage({
       cases={cases}
       casePath={`/condominio/${id}/assuntos/{id}`}
       newCaseHref={canOpen ? `/condominio/${id}/assuntos/novo?achado=${findingId}` : undefined}
+      opportunities={opportunities}
+      opportunityPath={`/condominio/${id}/oportunidades/{id}`}
     />
   );
 }

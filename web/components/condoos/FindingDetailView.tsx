@@ -9,6 +9,8 @@ import type { CaseRef, FindingDetail } from "@/lib/types";
 
 import { ApprovalPanel } from "./ApprovalPanel";
 import { CaseStatusBadge } from "./CaseStatusBadge";
+import { GenerateOpportunity } from "./GenerateOpportunity";
+import { OpportunityStatusBadge } from "./OpportunityStatusBadge";
 import { CommentForm } from "./CommentForm";
 import { DecisionBar } from "./DecisionBar";
 import { EvidenceList } from "./EvidenceList";
@@ -24,6 +26,9 @@ export function FindingDetailView({
   cases = [],
   casePath,
   newCaseHref,
+  opportunities = [],
+  opportunityPath,
+  canGenerateOpportunity = false,
 }: {
   finding: FindingDetail;
   condominiumId: string;
@@ -34,6 +39,10 @@ export function FindingDetailView({
   casePath?: string;
   /** Shown to those who manage cases. */
   newCaseHref?: string;
+  /** Opportunities drawn from this finding (D81) the viewer may see. */
+  opportunities?: CaseRef[];
+  opportunityPath?: string;
+  canGenerateOpportunity?: boolean;
 }) {
   const supplierLine = f.supplier
     ? `${f.supplier.name} · CNPJ ${f.supplier.registration_status === "ATIVA" ? "ativo" : (f.supplier.registration_status ?? "sem consulta").toLowerCase()}`
@@ -126,6 +135,36 @@ export function FindingDetailView({
           <ShieldCheck size={16} className="text-success" aria-hidden /> Revisado pela equipe
           CondoOS
         </p>
+      )}
+
+      {(opportunities.length > 0 || canGenerateOpportunity) && (
+        <section aria-labelledby="finding-opps" className="space-y-2">
+          <div className="flex items-center justify-between gap-2">
+            <h2 id="finding-opps" className="text-base font-semibold">
+              Oportunidade de economia
+            </h2>
+            {canGenerateOpportunity &&
+              opportunities.every((o) =>
+                ["rejeitada", "recusada_pelo_condominio", "encerrada"].includes(o.status),
+              ) && (
+                <GenerateOpportunity
+                  condominiumId={condominiumId}
+                  findingId={f.id}
+                  detailPath={opportunityPath ?? ""}
+                />
+              )}
+          </div>
+          <ul className="space-y-1 text-sm">
+            {opportunities.map((o) => (
+              <li key={o.id} className="flex flex-wrap items-center gap-2">
+                <Link href={(opportunityPath ?? "").replace("{id}", o.id)} className="underline">
+                  {o.number} — {o.title}
+                </Link>
+                <OpportunityStatusBadge status={o.status} />
+              </li>
+            ))}
+          </ul>
+        </section>
       )}
 
       {(cases.length > 0 || newCaseHref) && (

@@ -108,13 +108,13 @@ Data: 07/11/2026 (revisado com D73–D77). Prioridade e ordem seguem `docs/produ
 
 **CB-060 — Cláusulas de aviso prévio e rescisão** · M · FR-041, FR-042
 - Aceite: extração de aviso prévio (dias), multa e renovação automática com trecho; agenda mostra a data-limite de aviso; testes com contratos do corpus.
-**CB-061 — Oportunidade e economia potencial** (ADR-P05, D76) · G · FR-045, US-010, FIN-01/02
+**CB-061 — Oportunidade e economia potencial** (ADR-P05, D76) · G · FR-045, US-010, FIN-01/02 · ✅ entregue (D81)
 - Aceite: `opportunity` com tipo, risco, prontidão e status; reúne N achados ou nasce sem achado; economia **potencial** gravada em `savings_record` por função de cálculo versionada (`method_code`), com baseline, premissas, evidências, confiança, custos e riscos; reproduzível em teste; escopos não comparáveis marcados.
-**CB-062 — Fila de revisão interna** (ADR-P09, D74) · G · FR-046, US-011, OPT-01
+**CB-062 — Fila de revisão interna** (ADR-P09, D74) · G · FR-046, US-011, OPT-01 · ✅ entregue (D81)
 - Aceite: oportunidade invisível ao corpo diretivo (API e tela) até `aprovada_para_cliente`; só `condoos_reviewer` revisa; vê fontes, cálculo e incerteza; aprovar/ajustar/devolver/rejeitar com motivo (`opportunity_review`, só inclusão); aprovação grava "estimada validada" e o hash da versão; mudança material reabre a revisão.
 **CB-063 — Aprovação, contratação e economia realizada** · G · FR-050, US-012 · P1
 - Aceite: síndico aprova dentro da alçada (registra "aprovada"); "contratada" exige documento do acordo; "realizada" exige faturas posteriores conferidas contra o baseline e custo de mudança descontado; nada disso move dinheiro nem envia mensagem.
-**CB-064 — Estágios de economia na interface** · M · D76
+**CB-064 — Estágios de economia na interface** · M · D76 · ✅ entregue (D81)
 - Aceite: cada estágio com rótulo, ícone e texto próprios (potencial identificada, estimada validada, aprovada para execução, contratada/negociada, realizada e comprovada); nenhum total soma estágios; "realizada" só com evidência; teste de tela e de API.
 
 ## Épico EP-08 — Piloto e medição · WP-15 · T7

@@ -382,3 +382,28 @@ O CondoOS não move dinheiro: a agenda não tem ação de pagar nem de agendar p
 - **Datas:** prazo informado só com a data vale até 23h59 no fuso do condomínio. **Defeito encontrado pelo E2E e corrigido:** `formatDateTime` usava o fuso do processo, e as páginas renderizadas no servidor (UTC) mostravam "02:59". Passou a usar o horário de Brasília; formatar no fuso de cada condomínio fica para depois.
 - **Telas:** aba "Assuntos" no celular do síndico (a quinta aba; abertos, meus e encerrados), item "Assuntos" no menu da administradora/equipe CondoOS, formulário de abertura com o tratamento de duplicidade, Assunto 360° (próxima ação, mudança de estado com motivo, contexto, tarefas, evidências, vínculos, comentários e linha do tempo) e "Abrir assunto" no detalhe do achado. Componentes do DS reaproveitados: `Card`, `Badge`, `Field`, `DataTable`, `Timeline`, `EmptyState`; novos: `CaseStatusBadge`/`CaseAttention`, `CaseCards`, `CaseForm`, `CaseDetailView`.
 - **Limites conhecidos:** a tela só cria vínculo com achado (ao abrir a partir dele); os demais vínculos já existem na API, mas ainda não na tela. A fila não tem filtro de categoria ou criticidade na tela (a API filtra). Não há envio de alerta de prazo (FR-026). A tela Hoje ainda não mostra assuntos.
+
+## VS-03 — Oportunidade com revisão interna (migração 0014)
+
+**D81 — Oportunidades e estágios de economia implementados** (CB-061, CB-062, CB-064; 07/11/2026; modelo aprovado em D76 e no plano de migração).
+- **Tabelas:** `opportunity`, `opportunity_finding`, `savings_record` e `opportunity_review`, todas com RLS. As duas últimas só aceitam inclusão: valor e decisão são fotografias e nunca são editados.
+- **Origem:** a equipe CondoOS (`view_opportunity_draft`) gera a oportunidade a partir de um achado R02 (cobrança acima do contrato) ou R03 (reajuste acima do índice). Um achado tem no máximo uma oportunidade em aberto. Oportunidade criada à mão, sem achado, fica para depois.
+- **Cálculo por código, nunca pela IA:** o método `excesso_mensal_v1` usa a diferença mensal da regra; o anualizado é ×12 e o custo de implantação é zero. O baseline é o valor contratual reajustado (R02) ou o valor anterior corrigido pelo índice (R03). As premissas ficam escritas e o ressarcimento do mês já pago a maior aparece à parte, como premissa. A confiança é "alta" se o síndico confirmou o achado e "média" nos demais casos. O hash da versão cobre valor, periodicidade, custo, baseline, premissas, confiança e método, e o teste confere que o cálculo é reproduzível (FIN-01).
+- **Revisão interna** (D74): a política padrão põe toda oportunidade em `em_revisao_interna`, e só a revisora CondoOS age. Ela pode:
+  - aprovar (grava "economia estimada validada" e marca `presented_at`);
+  - ajustar (nova linha de potencial, com motivo);
+  - devolver ou rejeitar (com motivo);
+  - reabrir a revisão de algo já apresentado (sai da visão do condomínio até nova aprovação).
+- **Antes da aprovação, a oportunidade não existe para o corpo diretivo nem para a administradora:** a API responde 404 (OPT-01, FR-046). Depois da aprovação, o corpo diretivo vê só a economia estimada validada (nunca o potencial bruto) e, do histórico, só as aprovações e as decisões do condomínio, sem as notas internas.
+- **Decisão do condomínio** (`approve_in_condo`, só o síndico): aprovar e seguir (grava "economia aprovada para execução") ou recusar (com motivo). Se o potencial mudar depois da revisão, a aprovação do condomínio é recusada até nova revisão (US-011). Revisora e síndico não fazem a ação um do outro (D77).
+- **Estágios lado a lado, nunca somados:** cada um tem nome próprio na tela (potencial identificada, estimada validada, aprovada para execução, contratada ou negociada, realizada e comprovada) e a tela avisa que a estimativa não é economia capturada.
+- **Assunto ↔ oportunidade:** o vínculo foi habilitado. O assunto pode nascer de uma oportunidade (origem `opportunity`) e o síndico abre um assunto para acompanhar a oportunidade aprovada.
+- **Telas:**
+  - menu "Oportunidades" no desktop;
+  - "Gerar oportunidade" no detalhe de achados R02/R03 (só para a equipe CondoOS);
+  - detalhe com recomendação, estágios, premissas, ações de revisão ou decisão e histórico;
+  - no celular do síndico, cartão "Oportunidades de economia" no Resumo, mais lista e detalhe.
+- **Limites conhecidos:**
+  - estágios "contratada" e "realizada" (CB-063) e extração de aviso prévio e multa (CB-060) não entraram;
+  - um único método de cálculo (R02/R03);
+  - o relatório PDF/XLSX ainda não mostra oportunidades.

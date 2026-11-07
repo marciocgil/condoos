@@ -72,8 +72,8 @@ Data: 07/11/2026 (FR-046 revisto após D74). Fonte dos requisitos: Especificaç�
 | FR-042 | P0 | WP-11 | parcial | Agenda com reajustes e fim de contrato (D71) | Alerta antes do aviso prévio (campo inexistente) | `test_agenda.py` | em_analise |
 | FR-043 | P0 | WP-12 | real | NFS-e, NF-e, boleto, recibo, XML, OFX, CSV, CNAB; competência normalizada | Planilha/balancete de ERP | `test_extraction.py`, `test_bank_parsers.py` (12) | pronto_para_validar |
 | FR-044 | P0 | WP-13 | real | R02 (acima do contrato), R03 (reajuste), R04 (escopo) com cálculo determinístico e índices BCB reais | Rótulo "divergência aparente" até validação (já é "indício") | `test_rules.py` (23), `test_planted_cases.py` | pronto_para_validar |
-| FR-045 | P0 | WP-13 | parcial | Achado com valor em risco | Entidade Oportunidade (tipo, economia bruta/líquida, risco, confiança, status) | — | em_analise |
-| FR-046 | P0 | WP-14 | parcial (política de revisão real) | Gerente da administradora valida graves antes do síndico ver (D48) | Revisor **interno CondoOS** antes de qualquer recomendação ao condomínio; médios/baixos hoje publicam direto | `test_rbac.py::test_pending_findings_visibility`, `test_review_policy.py` | em_desenvolvimento (política e revisão interna prontas, D79; falta a oportunidade, CB-062) |
+| FR-045 | P0 | WP-13 | real | `opportunity` com tipo, risco, prontidão, status e fonte; economia em `savings_record` por estágio, calculada por código (D81) | Métodos além de R02/R03 | `test_opportunities.py` | pronto_para_validar |
+| FR-046 | P0 | WP-14 | real | Política de revisão (D79); oportunidade invisível ao condomínio até aprovação da revisora CondoOS; mudança após a aprovação exige nova revisão (D81) | — | `test_opportunities.py`, `test_review_policy.py`, e2e `opportunities.spec.ts` | pronto_para_validar |
 | FR-047 | P1 | WP-22 | inexistente | (R11 compara com histórico, não com orçamento) | Orçamento × realizado | — | nao_iniciado |
 | FR-048 | P1 | WP-22 | real | Casamento despesa ↔ extrato com `match_issue` (D41) | — | `test_matching.py` (9) | pronto_para_validar |
 | FR-049 | P1 | WP-22 | inexistente | — | Caixa por cenários | — | nao_iniciado |
@@ -107,11 +107,11 @@ Data: 07/11/2026 (FR-046 revisto após D74). Fonte dos requisitos: Especificaç�
 | Documentos (011–020) | 10 | 3 | 7 | 0 |
 | Workflow (021–030) | 10 | 4 | 4 | 2 |
 | Advisor (031–040) | 10 | 1 | 3 | 6 |
-| Optimize (041–050) | 10 | 3 | 4 | 3 |
+| Optimize (041–050) | 10 | 5 | 2 | 3 |
 | Operate etc. (051–065) | 15 | 0 | 1 | 14 |
-| **Total** | **65** | **14** | **23** | **28** |
+| **Total** | **65** | **16** | **21** | **28** |
 
-P0 (29 FRs): 12 real, 16 parcial, 1 inexistente (FR-007 kill switch). FR-021 e FR-022 entraram com a VS-01 (D80). FR-045 (oportunidade) e FR-046 (revisão interna) são parciais, mas centrais ao Optimize, e FR-046 foi decidido em D74 (revisão proporcional ao risco).
+P0 (29 FRs): 14 real, 14 parcial, 1 inexistente (FR-007 kill switch). FR-021 e FR-022 entraram com a VS-01 (D80). FR-045 (oportunidade) e FR-046 (revisão interna) são parciais, mas centrais ao Optimize, e FR-046 foi decidido em D74 (revisão proporcional ao risco).
 
 ## 8. Cobertura por CAP
 
