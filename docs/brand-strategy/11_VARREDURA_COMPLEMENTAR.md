@@ -118,3 +118,30 @@ Proposta avaliada: "Eficiente" como marca, com as frentes como complemento: Sín
 | **Caccao** (Brasil; post da Exame no LinkedIn, enviado como imagem) | "Primeira plataforma de go-to-market que combina inteligência artificial, tecnologia própria e especialistas"; 30 clientes (segundo a empresa) | Vem da **métrica que o cliente quer reduzir** (CAC) e o último caractere é um zero ("custo zero"), com trocadilho com "cacau". Nome inventado, com história para contar | (1) Nome com uma história curta que o vendedor conta em 10 segundos: "Ciente" já tem a sua ("a ciência do síndico em cada despesa"). (2) Declarar o modelo híbrido sem vergonha: **tecnologia + revisão humana**, que é o nosso caso (revisora CondoOS, D74/D77). (3) Cuidado: o trocadilho de métrica promete resultado ("zero"); para nós seria promessa de economia, que o tom de marca evita |
 
 **Conclusão:** as duas referências confirmam a direção, não pedem nome novo. Owner reforça nome ligado à identidade do comprador; Caccao reforça nome com história e a declaração "IA + especialistas". Ambas usam diagnóstico ou relatório como primeira oferta. Mensagem derivada para teste: "**Ciente.** Tecnologia que confere, gente que revisa, você que decide."
+
+## 9. Vários públicos: como aplicar a lógica do Owner (08/11/2026)
+
+Objeção do Marcio: o Owner fala com um cliente só (o dono do restaurante); nós temos síndico, condômino, administradora e conselho.
+
+**Leitura (I):** o Owner também tem vários públicos (o dono, a equipe, quem pede comida pelo app), mas nomeia e escreve para **quem decide e paga**. Os outros aparecem como beneficiários. Aplicando ao nosso caso, com as decisões já tomadas (D73: o condomínio é o cliente; a administradora é colaboradora opcional):
+
+| Papel | Quem | Lugar na comunicação |
+|---|---|---|
+| Decide e usa | Síndico (67% decidem sozinhos as finanças, Datafolha 2025) | **Destinatário da manchete** |
+| Paga | O condomínio (caixa comum) | Justificativa de valor ("trabalha para o condomínio") |
+| Fiscaliza | Conselho | Prova: relatório com evidência |
+| Colabora | Administradora | "Menos pedidos repetidos" |
+| Recebe a prestação de contas | Condômino | Beneficiário. **Não é usuário hoje** (interface de morador fora do escopo) |
+
+**Por isso o nome não deve ser um papel** ("Síndico X", "Condomínio X"): exclui os outros. **Deve ser um estado que todos querem**, e "ciente" é esse estado:
+
+| Público | Ciente de quê |
+|---|---|
+| Síndico | do que merece atenção nas contas, para decidir |
+| Conselho | das despesas com prova, para dar o parecer |
+| Condômino | de como o dinheiro do condomínio foi usado |
+| Administradora | o síndico fica ciente do que ela já entregou |
+
+**Manchete no padrão do Owner** ("The AI platform restaurants use to…"), escrita para o síndico, para testar:
+- "**A conferência que síndicos usam para assinar as contas com tranquilidade.**"
+- Linha de apoio para os demais: "Conselho com prova, condôminos com transparência, administradora sem retrabalho."
