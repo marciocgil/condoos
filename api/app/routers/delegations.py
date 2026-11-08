@@ -14,13 +14,21 @@ from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile
 from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 
+from app.actions import allowed_actions
 from app.auth.deps import CurrentPrincipal, require
 from app.auth.rbac import CondoAccess, Permission
 from app.config import get_settings
 from app.core.ratelimit import WindowLimiter, client_ip
 from app.core.time import local_today
-from app.db.enums import ExtractionStatus
-from app.db.models import Condominium, DataIssue, DelegationEvent, DelegationRequest, Document
+from app.db.enums import OPEN_ACTION, ActionStatus, ExtractionStatus
+from app.db.models import (
+    ActionDecision,
+    Condominium,
+    DataIssue,
+    DelegationEvent,
+    DelegationRequest,
+    Document,
+)
 from app.db.session import DbSession
 from app.delegation import (
     DelegationError,
@@ -40,6 +48,7 @@ from app.delegation import (
     sender_name,
     suggest_items,
 )
+from app.delegation import email as req_email
 from app.reports.data import DOC_TYPE_LABEL
 from app.routers.documents import MAX_FILES_PER_REQUEST
 from app.routers.portfolio import _manager_access
@@ -68,6 +77,12 @@ class RequestIn(BaseModel):
     scope: str = Field(default="", max_length=2000)
     due_date: date
     case_id: uuid.UUID | None = None
+
+
+class EmailIn(BaseModel):
+    to: str = Field(max_length=254)
+    note: str = Field(default="", max_length=500)
+    idempotency_key: str = Field(min_length=8, max_length=120)
 
 
 class LinkIn(BaseModel):
@@ -121,6 +136,7 @@ async def _detail(db: DbSession, access: CondoAccess, req: DelegationRequest) ->
     can = access.can
     open_ = req.status not in ("concluido", "encerrado", "expirado", "revogado")
     return {
+        "email": await _email_block(db, access, req, open_),
         **_summary(req),
         "scope": req.scope,
         "items": req.items,
@@ -144,6 +160,60 @@ async def _detail(db: DbSession, access: CondoAccess, req: DelegationRequest) ->
             "finish": open_ and can(Permission.MANAGE_DELEGATION),
         },
     }
+
+
+async def _email_block(
+    db: DbSession, access: CondoAccess, req: DelegationRequest, open_: bool
+) -> dict[str, Any]:
+    """LB-053 (D103): the request e-mail the CondoOS sends with the síndico's approval."""
+    actions = await req_email.email_actions(db, req)
+    pending = next((a for a in actions if ActionStatus(a.status) in OPEN_ACTION), None)
+    enabled = req_email.sending_enabled()
+    history = []
+    for a in actions:
+        if a is pending:
+            continue
+        last = await db.scalar(
+            select(ActionDecision.comment)
+            .where(ActionDecision.action_request_id == a.id)
+            .order_by(ActionDecision.created_at.desc())
+            .limit(1)
+        )
+        history.append(
+            {
+                "id": str(a.id),
+                "status": a.status,
+                "to": req_email.mask(str(a.payload["email"]["to"])),
+                "at": (a.executed_at or a.updated_at or a.created_at).isoformat(),
+                "note": last,
+            }
+        )
+    out: dict[str, Any] = {
+        "enabled": enabled,
+        "can_prepare": enabled
+        and open_
+        and req.status != "rascunho"
+        and pending is None
+        and access.can(Permission.MANAGE_CASES),
+        "pending": None,
+        "history": history,
+    }
+    if pending is not None:
+        draft = pending.payload["email"]
+        out["pending"] = {
+            "id": str(pending.id),
+            "status": pending.status,
+            "payload_hash": pending.payload_hash,
+            "can_approve": pending.status == ActionStatus.AGUARDANDO_APROVACAO.value
+            and access.can(Permission.APPROVE_IN_CONDO),
+            "can_cancel": "cancelar" in allowed_actions(access, pending),
+            "to": draft["to"],
+            "reply_to": draft.get("reply_to"),
+            "from_name": draft["from_name"],
+            "subject": draft["subject"],
+            "body": draft["body"],
+        }
+    return out
 
 
 @router.get("/condominiums/{condominium_id}/delegations/suggestions")
@@ -345,6 +415,34 @@ async def make_link(
         "text": message_text(req, condo, sender, url, expires),
         "request": await _detail(db, access, req),
     }
+
+
+@router.post("/condominiums/{condominium_id}/delegations/{request_id}/email")
+async def prepare_email(
+    condominium_id: uuid.UUID,
+    request_id: uuid.UUID,
+    body: EmailIn,
+    access: CanPrepare,
+    db: DbSession,
+) -> dict[str, Any]:
+    """Freeze the exact e-mail for the síndico's approval (D103). Nothing is sent here."""
+    req = await _request(db, access, request_id)
+    condo = await db.get(Condominium, access.condominium_id)
+    assert condo is not None
+    try:
+        await req_email.prepare(
+            db,
+            access,
+            condo,
+            req,
+            to=body.to,
+            note=body.note,
+            idempotency_key=body.idempotency_key,
+        )
+    except DelegationError as exc:
+        raise _http(exc) from exc
+    await db.flush()
+    return await _detail(db, access, req)
 
 
 @router.post("/condominiums/{condominium_id}/delegations/{request_id}/shared")

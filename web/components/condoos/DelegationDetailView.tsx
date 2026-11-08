@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import { DelegationStatusBadge } from "@/components/condoos/DelegationStatusBadge";
+import { RequestEmailCard } from "@/components/condoos/RequestEmailCard";
 import { Button } from "@/components/ui/Button";
 import { Card, CardTitle } from "@/components/ui/Card";
 import { send } from "@/lib/client";
@@ -23,10 +24,14 @@ const EVENT_LABEL: Record<string, string> = {
   encerrado: "Encerrado",
   expirado: "Link venceu",
   revogado: "Revogado",
+  email_aprovado: "E-mail aprovado pelo síndico",
+  email_enviado: "E-mail aceito pelo servidor de e-mail",
+  email_falhou: "E-mail não enviado",
 };
 
 /** One request (D95): authorise, make the link and the text, share it from the phone, follow
- * what arrives. The system sends nothing; "enviei" is the síndico's own statement. */
+ * what arrives. "Enviei" is the síndico's own statement; the CondoOS sends only the request
+ * e-mail the síndico approves (D103). */
 export function DelegationDetailView({
   condominiumId,
   request,
@@ -136,8 +141,8 @@ export function DelegationDetailView({
                 </Button>
               </div>
               <p className="text-[12px] text-muted">
-                O link só aceita envio de arquivos e vale até {formatDate(link.expires_at)}. O
-                CondoOS não envia mensagens: quem envia é você.
+                O link só aceita envio de arquivos e vale até {formatDate(link.expires_at)}. Quem
+                envia este texto é você; se preferir, o CondoOS manda por e-mail (abaixo).
               </p>
             </div>
           ) : (
@@ -160,6 +165,12 @@ export function DelegationDetailView({
           )}
         </Card>
       )}
+
+      <RequestEmailCard
+        condominiumId={condominiumId}
+        requestId={request.id}
+        email={request.email}
+      />
 
       <Card>
         <CardTitle>

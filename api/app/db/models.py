@@ -1011,6 +1011,9 @@ class OutboxEvent(IdTimestampMixin, Base):
     attempts: Mapped[int] = mapped_column(Integer, default=0)
     last_error: Mapped[str | None] = mapped_column(Text, nullable=True)
     dispatched_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # What the mail server answered when a connector really sent something (D103): message id
+    # and the time it was accepted. Accepted is not delivered.
+    receipt: Mapped[dict[str, Any] | None] = mapped_column(Json, nullable=True)
 
 
 class AutomationPause(IdTimestampMixin, Base):

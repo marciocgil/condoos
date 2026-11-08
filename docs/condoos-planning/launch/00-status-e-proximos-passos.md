@@ -11,7 +11,7 @@
 | LF2 Primeiro valor | **validado** — LG2 no docker em 08/11/2026 (D96) | ver abaixo |
 | LF3 Dados e reconciliação | **validado** — LG3 no docker em 08/11/2026 (D96) | `07-lf3-proposta-conflitos.md` |
 | LF4 Colaborativo | **validado** — LG4 no docker em 08/11/2026 (D96); sobras entregues e validadas no docker (D100) | `08-lf4-proposta-delegacao.md` |
-| LF5 | **LB-050/051 entregues com bucket simulado e validados no docker (D101, `make e2e` 34 passaram)**; falta domínio para o SES real; LB-052 e LB-055 entregues (D102); LB-053 depende de Q-L02 e LB-054 (WhatsApp) segue só especificado | `10-lb053-proposta-envio-pedido.md` | Proposta do LB-053: o CondoOS envia o e-mail do pedido (exceção a Q-L02 e D83, um só tipo, com aprovação) — **aguardando decisão** |
+| LF5 | **LB-050/051 entregues com bucket simulado e validados no docker (D101, `make e2e` 34 passaram)**; falta domínio para o SES real; LB-052 e LB-055 entregues (D102); LB-053 entregue (D103); LB-054 (WhatsApp) segue só especificado | `10-lb053-proposta-envio-pedido.md` | Proposta do LB-053: o CondoOS envia o e-mail do pedido (exceção a Q-L02 e D83, um só tipo, com aprovação) — aprovada e implementada (D103) |
 | `09-lf5-proposta-email-entrada.md` |
 | LF6–LF8 | nao_iniciado | `05-backlog.md` |
 
@@ -58,7 +58,7 @@ Q-L01 assistida pelo Admin · Q-L02 síndico envia o link/texto · Q-L03 LF2 ant
 
 1. ~~Gates LG2, LG3 e LG4~~ **validados no docker (D96).**
 2. ~~Sobras da LF4~~ **entregues e validadas no docker (D100):** pedidos no desktop da equipe, "com você × com outros" no Hoje, limite por endereço na rota pública; `make e2e` 33 passaram, nenhuma falha.
-3. **LF5 (captura recorrente e canais):** e-mail de entrada entregue (D101) com bucket simulado; quando houver domínio, seguir `docs/deploy.md` seção 7. LB-052 e LB-055 entregues (D102). O que sobra da LF5: LB-053 (o CondoOS enviar o e-mail do pedido) com proposta em `10-lb053-proposta-envio-pedido.md`, aguardando decisão (DL-07) e LB-054 (WhatsApp, contrato ⛓). Próxima fase pelo backlog: LF6. WhatsApp segue só especificado (⛓).
+3. **LF5 (captura recorrente e canais):** e-mail de entrada entregue (D101) com bucket simulado; quando houver domínio, seguir `docs/deploy.md` seção 7. LB-052 e LB-055 entregues (D102). LB-053 entregue (D103): o CondoOS envia o e-mail do pedido com aprovação do síndico; envio real depende do domínio. Sobra da LF5 só o LB-054 (WhatsApp, contrato ⛓) e LB-054 (WhatsApp, contrato ⛓). Próxima fase pelo backlog: LF6. WhatsApp segue só especificado (⛓).
 
 ## Ritual de cada incremento
 

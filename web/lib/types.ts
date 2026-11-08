@@ -668,6 +668,14 @@ export interface ActionPayload {
   due_date?: string | null;
   risks?: string;
   evidence?: Record<string, string>[];
+  // Only the request e-mail (D103): the exact e-mail the CondoOS sends after approval.
+  email?: {
+    to: string;
+    from_name: string;
+    reply_to: string | null;
+    subject: string;
+    body: string;
+  } | null;
 }
 
 export interface ActionDetail extends ActionRow {
@@ -895,6 +903,25 @@ export interface DelegationDetail extends DelegationSummary {
     extraction_status: string;
   }[];
   can: { authorize: boolean; issue_link: boolean; attend: boolean; finish: boolean };
+  email: RequestEmail;
+}
+
+export interface RequestEmail {
+  enabled: boolean;
+  can_prepare: boolean;
+  pending: {
+    id: string;
+    status: string;
+    payload_hash: string;
+    can_approve: boolean;
+    can_cancel: boolean;
+    to: string;
+    reply_to: string | null;
+    from_name: string;
+    subject: string;
+    body: string;
+  } | null;
+  history: { id: string; status: string; to: string; at: string; note: string | null }[];
 }
 
 export interface DelegationLinkOut {

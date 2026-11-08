@@ -1,6 +1,6 @@
 # Launch LF5 — proposta: o CondoOS envia por e-mail o pedido de documentos (LB-053)
 
-Data: 08/11/2026. **Aguardando decisão do Marcio.** Nada foi implementado.
+Data: 08/11/2026. **Aprovada pelo Marcio em 08/11/2026 (as 5 decisões) e implementada (D103).**
 
 ## 1. O que muda e por que isto pede decisão
 

@@ -195,10 +195,17 @@ async def create_request(
     idempotency_key: str,
     case_id: uuid.UUID | None = None,
     opportunity_id: uuid.UUID | None = None,
+    internal: bool = False,
 ) -> tuple[ActionRequest, bool]:
-    """Returns the request and whether it was created now (False = the same key again)."""
+    """Returns the request and whether it was created now (False = the same key again).
+    ``internal`` is set only by the screens that own an internal type (the request e-mail)."""
     if not can_request(access):
         raise ActionError("Seu papel não pode pedir ações neste condomínio.", 403)
+    spec = CATALOGUE.get(action_type)
+    if spec is not None and spec.internal and not internal:
+        raise ActionError("Este tipo de ação é pedido pela própria tela do pedido.", 422)
+    if payload.email is not None and (spec is None or not spec.sends_email):
+        raise ActionError("Só o pedido de documentos por e-mail leva um e-mail.", 422)
     key = idempotency_key.strip()
     if not 8 <= len(key) <= 120:
         raise ActionError("Chave de idempotência inválida.")
@@ -309,6 +316,9 @@ async def adjust(
     """Change what is being asked. A material change after approval voids it (spec §9.5)."""
     if not can_request(access):
         raise ActionError("Seu papel não pode ajustar ações.", 403)
+    spec = CATALOGUE.get(req.action_type)
+    if (spec is not None and spec.internal) or payload.email is not None:
+        raise ActionError("Para mudar o e-mail, cancele e prepare um novo pelo pedido.", 409)
     if ActionStatus(req.status) not in (
         ActionStatus.AGUARDANDO_APROVACAO,
         ActionStatus.ENFILEIRADA,
@@ -379,6 +389,10 @@ async def approve(
         to_status=ActionStatus.ENFILEIRADA,
         comment=(comment or "").strip() or None,
     )
+    if CATALOGUE[req.action_type].sends_email:
+        from app.delegation.email import on_approved
+
+        await on_approved(session, req, access.user_id)
     # One outbox row per approval: reprocessing the same approval never duplicates it.
     key = f"{req.id}:{decision.id}"
     await session.execute(
@@ -593,6 +607,12 @@ async def dispatch_job(session: AsyncSession, payload: dict[str, Any]) -> None:
             to_status=ActionStatus.AGUARDANDO_APROVACAO,
             comment=policy.reason,
         )
+        return
+    if CATALOGUE[req.action_type].sends_email:
+        # The one connector (D103): the request e-mail. Everything else sends nothing.
+        from app.delegation.email import send
+
+        await send(session, req, event)
         return
     event.status = OutboxStatus.DESPACHADO.value
     event.dispatched_at = utcnow()

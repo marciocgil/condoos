@@ -99,10 +99,29 @@ export function ActionDetailView({
         <dl className="space-y-3">
           <Row label="Efeito exato">{p.effect}</Row>
           <Row label="Por quê">{p.reason}</Row>
-          <Row label="Depois do clique">
-            Nada é enviado pelo sistema. A ação fica aprovada e aguarda uma pessoa executar e
-            registrar o que foi feito.
-          </Row>
+          {p.email ? (
+            <>
+              <Row label="E-mail que o CondoOS vai enviar">
+                <span className="block text-[13px]">
+                  De {p.email.from_name} · para {p.email.to}
+                  {p.email.reply_to && ` · responder para ${p.email.reply_to}`}
+                </span>
+                <span className="block text-[13px] font-medium">{p.email.subject}</span>
+                <pre className="mt-1 rounded-[var(--radius-control)] border border-line bg-bg-2 p-3 text-[13px] whitespace-pre-wrap [overflow-wrap:anywhere]">
+                  {p.email.body.replace("{link}", "[link novo, gerado no momento do envio]")}
+                </pre>
+              </Row>
+              <Row label="Depois do clique">
+                O CondoOS envia exatamente este e-mail, com um link novo (o anterior deixa de
+                valer), e registra quando o servidor de e-mail aceitar. Isso não confirma a entrega.
+              </Row>
+            </>
+          ) : (
+            <Row label="Depois do clique">
+              Nada é enviado pelo sistema. A ação fica aprovada e aguarda uma pessoa executar e
+              registrar o que foi feito.
+            </Row>
+          )}
           <Row label="Custo e teto">
             Teto de <span className="font-medium tabular-nums">{formatBRL(a.cost_cap)}</span>
             {Number(a.cost_cap) === 0 && " (sem custo)"}; custo acima do teto exige nova aprovação.

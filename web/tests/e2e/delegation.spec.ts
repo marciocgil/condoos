@@ -4,6 +4,7 @@ import path from "node:path";
 import { expect, test } from "@playwright/test";
 
 import { loginAs } from "./auth";
+import { latestUploadLink } from "./mailpit";
 
 // D95 (LF4): the síndica asks for a document, the CondoOS makes the link and the text
 // (nothing is sent by the system), the sender uploads without a login, triage refuses an
@@ -105,4 +106,41 @@ test("equipe CondoOS prepara um pedido no desktop e ele fica como rascunho", asy
   await expect(page.getByRole("table", { name: "Pedidos de documentos" })).toContainText(
     `Contador ${stamp}`,
   );
+});
+
+// D103 (LB-053): the síndica approves the exact e-mail and the CondoOS sends it; the link in
+// it works for the sender. Mailpit stands for the mail server.
+test("síndica aprova o e-mail do pedido e o CondoOS envia", async ({ page, browser }, info) => {
+  test.skip(info.project.name !== "sindico-mobile", "fluxo do celular");
+  test.setTimeout(120_000);
+  await loginAs(page, "ana.sindica@acacias.example.com");
+  const id = page.url().match(/condominio\/([^/]+)/)?.[1];
+  const stamp = Date.now();
+  const to = `pedido-${stamp}@contador.example.com`;
+
+  await page.goto(`/condominio/${id}/pedidos/novo`);
+  await page.getByLabel("Para quem").fill(`Contador ${stamp}`);
+  for (const box of await page.getByRole("checkbox").all()) await box.uncheck();
+  await page.getByLabel("Outro documento").fill("Balancete de outubro");
+  await page.getByRole("button", { name: "Incluir" }).click();
+  await page.getByRole("button", { name: "Preparar pedido" }).click();
+  await expect(page).toHaveURL(/\/pedidos\/[0-9a-f-]+$/);
+
+  const card = page.getByRole("region", { name: "Enviar por e-mail pelo CondoOS" });
+  await card.getByRole("button", { name: "Preparar e-mail" }).click();
+  await card.getByLabel("E-mail de quem vai enviar os documentos").fill(to);
+  await card.getByRole("button", { name: "Ver o e-mail antes de enviar" }).click();
+  await expect(card.getByTestId("email-preview")).toContainText("Balancete de outubro");
+  await expect(card.getByTestId("email-preview")).toContainText("link novo");
+  await card.getByRole("button", { name: "Aprovar e enviar" }).click();
+
+  const link = new URL(await latestUploadLink(to));
+  await page.reload();
+  await expect(card.getByRole("list", { name: "E-mails do pedido" })).toContainText(
+    "Aceito pelo servidor de e-mail",
+  );
+  const sender = await (await browser.newContext()).newPage();
+  await sender.goto(link.pathname);
+  await expect(sender.getByRole("heading", { name: "Envio de documentos" })).toBeVisible();
+  await expect(sender.getByText("Balancete de outubro")).toBeVisible();
 });

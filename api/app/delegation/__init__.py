@@ -211,7 +211,10 @@ async def _revoke_links(session: AsyncSession, req: DelegationRequest, now: date
 
 
 async def issue_link(
-    session: AsyncSession, req: DelegationRequest, user_id: uuid.UUID, days: int = LINK_DAYS
+    session: AsyncSession,
+    req: DelegationRequest,
+    user_id: uuid.UUID | None,
+    days: int = LINK_DAYS,
 ) -> tuple[str, datetime]:
     """A new upload link (a previous one stops working). The token is returned only here."""
     _open(req)

@@ -421,6 +421,11 @@ class DelegationEventKind(StrEnum):
     ENCERRADO = "encerrado"
     EXPIRADO = "expirado"
     REVOGADO = "revogado"
+    # The CondoOS sends the request e-mail with the síndico's approval (D103). "enviado" is
+    # "accepted by the mail server", never "delivered".
+    EMAIL_APROVADO = "email_aprovado"
+    EMAIL_ENVIADO = "email_enviado"
+    EMAIL_FALHOU = "email_falhou"
 
 
 class InboundMessageStatus(StrEnum):

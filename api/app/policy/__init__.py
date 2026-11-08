@@ -32,7 +32,25 @@ PAUSABLE_JOBS: dict[str, str] = {
     "delegation.link": "Links de envio de documentos",
     # Not a job either: messages wait in the inbox, nothing is lost (D101).
     "email.inbound": "Entrada de documentos por e-mail",
+    # The only action that sends something out (D103): waits while paused.
+    "pedido_documento.enviar_email": "Envio por e-mail dos pedidos de documentos",
 }
+
+
+class EmailDraft(BaseModel):
+    """The exact e-mail of a document request (D103), frozen with the action. ``body`` holds
+    ``{link}``: the link is made when the e-mail is sent, so its token is never stored."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    delegation_request_id: uuid.UUID
+    to: str = Field(max_length=254)  # masked after sending; to_sha256 keeps the trail
+    to_sha256: str = Field(min_length=64, max_length=64)
+    from_name: str = Field(max_length=200)
+    reply_to: str | None = Field(default=None, max_length=254)
+    subject: str = Field(max_length=200)
+    body: str = Field(max_length=5000)
+    note: str = Field(default="", max_length=500)
 
 
 class ActionPayload(BaseModel):
@@ -47,6 +65,7 @@ class ActionPayload(BaseModel):
     due_date: str | None = Field(default=None, max_length=10)  # YYYY-MM-DD
     risks: str = Field(default="", max_length=1000)
     evidence: list[dict[str, str]] = Field(default_factory=list, max_length=20)
+    email: EmailDraft | None = None  # only for the request e-mail (D103)
 
 
 @dataclass(frozen=True)
@@ -58,6 +77,10 @@ class ActionType:
     zero_cost_only: bool = False
     # Denied whatever the context: the product never does this (CLAUDE.md, spec §9.3).
     always_denied: bool = False
+    # The dispatcher really sends an e-mail (D103). Every other type sends nothing.
+    sends_email: bool = False
+    # Created only from its own screen (the document request), never from the generic form.
+    internal: bool = False
 
 
 CATALOGUE: dict[str, ActionType] = {
@@ -68,6 +91,14 @@ CATALOGUE: dict[str, ActionType] = {
             "orcamento.solicitar", "Pedir orçamento sem compromisso", "L3", zero_cost_only=True
         ),
         ActionType("visita.agendar", "Agendar visita técnica", "L4"),
+        ActionType(
+            "pedido_documento.enviar_email",
+            "Enviar por e-mail o pedido de documentos",
+            "L3",
+            zero_cost_only=True,
+            sends_email=True,
+            internal=True,
+        ),
         ActionType("pagamento.aprovar", "Aprovar pagamento", "L5", always_denied=True),
         ActionType("contrato.contratar", "Contratar ou dar aceite", "L5", always_denied=True),
         ActionType("multa.aplicar", "Emitir advertência ou multa", "L5", always_denied=True),
@@ -75,7 +106,9 @@ CATALOGUE: dict[str, ActionType] = {
     )
 }
 
-REQUESTABLE_TYPES: tuple[str, ...] = tuple(c for c, t in CATALOGUE.items() if not t.always_denied)
+REQUESTABLE_TYPES: tuple[str, ...] = tuple(
+    c for c, t in CATALOGUE.items() if not t.always_denied and not t.internal
+)
 
 
 @dataclass(frozen=True)
@@ -165,6 +198,10 @@ async def evaluate(
         return PolicyResult(
             PolicyDecision.PAUSE, "As ações estão pausadas neste condomínio (kill switch)."
         )
+    if spec.sends_email and await active_pause(session, condo.id, spec.code) is not None:
+        return PolicyResult(
+            PolicyDecision.PAUSE, "O envio de pedidos por e-mail está pausado neste condomínio."
+        )
     limit = approval_limit(condo, category)
     if cost_cap > 0:
         if limit is None:
@@ -178,6 +215,13 @@ async def evaluate(
                 "O teto de custo supera a alçada do síndico: leve ao conselho ou à assembleia.",
                 limit=limit,
             )
+    if spec.sends_email:
+        return PolicyResult(
+            PolicyDecision.REQUIRE_APPROVAL,
+            "Exige aprovação do síndico para esta versão exata; só então o CondoOS envia o "
+            "e-mail.",
+            limit=limit,
+        )
     return PolicyResult(
         PolicyDecision.REQUIRE_APPROVAL,
         "Exige aprovação do síndico dentro da alçada; nada é enviado pelo sistema.",

@@ -38,3 +38,23 @@ export async function latestMagicLink(
   }
   throw new Error(`Nenhum link de acesso recebido para ${email}`);
 }
+
+/** The upload link of the document request e-mail the CondoOS sent to this address (D103). */
+export async function latestUploadLink(email: string): Promise<string> {
+  for (let attempt = 0; attempt < 40; attempt++) {
+    const res = await fetch(
+      `${MAILPIT_URL}/api/v1/search?query=${encodeURIComponent(`to:${email}`)}`,
+    );
+    const list = (await res.json()) as MailpitList;
+    const msg = list.messages[0];
+    if (msg) {
+      const full = (await (await fetch(`${MAILPIT_URL}/api/v1/message/${msg.ID}`)).json()) as {
+        Text: string;
+      };
+      const match = full.Text.match(/https?:\/\/\S+\/enviar\/[\w-]+/);
+      if (match) return match[0];
+    }
+    await new Promise((r) => setTimeout(r, 500));
+  }
+  throw new Error(`Nenhum e-mail de pedido recebido em ${email}`);
+}
