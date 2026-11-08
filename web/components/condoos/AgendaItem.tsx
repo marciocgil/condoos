@@ -6,6 +6,7 @@ import {
   CheckCircle2,
   Clock,
   FileQuestion,
+  FileSearch,
   Search,
   TrendingUp,
 } from "lucide-react";
@@ -46,6 +47,11 @@ export function agendaStatus(e: AgendaEvent): Look {
       label: "NF prevista",
       tone: "neutral",
       icon: <CalendarClock size={12} />,
+    },
+    "nf_prevista:em_conferencia": {
+      label: "NF chegou, em conferência",
+      tone: "info",
+      icon: <FileSearch size={12} />,
     },
     "nf_prevista:nao_chegou": {
       label: "NF não chegou",

@@ -386,10 +386,12 @@ export interface PendingContract {
   supplier: string;
   object: string;
   expected_value: string;
-  status: "faturado" | "sem_nf" | "sem_faturamento" | "aguardando";
+  status: "faturado" | "em_conferencia" | "sem_nf" | "sem_faturamento" | "aguardando";
   expense_id: string | null;
   billed_value: string | null;
   invoice_number: string | null;
+  origin: string | null;
+  arrived: number;
 }
 
 export interface PendingOneOff {
@@ -957,5 +959,27 @@ export interface InboundChannel {
     duplicates: number;
     refused: number;
     reasons: string[];
+  }[];
+}
+
+export type CoverageStatus =
+  "faturado" | "em_conferencia" | "sem_nf" | "sem_faturamento" | "aguardando";
+
+export interface MonthCoverage {
+  month: string;
+  expected: number;
+  received: number;
+  in_review: number;
+  waiting: number;
+  missing: number;
+  unread: number;
+  contracts: {
+    contract_id: string;
+    supplier: string;
+    object: string;
+    status: CoverageStatus;
+    origin: string | null;
+    invoice_number: string | null;
+    arrived: { origin: string; status: string }[];
   }[];
 }

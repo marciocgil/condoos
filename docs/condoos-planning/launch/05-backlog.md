@@ -96,7 +96,7 @@ Data: 07/11/2026. IDs **LB-xxx** (sem colidir com CB-xxx do `docs/backlog.md`). 
 
 ## LF5 — Captura recorrente e canais (P1)
 
-- **LB-050** Provedor de e-mail de entrada real (IMAP ou serviço), com mock · M · ✅ (D101: SES em São Paulo → S3, bucket simulado nos testes; falta o domínio). **LB-051** Saúde do canal: último documento, última leitura, falhas · M · ✅ (D101). **LB-052** Documento esperado com verificação de outros canais antes de acusar ausência (F03) · M. **LB-053** Envio de e-mail de pedido como tipo de ação L3 aprovado (se Q-L02) com recibo de envio ≠ entrega · G. **LB-054** WhatsApp oficial — **só especificação** até contrato ⛓. **LB-055** Cobertura por competência na Agenda · P.
+- **LB-050** Provedor de e-mail de entrada real (IMAP ou serviço), com mock · M · ✅ (D101: SES em São Paulo → S3, bucket simulado nos testes; falta o domínio). **LB-051** Saúde do canal: último documento, última leitura, falhas · M · ✅ (D101). **LB-052** Documento esperado com verificação de outros canais antes de acusar ausência (F03) · M · ✅ (D102). **LB-053** Envio de e-mail de pedido como tipo de ação L3 aprovado (se Q-L02) com recibo de envio ≠ entrega · G. **LB-054** WhatsApp oficial — **só especificação** até contrato ⛓. **LB-055** Cobertura por competência na Agenda · P · ✅ (D102).
 - **Gate LG5:** fatura não recebida, importação duplicada, e-mail desconectado, mensagem não entregue — sem falso sucesso.
 
 ## LF6 — Saúde contínua (P1)

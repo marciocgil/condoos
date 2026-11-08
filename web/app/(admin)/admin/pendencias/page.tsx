@@ -1,4 +1,4 @@
-import { CheckCircle2, Clock, FileQuestion, FileWarning, Upload } from "lucide-react";
+import { CheckCircle2, Clock, FileQuestion, FileSearch, FileWarning, Upload } from "lucide-react";
 import Link from "next/link";
 
 import { CondoFilter } from "@/components/condoos/CondoFilter";
@@ -22,6 +22,11 @@ const BILLING: Record<
   sem_nf: { label: "Cobrado sem NF", tone: "warning", icon: <FileWarning size={12} /> },
   sem_faturamento: { label: "Sem faturamento", tone: "danger", icon: <FileQuestion size={12} /> },
   aguardando: { label: "Aguardando NF", tone: "neutral", icon: <Clock size={12} /> },
+  em_conferencia: {
+    label: "Chegou, em conferência",
+    tone: "info",
+    icon: <FileSearch size={12} />,
+  },
 };
 
 /** Cockpit of pending items (D70): contracts in force without the month's invoice and

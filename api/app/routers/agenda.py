@@ -14,9 +14,10 @@ from pydantic import BaseModel
 from app.agenda import KINDS, condominium_agenda
 from app.auth.deps import CurrentPrincipal, require
 from app.auth.rbac import CondoAccess, Permission
-from app.core.time import local_today
+from app.core.time import add_months, local_today
 from app.db.models import Condominium
 from app.db.session import DbSession
+from app.pending import month_pending
 from app.routers.portfolio import _manager_condos, _only
 
 router = APIRouter(tags=["agenda"])
@@ -67,6 +68,51 @@ async def condominium_agenda_route(
     return AgendaOut(
         start=first, end=last, events=[e.as_dict() for e in events if e.kind in wanted]
     )
+
+
+@router.get("/condominiums/{condominium_id}/coverage")
+async def month_coverage(
+    condominium_id: uuid.UUID,
+    access: CanView,
+    db: DbSession,
+    month: Annotated[str | None, Query(pattern=r"^\d{4}-(0[1-9]|1[0-2])$")] = None,
+) -> dict[str, Any]:
+    """LB-055: for a month (default: the previous one), the invoice each contract in force
+    expects and whether it arrived, through which channel, or is still in review. Follow-up
+    only: a gap is "not received by any channel", never an accusation (D70, D71)."""
+    condo = await db.get(Condominium, access.condominium_id)
+    assert condo is not None
+    today = local_today(condo.timezone)
+    chosen = (
+        date(int(month[:4]), int(month[5:7]), 1) if month else add_months(today.replace(day=1), -1)
+    )
+    result = await month_pending(db, condo.id, chosen, today)
+    rows = [
+        {
+            "contract_id": str(c.contract_id),
+            "supplier": c.supplier,
+            "object": c.object,
+            "status": c.status,
+            "origin": c.origin,
+            "invoice_number": c.invoice_number,
+            "arrived": [{"origin": a["origin"], "status": a["status"]} for a in c.arrived],
+        }
+        for c in result.contracts
+    ]
+
+    def count(status: str) -> int:
+        return sum(r["status"] == status for r in rows)
+
+    return {
+        "month": f"{chosen:%Y-%m}",
+        "expected": len(rows),
+        "received": count("faturado"),
+        "in_review": count("em_conferencia"),
+        "waiting": count("aguardando"),
+        "missing": count("sem_nf") + count("sem_faturamento"),
+        "unread": result.unread,
+        "contracts": rows,
+    }
 
 
 @router.get("/portfolio/agenda")

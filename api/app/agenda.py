@@ -4,7 +4,8 @@ A follow-up view over data the system already has — it creates nothing and dec
 - ``vencimento``: due date of each expense (from the boleto or bill), with ``pago`` (a debit
   matched in the bank statement), ``vencido`` (past due, unpaid) or ``a_vencer``;
 - ``nf_prevista``: when a contract's invoice is expected (billing frequency, D70), on the
-  usual issue day seen in its past invoices — always marked as predicted;
+  usual issue day seen in its past invoices — always marked as predicted; ``em_conferencia``
+  when a document of the supplier for the month already arrived by any channel (LB-052);
 - ``reajuste``: the adjustment month of indexed contracts;
 - ``fim_contrato``: end of the term (contracts with an indeterminate term never appear).
 
@@ -32,7 +33,7 @@ from app.db.models import (
     Supplier,
 )
 from app.enrichment.indices import load_index_table
-from app.pending import GRACE_DAYS, billing_expected, month_end
+from app.pending import GRACE_DAYS, arrivals, billing_expected, month_end
 from app.rules.contracts import anniversaries, contract_value_at, terms_at
 
 KINDS = ("vencimento", "nf_prevista", "reajuste", "aviso_previo", "fim_contrato")
@@ -96,10 +97,17 @@ async def condominium_agenda(
         )
     )
     supplier_ids |= {e.supplier_id for e in expenses if e.supplier_id}
-    names = {
-        s.id: s.trade_name or s.legal_name
-        for s in await session.scalars(select(Supplier).where(Supplier.id.in_(supplier_ids)))
-    }
+    suppliers = list(await session.scalars(select(Supplier).where(Supplier.id.in_(supplier_ids))))
+    names = {s.id: s.trade_name or s.legal_name for s in suppliers}
+    cnpjs = {s.id: s.cnpj for s in suppliers}
+    arrived_cache: dict[date, dict[str, list[dict[str, str]]]] = {}
+
+    async def arrived(month: date) -> dict[str, list[dict[str, str]]]:
+        """Documents that arrived by any channel and are still in review (LB-052)."""
+        if month not in arrived_cache:
+            arrived_cache[month] = (await arrivals(session, condominium_id, month))[0]
+        return arrived_cache[month]
+
     paid = {
         r[0]: r[1]
         for r in await session.execute(
@@ -175,6 +183,8 @@ async def condominium_agenda(
             invoiced = next((e for e in mine if e.invoice_number or e.id in fiscal), None)
             if invoiced is not None:
                 status = "recebida"
+            elif (await arrived(month)).get(cnpjs.get(c.supplier_id, "")):
+                status = "em_conferencia"
             elif today > month_end(month) + timedelta(days=GRACE_DAYS):
                 status = "nao_chegou"
             else:

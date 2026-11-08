@@ -328,23 +328,33 @@ async def expected_documents_capability(
     expected = [c for c in pending.contracts if c.status != "aguardando"]
     waiting = [c for c in pending.contracts if c.status == "aguardando"]
     received = [c for c in expected if c.status == "faturado"]
+    in_review = [c for c in pending.contracts if c.status == "em_conferencia"]
     label = month.strftime("%m/%Y")
     r.facts = {
         "mes": month.strftime("%Y-%m"),
         "esperados": len(expected),
         "recebidos": len(received),
+        "em_conferencia": len(in_review),
         "no_prazo": len(waiting),
     }
     if not pending.contracts:
         r.missing = ["Nenhum contrato com faturamento periódico vigente em " + label + "."]
         return r
     r.state = "supervisionada"
-    missing = len(expected) - len(received)
+    missing = len(expected) - len(received) - len(in_review)
+    if in_review:
+        r.missing.append(f"{len(in_review)} nota(s) de {label} já chegaram e estão em conferência.")
     if missing:
         r.state = "analise_parcial"
+        caveat = (
+            f" Há {pending.unread} documento(s) ainda em leitura que podem ser alguma delas."
+            if pending.unread
+            else ""
+        )
         r.missing.append(
-            f"Nota fiscal de {label} ainda não recebida para {missing} de {len(expected)} "
-            "contrato(s). Pode ter sido emitida e não enviada: confira com a administradora."
+            f"Nota fiscal de {label} ainda não recebida por nenhum canal para {missing} de "
+            f"{len(expected)} contrato(s). Pode ter sido emitida e não enviada: confira com a "
+            "administradora." + caveat
         )
     return r
 

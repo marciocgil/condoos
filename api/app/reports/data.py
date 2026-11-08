@@ -395,8 +395,10 @@ async def month_coverage(
     expected = [c for c in pending.contracts if c.status != "aguardando"]
     if expected:
         received = sum(c.status == "faturado" for c in expected)
+        in_review = sum(c.status == "em_conferencia" for c in expected)
         out.append(
-            f"Notas fiscais dos contratos: {received} de {len(expected)} recebidas para {label}."
+            f"Notas fiscais dos contratos: {received} de {len(expected)} recebidas para {label}"
+            + (f"; {in_review} chegaram e estão em conferência." if in_review else ".")
         )
     else:
         out.append(f"Nenhum contrato com nota fiscal esperada para {label}.")

@@ -368,6 +368,8 @@ async def pending(
                             "expense_id": str(b.expense_id) if b.expense_id else None,
                             "billed_value": str(b.billed_value) if b.billed_value else None,
                             "invoice_number": b.invoice_number,
+                            "origin": b.origin,
+                            "arrived": len(b.arrived),
                         }
                         for b in result.contracts
                     ],

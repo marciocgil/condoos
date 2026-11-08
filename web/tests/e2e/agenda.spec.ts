@@ -9,6 +9,9 @@ test("síndica vê a agenda no resumo e a lista dos próximos 30 dias", async ({
   await page.getByRole("link", { name: "Ver agenda" }).click();
   await expect(page.getByRole("heading", { name: "Agenda", level: 1 })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Próximos 30 dias" })).toBeVisible();
+  // LB-055: which invoices of last month's contracts arrived, and how.
+  const coverage = page.getByRole("region", { name: "Documentos esperados do mês" });
+  await expect(coverage).toContainText(/\d+ de \d+ recebidas|Nenhum contrato espera/);
 });
 
 test("gerente navega a agenda do mês e filtra por tipo", async ({ page }) => {
@@ -24,4 +27,14 @@ test("gerente navega a agenda do mês e filtra por tipo", async ({ page }) => {
   await expect(page).toHaveURL(/tipo=vencimento/);
   await expect(page.getByText(/Vencimento ·/).first()).toBeVisible();
   await expect(page.getByText(/Reajuste ·/)).toHaveCount(0);
+
+  // With a condominium chosen, the month's coverage of the contracts' invoices.
+  await expect(page.getByText("Escolha um condomínio para ver")).toBeVisible();
+  await page
+    .getByRole("navigation", { name: "Filtrar por condomínio" })
+    .getByRole("link", { name: /Acácias/ })
+    .click();
+  const coverage = page.getByRole("region", { name: "Documentos esperados do mês" });
+  await expect(coverage).toContainText("Notas dos contratos · 10/2026");
+  await expect(coverage).toContainText(/\d+ de \d+ recebidas/);
 });

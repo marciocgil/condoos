@@ -158,7 +158,7 @@ make pilot         # aceite do Marco 6 (após reset + up) → docs/pilot/run.md
 - **Relatórios** são a visão do corpo diretivo (sem achados aguardando validação). Rodapé de IA em toda página; competência só fecha com a fila daquele mês vazia.
 - **Condomínio novo** entra pela Carteira ("Novo condomínio") ou por `app.onboarding` (nunca sobrescreve). Contratos chegam como documentos (D59) ou pelo formulário de Contratos (D67); termo aditivo vira `contract_amendment` ligado ao contrato (D66). Corpo diretivo e acessos são editados em Configurações. Achado não mais detectado e sem ação de pessoa vira `superado` (D61).
 - **Aprovações (R12)** são registradas pela administradora no detalhe do achado (D65) ou no cockpit de Pendências, ligadas ao documento (proposta, ata, contrato).
-- **Pendências** (D70) não são achados: contrato vigente sem NF no mês (pela periodicidade do contrato) e serviço avulso sem aprovação. Só a administradora vê.
+- **Pendências** (D70) não são achados: contrato vigente sem NF no mês (pela periodicidade do contrato) e serviço avulso sem aprovação. Só a administradora vê. Antes de dizer "não recebida", `pending.py::arrivals` confere documentos de qualquer canal ainda não lançados (CNPJ e mês lidos): o contrato fica "em_conferencia" (D102). A cobertura do mês aparece na Agenda (`/coverage`).
 - **Agenda** (D71) é só acompanhamento: datas previstas aparecem como "previsto", nunca geram achado, e não há ação de pagamento (o sistema não move dinheiro). Síndico e administradora veem.
 
 ## Status dos marcos

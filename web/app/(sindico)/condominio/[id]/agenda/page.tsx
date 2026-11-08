@@ -1,10 +1,11 @@
 import { CalendarDays } from "lucide-react";
 
 import { AgendaItem, isLate } from "@/components/condoos/AgendaItem";
+import { MonthCoverageCard } from "@/components/condoos/MonthCoverageCard";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { apiGet } from "@/lib/api";
 import { formatDate } from "@/lib/format";
-import type { Agenda, AgendaEvent } from "@/lib/types";
+import type { Agenda, AgendaEvent, MonthCoverage } from "@/lib/types";
 
 function iso(d: Date): string {
   return d.toISOString().slice(0, 10);
@@ -23,7 +24,10 @@ export default async function AgendaSindicoPage({ params }: { params: Promise<{ 
   const today = iso(new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate())));
   const from = iso(new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate() - 60)));
   const to = iso(new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate() + 30)));
-  const agenda = await apiGet<Agenda>(`/condominiums/${id}/agenda?start=${from}&end=${to}`);
+  const [agenda, coverage] = await Promise.all([
+    apiGet<Agenda>(`/condominiums/${id}/agenda?start=${from}&end=${to}`),
+    apiGet<MonthCoverage>(`/condominiums/${id}/coverage`),
+  ]);
   const late = agenda.events.filter(isLate);
   const upcoming = agenda.events.filter((e) => e.date >= today && !isLate(e));
   const contractHref = `/condominio/${id}/contratos`;
@@ -39,6 +43,8 @@ export default async function AgendaSindicoPage({ params }: { params: Promise<{ 
           acompanhar.
         </p>
       </div>
+
+      <MonthCoverageCard coverage={coverage} />
 
       {late.length > 0 && (
         <section aria-labelledby="late" className="space-y-2">

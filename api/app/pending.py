@@ -5,6 +5,9 @@
    never for "on demand" contracts. Status per contract:
    - ``faturado``: an expense of the contract in the month with an invoice (number or NF);
    - ``sem_nf``: charged (boleto, debit) but no invoice;
+   - ``em_conferencia``: no invoice yet, but a document of the contract's supplier for the
+     month already arrived (upload, delegated link or e-mail) and is still being read, in
+     review or not yet matched: it is checked before calling anything missing (LB-052);
    - ``sem_faturamento``: nothing for the contract in the month;
    - ``aguardando``: still within the usual issue time (``grace_days`` after the month end).
 2. **One-off services.** An expense without a contract (utility bills aside) must be backed
@@ -17,7 +20,7 @@ accuses anyone; R09, R10 and R12 keep doing the auditing.
 
 import uuid
 from dataclasses import dataclass, field
-from datetime import date, timedelta
+from datetime import UTC, date, datetime, time, timedelta
 from decimal import Decimal
 from typing import Any
 
@@ -40,6 +43,11 @@ from app.rules.contracts import contract_value_at, terms_at
 
 GRACE_DAYS = 10
 UTILITIES = ["energia", "agua", "gas"]
+# Where the supplier and the month of a fiscal document are read (LB-052).
+SUPPLIER_FIELDS = ("cnpj_prestador", "cnpj_emitente", "cnpj_beneficiario", "documento_recebedor")
+MONTH_FIELDS = ("competencia", "data_emissao", "vencimento", "data")
+FISCAL_TYPES = ("nfse", "nfe", "boleto", "recibo", "outro")
+READING = ("pending", "processing", "needs_review")
 
 
 @dataclass
@@ -48,10 +56,14 @@ class ContractBilling:
     supplier: str
     object: str
     expected_value: Decimal
-    status: str  # faturado | sem_nf | sem_faturamento | aguardando
+    status: str  # faturado | em_conferencia | sem_nf | sem_faturamento | aguardando
     expense_id: uuid.UUID | None = None
     billed_value: Decimal | None = None
     invoice_number: str | None = None
+    # How the invoice arrived (upload, email, pedido, seed) when it is linked to a document.
+    origin: str | None = None
+    # Documents of the supplier for the month not yet turned into an expense (LB-052).
+    arrived: list[dict[str, str]] = field(default_factory=list)
 
 
 @dataclass
@@ -74,6 +86,9 @@ class MonthPending:
     month: date
     contracts: list[ContractBilling]
     one_off: list[OneOffService]
+    # Documents still being read whose supplier is not known yet: any of them may be a
+    # missing invoice, so "not received" is said with this caveat.
+    unread: int = 0
 
     @property
     def open_count(self) -> int:
@@ -96,6 +111,56 @@ def billing_expected(contract: Contract, month: date) -> bool:
 
 def month_end(month: date) -> date:
     return add_months(month, 1) - timedelta(days=1)
+
+
+def _digits(value: Any) -> str:
+    return "".join(ch for ch in str(value or "") if ch.isdigit())
+
+
+def _month_of(extracted: dict[str, Any]) -> date | None:
+    for name in MONTH_FIELDS:
+        raw = str(extracted.get(name) or "")
+        if len(raw) >= 7 and raw[4] == "-" and raw[:4].isdigit() and raw[5:7].isdigit():
+            month = int(raw[5:7])
+            if 1 <= month <= 12:
+                return date(int(raw[:4]), month, 1)
+    return None
+
+
+async def arrivals(
+    session: AsyncSession, condominium_id: uuid.UUID, month: date
+) -> tuple[dict[str, list[dict[str, str]]], int]:
+    """Fiscal documents that arrived through any channel and are not an expense yet (being
+    read, in review, or read but not matched), by supplier CNPJ for ``month``; and how many
+    are still being read with no supplier known. Received since the month began."""
+    linked = select(ExpenseDocument.document_id).where(
+        ExpenseDocument.condominium_id == condominium_id
+    )
+    docs = await session.scalars(
+        select(Document).where(
+            Document.condominium_id == condominium_id,
+            Document.doc_type.in_(FISCAL_TYPES),
+            Document.created_at >= datetime.combine(month, time.min, tzinfo=UTC),
+            Document.id.not_in(linked),
+        )
+    )
+    by_cnpj: dict[str, list[dict[str, str]]] = {}
+    unread = 0
+    for doc in docs:
+        extracted = doc.extracted or {}
+        cnpj = next(
+            (d for d in (_digits(extracted.get(f)) for f in SUPPLIER_FIELDS) if len(d) == 14),
+            None,
+        )
+        if cnpj is None:
+            unread += int(doc.extraction_status in READING)
+            continue
+        if _month_of(extracted) not in (month, None):
+            continue
+        by_cnpj.setdefault(cnpj, []).append(
+            {"document_id": str(doc.id), "origin": doc.origin, "status": doc.extraction_status}
+        )
+    return by_cnpj, unread
 
 
 async def month_pending(
@@ -144,6 +209,26 @@ async def month_pending(
     def has_invoice(e: Expense) -> bool:
         return bool(e.invoice_number) or e.id in fiscal
 
+    origins = dict(
+        (
+            await session.execute(
+                select(ExpenseDocument.expense_id, Document.origin)
+                .join(Document, Document.id == ExpenseDocument.document_id)
+                .where(
+                    ExpenseDocument.condominium_id == condominium_id,
+                    ExpenseDocument.expense_id.in_([e.id for e in expenses] or [uuid.uuid4()]),
+                )
+            )
+        ).all()
+    )
+    cnpjs = {
+        s.id: s.cnpj
+        for s in await session.scalars(
+            select(Supplier).where(Supplier.id.in_([c.supplier_id for c in contracts]))
+        )
+    }
+    arrived_by_cnpj, unread = await arrivals(session, condominium_id, month)
+
     table = await load_index_table(session)  # expected value with index adjustments
     waiting = today <= month_end(month) + timedelta(days=GRACE_DAYS)
     billing: list[ContractBilling] = []
@@ -153,8 +238,11 @@ async def month_pending(
         mine = [e for e in expenses if e.contract_id == c.id]
         invoiced = next((e for e in mine if has_invoice(e)), None)
         charged = invoiced or (mine[0] if mine else None)
+        arrived = arrived_by_cnpj.get(cnpjs.get(c.supplier_id, ""), [])
         if invoiced is not None:
             status = "faturado"
+        elif arrived:
+            status = "em_conferencia"
         elif waiting:
             status = "aguardando"
         elif charged is not None:
@@ -174,6 +262,8 @@ async def month_pending(
                 expense_id=charged.id if charged else None,
                 billed_value=charged.amount if charged else None,
                 invoice_number=invoiced.invoice_number if invoiced else None,
+                origin=origins.get(invoiced.id) if invoiced else None,
+                arrived=[] if invoiced else arrived,
             )
         )
 
@@ -213,4 +303,4 @@ async def month_pending(
         )
         for e in sorted(loose, key=lambda e: (-e.amount, e.issue_date))
     ]
-    return MonthPending(month=month, contracts=billing, one_off=one_off)
+    return MonthPending(month=month, contracts=billing, one_off=one_off, unread=unread)

@@ -3,6 +3,7 @@ import Link from "next/link";
 
 import { AgendaItem, agendaStatus, isLate, KIND_LABEL } from "@/components/condoos/AgendaItem";
 import { CondoFilter } from "@/components/condoos/CondoFilter";
+import { MonthCoverageCard } from "@/components/condoos/MonthCoverageCard";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { buttonClass } from "@/components/ui/Button";
 import { cx } from "@/components/ui/cx";
@@ -10,7 +11,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { FilterChips } from "@/components/ui/FilterChips";
 import { apiGet } from "@/lib/api";
 import { formatDate, formatMonthTitle } from "@/lib/format";
-import type { Agenda, AgendaEvent, AgendaKind, Portfolio } from "@/lib/types";
+import type { Agenda, AgendaEvent, AgendaKind, MonthCoverage, Portfolio } from "@/lib/types";
 
 const WEEKDAYS = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
 const KINDS = Object.keys(KIND_LABEL) as AgendaKind[];
@@ -53,6 +54,11 @@ export default async function AgendaPage({
   if (selected) q.set("condominium_id", selected);
   kinds.forEach((k) => q.append("kind", k));
   const agenda = await apiGet<Agenda>(`/portfolio/agenda?${q.toString()}`);
+  // LB-055: the month's expected invoices, per condominium (one chosen, or the only one).
+  const coverageCondo = selected ?? (condos.length === 1 ? (condos[0]?.id ?? null) : null);
+  const coverage = coverageCondo
+    ? await apiGet<MonthCoverage>(`/condominiums/${coverageCondo}/coverage?month=${month}`)
+    : null;
 
   const byDay = new Map<string, AgendaEvent[]>();
   for (const e of agenda.events) byDay.set(e.date, [...(byDay.get(e.date) ?? []), e]);
@@ -173,6 +179,16 @@ export default async function AgendaPage({
             );
           })}
         </div>
+      </div>
+
+      <div className="mb-6">
+        {coverage ? (
+          <MonthCoverageCard coverage={coverage} />
+        ) : (
+          <p className="text-sm text-fg-2">
+            Escolha um condomínio para ver quais notas dos contratos já chegaram neste mês.
+          </p>
+        )}
       </div>
 
       <section aria-labelledby="lista">
