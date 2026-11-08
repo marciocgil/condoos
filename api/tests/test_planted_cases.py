@@ -150,3 +150,45 @@ async def test_rule_texts_pass_numeric_validation(seed_engine: AsyncEngine) -> N
             )
             allowed = allowed_numbers(f, names.get(d.supplier_id) if d.supplier_id else None)
             assert invalid_numbers(f"{d.title} {d.explanation}", allowed) == [], d.rule_code
+
+
+@pytest.mark.slow
+async def test_every_planted_case_live(
+    seed_engine: AsyncEngine, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """R04 and R07 judged by the real model (D97): every planted case found, nothing extra.
+
+    Slow and paid: runs only with ``make rules-eval`` and ANTHROPIC_API_KEY. Writes
+    ``docs/rules_eval.md``."""
+    from app.config import get_settings
+
+    if get_settings().anthropic_api_key is None:
+        pytest.skip("avaliação das regras com IA exige ANTHROPIC_API_KEY")
+    monkeypatch.setenv("LLM_MODE", "live")
+    get_settings.cache_clear()
+    try:
+        expected = build_seed().expected
+        runs = await _run(seed_engine)
+    finally:
+        monkeypatch.delenv("LLM_MODE")
+        get_settings.cache_clear()
+    missing, extra = _compare(runs, expected)
+    not_evaluated = sorted(k for r in runs.values() for k in r.not_evaluated)
+    model_cases = [e for e in expected if e.needs_model]
+    lines = [
+        "# Avaliação das regras com IA (R04 e R07)",
+        "",
+        f"Casos plantados: {len(expected)}; dependem do modelo: {len(model_cases)}.",
+        f"Positivos não encontrados: {len(missing)}. Falsos positivos: {len(extra)}. "
+        f"Não avaliados: {len(not_evaluated)}.",
+        "",
+        "| Situação | Regra | Caso |",
+        "|---|---|---|",
+        *[f"| não encontrado | {e.rule_code} | {e.note or e.subject} |" for e in missing],
+        *[f"| falso positivo | {code} | {key} |" for _, code, key in extra],
+        *[f"| não avaliado | {k.split(':', 1)[0]} | {k} |" for k in not_evaluated],
+    ]
+    (API_DIR.parent / "docs" / "rules_eval.md").write_text("\n".join(lines) + "\n", "utf-8")
+    assert not_evaluated == [], f"não avaliados com a chave: {not_evaluated}"
+    assert missing == [], f"positivos não encontrados: {missing}"
+    assert extra == [], f"falsos positivos: {extra}"

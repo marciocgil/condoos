@@ -65,7 +65,7 @@ async def analyze(
     data: bytes,
     mime: str,
     filename: str,
-    condominium_id: uuid.UUID,
+    condominium_id: uuid.UUID | None,  # None: a measurement, not a condominium (corpus)
     condominium_cnpj: str,
     today: date,
 ) -> Analysis:

@@ -48,7 +48,10 @@ corpus: ## Regenerate the fictitious 30-document corpus (deterministic)
 	$(API) uv run python -m corpus.generate
 
 accuracy: ## Per-field extraction accuracy over the corpus (writes docs/extraction_accuracy.md)
-	$(API) uv run python -m corpus.accuracy --out ../docs/extraction_accuracy.md
+	$(API) LLM_CASSETTE_DIR=corpus/cassettes uv run python -m corpus.accuracy --out ../docs/extraction_accuracy.md
+
+rules-eval: ## Planted cases with the real model for R04/R07 (needs ANTHROPIC_API_KEY; writes docs/rules_eval.md)
+	$(API) uv run pytest -m slow tests/test_planted_cases.py -q
 
 chat-eval: ## Live chat evaluation (needs ANTHROPIC_API_KEY; writes docs/chat_eval.md)
 	$(API) uv run pytest -m slow tests/chat_eval -q
@@ -64,4 +67,4 @@ migrate: ## Apply migrations to the database in DATABASE_ADMIN_URL
 seed: ## Load the fictitious seed into the database in DATABASE_ADMIN_URL
 	$(API) uv run python -m app.seed
 
-.PHONY: help up down reset logs install test coverage test-slow e2e lint format corpus accuracy chat-eval pilot migrate seed
+.PHONY: help up down reset logs install test coverage test-slow e2e lint format corpus accuracy rules-eval chat-eval pilot migrate seed

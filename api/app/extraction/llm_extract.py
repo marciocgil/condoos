@@ -90,7 +90,7 @@ async def classify_with_llm(
     converted: Converted,
     data: bytes,
     mime: str,
-    condominium_id: uuid.UUID,
+    condominium_id: uuid.UUID | None,
 ) -> ClassificationOut:
     user_text, attachments = _inputs(converted, data, mime)
     result = await call_structured(
@@ -117,7 +117,7 @@ async def extract_with_llm(
     converted: Converted,
     data: bytes,
     mime: str,
-    condominium_id: uuid.UUID,
+    condominium_id: uuid.UUID | None,
 ) -> tuple[dict[str, Any], dict[str, float], str]:
     """Returns (raw values, model confidence per field, model notes)."""
     model = output_model(doc_type)

@@ -18,7 +18,6 @@ import asyncio
 import json
 import time
 import unicodedata
-import uuid
 from collections import defaultdict
 from dataclasses import dataclass, field
 from datetime import date
@@ -74,7 +73,9 @@ class DocResult:
 async def evaluate() -> list[DocResult]:
     truth = json.loads((CORPUS / "ground_truth.json").read_text(encoding="utf-8"))
     condo_cnpj = truth["condominium_cnpj"]
-    condo_id = uuid.uuid5(uuid.NAMESPACE_URL, "condoos-corpus")
+    # The corpus belongs to no condominium: calls are logged in llm_calls with no condominium
+    # (a fictitious id would break the foreign key) and no per-condominium budget applies.
+    condo_id = None
     session_cm: Any = None
     session = None
     if resolve_mode() in ("live", "record"):

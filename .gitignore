@@ -14,3 +14,5 @@ test-results/
 .DS_Store
 data/
 coverage.json
+# Model answers recorded by `make accuracy` (paid, local only; never mixed with test fixtures)
+api/corpus/cassettes/
