@@ -50,6 +50,14 @@ corpus: ## Regenerate the fictitious 30-document corpus (deterministic)
 accuracy: ## Per-field extraction accuracy over the corpus (writes docs/extraction_accuracy.md)
 	$(API) LLM_CASSETTE_DIR=corpus/cassettes uv run python -m corpus.accuracy --out ../docs/extraction_accuracy.md
 
+accuracy-docling: ## Same, inside the worker image with Docling (stack up; LLM_MODE=record by default, costs cents)
+	docker compose run --rm -e DOCUMENT_CONVERTER=docling -e LLM_MODE=$${LLM_MODE:-record} \
+	  -e LLM_CASSETTE_DIR=corpus/cassettes \
+	  -v $(CURDIR)/api/corpus:/app/corpus \
+	  -v $(CURDIR)/api/tests/fixtures/corpus:/app/tests/fixtures/corpus:ro \
+	  -v $(CURDIR)/docs:/app/docs-out \
+	  worker python -m corpus.accuracy --out docs-out/extraction_accuracy_docling.md
+
 rules-eval: ## Planted cases with the real model for R04/R07 (needs ANTHROPIC_API_KEY; writes docs/rules_eval.md)
 	$(API) uv run pytest -m slow tests/test_planted_cases.py -q
 
@@ -67,4 +75,4 @@ migrate: ## Apply migrations to the database in DATABASE_ADMIN_URL
 seed: ## Load the fictitious seed into the database in DATABASE_ADMIN_URL
 	$(API) uv run python -m app.seed
 
-.PHONY: help up down reset logs install test coverage test-slow e2e lint format corpus accuracy rules-eval chat-eval pilot migrate seed
+.PHONY: help up down reset logs install test coverage test-slow e2e lint format corpus accuracy accuracy-docling rules-eval chat-eval pilot migrate seed
