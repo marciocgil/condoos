@@ -10,15 +10,17 @@ import uuid
 from datetime import date
 from typing import Annotated, Any, Literal
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile, status
 from pydantic import BaseModel, Field
-from sqlalchemy import select
+from sqlalchemy import func, select
 
-from app.auth.deps import require
+from app.auth.deps import CurrentPrincipal, require
 from app.auth.rbac import CondoAccess, Permission
 from app.config import get_settings
+from app.core.ratelimit import WindowLimiter, client_ip
 from app.core.time import local_today
-from app.db.models import Condominium, DelegationEvent, DelegationRequest, Document
+from app.db.enums import ExtractionStatus
+from app.db.models import Condominium, DataIssue, DelegationEvent, DelegationRequest, Document
 from app.db.session import DbSession
 from app.delegation import (
     DelegationError,
@@ -40,9 +42,11 @@ from app.delegation import (
 )
 from app.reports.data import DOC_TYPE_LABEL
 from app.routers.documents import MAX_FILES_PER_REQUEST
+from app.routers.portfolio import _manager_access
 
 router = APIRouter(tags=["delegations"])
 CanView = Annotated[CondoAccess, Depends(require(Permission.VIEW))]
+OPEN = ("rascunho", "autorizado", "aguardando_envio", "recebendo")
 CanPrepare = Annotated[CondoAccess, Depends(require(Permission.MANAGE_CASES))]
 CanAuthorize = Annotated[CondoAccess, Depends(require(Permission.APPROVE_IN_CONDO))]
 CanManage = Annotated[CondoAccess, Depends(require(Permission.MANAGE_DELEGATION))]
@@ -168,6 +172,110 @@ async def list_requests(
     return [_summary(r) for r in rows]
 
 
+@router.get("/condominiums/{condominium_id}/delegations/board")
+async def board(
+    condominium_id: uuid.UUID, access: CanView, db: DbSession
+) -> dict[str, list[dict[str, Any]]]:
+    """Hoje (LB-044): what waits for the person × what is with others. Computed from the
+    requests and the documents at each read; nothing is stored and nothing is sent."""
+    today = await _today(db, access)
+    can = access.can
+    rows = list(
+        await db.scalars(
+            select(DelegationRequest)
+            .where(
+                DelegationRequest.condominium_id == access.condominium_id,
+                DelegationRequest.status.in_(OPEN),
+            )
+            .order_by(DelegationRequest.due_date)
+        )
+    )
+    mine: list[dict[str, Any]] = []
+    others: list[dict[str, Any]] = []
+    for req in rows:
+        await refresh(db, req, today)
+        if req.status not in OPEN:
+            continue
+        base = {
+            "request_id": str(req.id),
+            "recipient_name": req.recipient_name,
+            "recipient_role": req.recipient_role,
+            "due_date": req.due_date.isoformat(),
+            "progress": progress(req),
+        }
+        received = await db.scalar(
+            select(func.count())
+            .select_from(Document)
+            .where(Document.delegation_request_id == req.id)
+        )
+        pending_manual = any(
+            not i.get("attended_at") and i.get("kind") != "nota_fiscal" for i in req.items
+        )
+        if req.status == "rascunho":
+            if can(Permission.APPROVE_IN_CONDO):
+                mine.append({**base, "kind": "autorizar"})
+            continue
+        if req.shared_at is None and can(Permission.APPROVE_IN_CONDO):
+            mine.append({**base, "kind": "enviar_link"})
+        elif received and pending_manual and can(Permission.MANAGE_CASES):
+            mine.append({**base, "kind": "conferir", "received": int(received or 0)})
+        others.append({**base, "kind": "terceiro", "late": req.due_date < today})
+    in_review = int(
+        await db.scalar(
+            select(func.count())
+            .select_from(Document)
+            .where(
+                Document.condominium_id == access.condominium_id,
+                Document.extraction_status == ExtractionStatus.NEEDS_REVIEW.value,
+                Document.reviewed_at.is_(None),
+            )
+        )
+        or 0
+    )
+    open_issues = int(
+        await db.scalar(
+            select(func.count())
+            .select_from(DataIssue)
+            .where(DataIssue.condominium_id == access.condominium_id, DataIssue.status == "aberto")
+        )
+        or 0
+    )
+    if in_review or open_issues:
+        others.append({"kind": "equipe", "documents": in_review, "conflicts": open_issues})
+    return {"mine": mine, "others": others}
+
+
+@router.get("/portfolio/delegations")
+async def portfolio_requests(
+    db: DbSession, principal: CurrentPrincipal, condominium_id: uuid.UUID | None = None
+) -> list[dict[str, Any]]:
+    """The team's desktop (LB-044): requests of every condominium the person manages, open
+    ones first and by due date; then the closed ones, most recent first."""
+    out: list[dict[str, Any]] = []
+    for condo, access in await _manager_access(db, principal):
+        if condominium_id is not None and condo.id != condominium_id:
+            continue
+        today = local_today(condo.timezone)
+        rows = await db.scalars(
+            select(DelegationRequest).where(DelegationRequest.condominium_id == condo.id)
+        )
+        for req in rows:
+            await refresh(db, req, today)
+            out.append(
+                {
+                    **_summary(req),
+                    "condominium_id": str(condo.id),
+                    "condominium": condo.name,
+                    "can_prepare": access.can(Permission.MANAGE_CASES),
+                }
+            )
+    open_ = [r for r in out if r["status"] in OPEN]
+    closed = [r for r in out if r["status"] not in OPEN]
+    open_.sort(key=lambda r: r["due_date"])
+    closed.sort(key=lambda r: r["created_at"] or "", reverse=True)
+    return open_ + closed
+
+
 @router.post("/condominiums/{condominium_id}/delegations", status_code=status.HTTP_201_CREATED)
 async def create_request(
     condominium_id: uuid.UUID, body: RequestIn, access: CanPrepare, db: DbSession
@@ -289,8 +397,30 @@ async def close_request(
 # --------------------------------------------------------------------------- public
 
 
+TOO_MANY = "Muitas tentativas a partir desta rede. Tente de novo em alguns minutos."
+
+
+def public_rate_limit(request: Request) -> None:
+    """Limit per client address on the public routes (D100), on top of the per-link limits.
+    The same answer for every token, so the limit says nothing about which links exist."""
+    s = get_settings()
+    limiter = getattr(request.app.state, "public_link_limiter", None)
+    if limiter is None:
+        limiter = WindowLimiter(s.public_link_max_requests, s.public_link_window_seconds)
+        request.app.state.public_link_limiter = limiter
+    if not limiter.hit(client_ip(request)):
+        raise HTTPException(
+            status.HTTP_429_TOO_MANY_REQUESTS,
+            TOO_MANY,
+            headers={"Retry-After": str(limiter.window)},
+        )
+
+
+PublicLimit = Annotated[None, Depends(public_rate_limit)]
+
+
 @router.get("/public/delegations/{token}")
-async def public_request(token: str, db: DbSession) -> dict[str, Any]:
+async def public_request(token: str, db: DbSession, _limit: PublicLimit) -> dict[str, Any]:
     opened = await open_link(db, token)
     if opened is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, NOT_FOUND)
@@ -299,7 +429,10 @@ async def public_request(token: str, db: DbSession) -> dict[str, Any]:
 
 @router.post("/public/delegations/{token}/files")
 async def public_upload(
-    token: str, db: DbSession, files: Annotated[list[UploadFile], File()]
+    token: str,
+    db: DbSession,
+    _limit: PublicLimit,
+    files: Annotated[list[UploadFile], File()],
 ) -> list[dict[str, Any]]:
     """Upload only: the answer says, per file, received, already received or refused (why)."""
     opened = await open_link(db, token)

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { ActionsPreview } from "@/components/condoos/ActionsPreview";
 import { AgendaPreview } from "@/components/condoos/AgendaPreview";
 import { BriefingView } from "@/components/condoos/BriefingView";
+import { DelegationBoard } from "@/components/condoos/DelegationBoard";
 import { OpportunitiesPreview } from "@/components/condoos/OpportunitiesPreview";
 import { InsightCard } from "@/components/condoos/InsightCard";
 import { JourneyCard, JourneyReopen } from "@/components/condoos/JourneyCard";
@@ -15,7 +16,15 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { apiGet } from "@/lib/api";
 import { competenceParam, formatBRL, formatBRLShort, formatMonth } from "@/lib/format";
 import { SEVERITY_PLURAL } from "@/lib/labels";
-import type { Briefing, Competence, Condominium, Launch, Severity, Summary } from "@/lib/types";
+import type {
+  Briefing,
+  Competence,
+  Condominium,
+  DelegationBoard as Board,
+  Launch,
+  Severity,
+  Summary,
+} from "@/lib/types";
 
 const SEVERITIES: Severity[] = ["alta", "media", "baixa"];
 const CHIP_BORDER: Record<Severity, string> = {
@@ -33,12 +42,13 @@ export default async function ResumoPage({
 }) {
   const { id } = await params;
   const { mes } = await searchParams;
-  const [condo, competences, summary, briefing, launch] = await Promise.all([
+  const [condo, competences, summary, briefing, launch, board] = await Promise.all([
     apiGet<Condominium>(`/condominiums/${id}`),
     apiGet<Competence[]>(`/condominiums/${id}/competences`),
     apiGet<Summary>(`/condominiums/${id}/summary${mes ? `?competence=${mes}` : ""}`),
     apiGet<Briefing>(`/condominiums/${id}/briefing`),
     apiGet<Launch>(`/condominiums/${id}/launch`),
+    apiGet<Board>(`/condominiums/${id}/delegations/board`),
   ]);
   // Launch (D89): the implementation journey above the briefing while it is not hidden.
   const journey = launch.dismissed ? (
@@ -65,6 +75,7 @@ export default async function ResumoPage({
           agenda: `/condominio/${id}/agenda`,
         }}
       />
+      <DelegationBoard condominiumId={id} board={board} />
     </>
   );
 

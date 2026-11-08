@@ -910,3 +910,30 @@ export interface PublicDelegation {
   expires_at: string;
   remaining_files: number;
 }
+
+export interface PortfolioDelegation extends DelegationSummary {
+  condominium_id: string;
+  condominium: string;
+  can_prepare: boolean;
+}
+
+interface BoardRequest {
+  request_id: string;
+  recipient_name: string;
+  recipient_role: string;
+  due_date: string;
+  progress: { attended: number; total: number };
+}
+
+export type BoardMine =
+  | (BoardRequest & { kind: "autorizar" | "enviar_link" })
+  | (BoardRequest & { kind: "conferir"; received: number });
+
+export type BoardOthers =
+  | (BoardRequest & { kind: "terceiro"; late: boolean })
+  | { kind: "equipe"; documents: number; conflicts: number };
+
+export interface DelegationBoard {
+  mine: BoardMine[];
+  others: BoardOthers[];
+}

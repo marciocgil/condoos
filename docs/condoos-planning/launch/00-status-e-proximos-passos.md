@@ -10,7 +10,7 @@
 | LF1 Blueprint | ✅ aprovada pelo Marcio (gate LG1, D89) | `02`–`06` deste diretório |
 | LF2 Primeiro valor | **validado** — LG2 no docker em 08/11/2026 (D96) | ver abaixo |
 | LF3 Dados e reconciliação | **validado** — LG3 no docker em 08/11/2026 (D96) | `07-lf3-proposta-conflitos.md` |
-| LF4 Colaborativo | **validado** — LG4 no docker em 08/11/2026 (D96); sobras na lista abaixo | `08-lf4-proposta-delegacao.md` |
+| LF4 Colaborativo | **validado** — LG4 no docker em 08/11/2026 (D96); sobras entregues (D100) | `08-lf4-proposta-delegacao.md` |
 | LF5–LF8 | nao_iniciado | `05-backlog.md` |
 
 **LF2-a entregue (D89):** LB-001 (`launch_state`, migração 0018), LB-002 (marcos por fatos), LB-003 (próximos passos), LB-004 (rotas), LB-005 (cartão de jornada no Hoje), LB-006/007 (cartão de primeiro valor no envio), LB-008 ("o que já fiz por você"), LB-010 (prontidão C1–C3), LB-021 (SEC-02), LB-090 parcial (eventos `launch.*`). Verificação: 322 testes do backend, lint backend e frontend, migração ida e volta, E2E `launch.spec.ts` passando numa stack local sem Docker (API e worker num processo, armazenamento em memória, `next dev`, substituto do Mailpit). Na suíte E2E inteira nessa stack, só `correction.spec.ts` falhou, e falha igual sem as mudanças desta fatia (efeito da stack local); **rodar `make e2e` na stack do docker** para confirmar.
@@ -54,7 +54,7 @@ Q-L01 assistida pelo Admin · Q-L02 síndico envia o link/texto · Q-L03 LF2 ant
 ## Próximo incremento recomendado
 
 1. ~~Gates LG2, LG3 e LG4~~ **validados no docker (D96).**
-2. **Sobras da LF4 (sem migração):** pedidos no desktop da equipe CondoOS; painel "o que você decide × o que está delegado" no Hoje; limite por IP na rota pública.
+2. ~~Sobras da LF4~~ **entregues (D100):** pedidos no desktop da equipe, "com você × com outros" no Hoje, limite por endereço na rota pública. Falta rodar `make e2e` no docker.
 3. **LF5 (captura recorrente e canais):** provedor de e-mail de entrada real e saúde do canal; depende de escolher o provedor (custo e conta) — trazer proposta. WhatsApp segue só especificado (⛓).
 
 ## Ritual de cada incremento

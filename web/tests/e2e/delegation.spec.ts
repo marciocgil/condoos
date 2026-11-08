@@ -36,6 +36,12 @@ test("síndica pede um documento, quem tem envia pelo link e o pedido conclui", 
   expect(text).toContain("Recibo da limpeza da caixa de gordura");
   await page.getByRole("button", { name: "Já enviei" }).click();
 
+  // Hoje (LB-044): the request is now with the recipient, not with the síndica.
+  await page.goto(`/condominio/${id}/resumo`);
+  const board = page.getByRole("region", { name: "Com outros", exact: true });
+  await expect(board).toContainText(`Atlântida Gestão ${stamp}`);
+  await page.goBack();
+
   // The sender: another browser, no session.
   const sender = await (await browser.newContext()).newPage();
   await sender.goto(url.pathname);
@@ -56,7 +62,11 @@ test("síndica pede um documento, quem tem envia pelo link e o pedido conclui", 
   await expect(results).toContainText("Recebido");
   await expect(results).toContainText("conteúdo ativo");
 
-  await page.reload();
+  // Files arrived: checking them is now with the síndica.
+  await page.goto(`/condominio/${id}/resumo`);
+  const mine = page.getByRole("region", { name: "Com você", exact: true });
+  await expect(mine).toContainText("Conferir os arquivos recebidos");
+  await mine.getByRole("link", { name: new RegExp(`Atlântida Gestão ${stamp}`) }).click();
   await expect(page.getByRole("list", { name: "Arquivos recebidos" })).toContainText(
     `recibo-${stamp}.pdf`,
   );
@@ -67,4 +77,32 @@ test("síndica pede um documento, quem tem envia pelo link e o pedido conclui", 
   await expect(
     sender.getByRole("heading", { name: "Link inválido ou fora do prazo" }),
   ).toBeVisible();
+});
+
+test("equipe CondoOS prepara um pedido no desktop e ele fica como rascunho", async ({
+  page,
+}, info) => {
+  test.skip(info.project.name !== "admin-desktop", "tela do desktop");
+  await loginAs(page, "fabio.admin@condoos.example.com");
+  const stamp = Date.now();
+  await page.goto("/admin/pedidos");
+  await expect(page.getByRole("heading", { name: "Pedidos de documentos" })).toBeVisible();
+  await page
+    .getByRole("navigation", { name: "Filtrar por condomínio" })
+    .getByRole("link", { name: /Acácias/ })
+    .click();
+  await page.getByRole("link", { name: "Preparar pedido" }).click();
+  await page.getByLabel("Para quem").fill(`Contador ${stamp}`);
+  for (const box of await page.getByRole("checkbox").all()) await box.uncheck();
+  await page.getByLabel("Outro documento").fill("Balancete de outubro");
+  await page.getByRole("button", { name: "Incluir" }).click();
+  await page.getByRole("button", { name: "Preparar pedido" }).click();
+  await expect(page).toHaveURL(/\/admin\/pedidos\/[0-9a-f-]+\/[0-9a-f-]+$/);
+  await expect(page.getByText("Rascunho", { exact: true })).toBeVisible();
+  // Only the síndico authorises: the team sees no link button.
+  await expect(page.getByRole("button", { name: "Gerar link e texto" })).toHaveCount(0);
+  await page.getByRole("link", { name: "Pedidos" }).first().click();
+  await expect(page.getByRole("table", { name: "Pedidos de documentos" })).toContainText(
+    `Contador ${stamp}`,
+  );
 });

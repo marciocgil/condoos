@@ -11,11 +11,13 @@ from pathlib import Path
 from typing import Any
 
 import httpx
+from fastapi import Request
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncEngine
 
 from app.auth.mailer import MemoryMailer
 from app.core.br import generate_cnpj
+from app.core.ratelimit import WindowLimiter, client_ip
 from app.core.time import utcnow
 from app.db.models import (
     AppUser,
@@ -28,6 +30,7 @@ from app.db.models import (
 from app.db.session import sessionmaker_for
 from app.delegation import create, issue_link, refresh
 from app.enrichment.suppliers import get_or_create_supplier
+from app.main import create_app
 from app.onboarding import onboard
 from tests.helpers import (
     ADMIN_CONDOOS,
@@ -295,3 +298,101 @@ async def test_invoice_item_attended_when_it_arrives(admin_engine: AsyncEngine) 
         assert req.items[0]["attended_by"] == "automatico"
         assert req.status == "concluido"
         await s.rollback()
+
+
+# --------------------------------------------------------------------------- limit per IP (D100)
+
+
+def test_window_limiter_counts_per_key_and_frees_after_the_window() -> None:
+    lim = WindowLimiter(2, 60)
+    assert lim.hit("a", now=0) and lim.hit("a", now=1)
+    assert not lim.hit("a", now=2)
+    assert lim.hit("b", now=2)  # another address has its own count
+    assert lim.hit("a", now=61)  # the first hit left the window
+
+
+def test_client_ip_takes_the_address_added_by_our_edge() -> None:
+    def req(headers: dict[str, str]) -> Request:
+        raw = [(k.lower().encode(), v.encode()) for k, v in headers.items()]
+        return Request({"type": "http", "headers": raw, "client": ("10.0.0.9", 1234)})
+
+    assert client_ip(req({})) == "10.0.0.9"
+    assert client_ip(req({"X-Forwarded-For": "203.0.113.7"})) == "203.0.113.7"
+    # A value forged by the client comes first; the edge appends the real one at the end.
+    assert client_ip(req({"X-Forwarded-For": "1.2.3.4, 203.0.113.7"})) == "203.0.113.7"
+
+
+async def test_public_routes_answer_429_past_the_limit_per_ip() -> None:
+    app = create_app()
+    app.state.public_link_limiter = WindowLimiter(3, 600)
+    transport = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(transport=transport, base_url="http://api.test") as c:
+        mine = {"X-Forwarded-For": "203.0.113.7"}
+        for _ in range(3):
+            assert (await c.get("/public/delegations/nao-existe", headers=mine)).status_code == 404
+        blocked = await c.get("/public/delegations/nao-existe", headers=mine)
+        assert blocked.status_code == 429
+        assert blocked.headers["retry-after"] == "600"
+        assert "Muitas tentativas" in blocked.json()["detail"]
+        upload = await c.post(
+            "/public/delegations/nao-existe/files",
+            headers=mine,
+            files=[("files", ("a.pdf", _pdf("ip"), "application/pdf"))],
+        )
+        assert upload.status_code == 429
+        # Another address is not affected.
+        other = {"X-Forwarded-For": "198.51.100.4"}
+        assert (await c.get("/public/delegations/nao-existe", headers=other)).status_code == 404
+
+
+# --------------------------------------------------------------------------- LB-044
+
+
+async def test_board_splits_what_waits_for_me_and_what_is_with_others(
+    client: httpx.AsyncClient, mailer: MemoryMailer, admin_engine: AsyncEngine
+) -> None:
+    acacias = await condo_id(admin_engine, "jardim-das-acacias")
+    mirante = await condo_id(admin_engine, "mirante-do-vale")
+    base = f"/condominiums/{acacias}/delegations"
+
+    def find(entries: list[dict[str, Any]], rid: str) -> dict[str, Any] | None:
+        return next((e for e in entries if e.get("request_id") == rid), None)
+
+    await login(client, mailer, ADMIN_CONDOOS)
+    draft = (await client.post(base, json=_body(recipient_name="Contador (fictício)"))).json()
+    team_board = (await client.get(f"{base}/board")).json()
+    assert find(team_board["mine"], draft["id"]) is None  # the team cannot authorise
+
+    await login(client, mailer, SINDICA_ACACIAS)
+    board = (await client.get(f"{base}/board")).json()
+    assert find(board["mine"], draft["id"])["kind"] == "autorizar"  # type: ignore[index]
+
+    req = (await client.post(base, json=_body())).json()
+    board = (await client.get(f"{base}/board")).json()
+    assert find(board["mine"], req["id"])["kind"] == "enviar_link"  # type: ignore[index]
+
+    token = (await client.post(f"{base}/{req['id']}/link", json={})).json()["url"]
+    token = token.rsplit("/", 1)[1]
+    await client.post(f"{base}/{req['id']}/shared")
+    board = (await client.get(f"{base}/board")).json()
+    assert find(board["mine"], req["id"]) is None
+    with_them = find(board["others"], req["id"])
+    assert with_them is not None and with_them["kind"] == "terceiro"
+    assert with_them["late"] is False and with_them["progress"] == {"attended": 0, "total": 2}
+
+    await client.post("/auth/logout")
+    await _upload(client, token, ("recibo.pdf", _pdf(f"board-{uuid.uuid4()}")))
+    await login(client, mailer, SINDICA_ACACIAS)
+    board = (await client.get(f"{base}/board")).json()
+    check = find(board["mine"], req["id"])
+    assert check is not None and check["kind"] == "conferir" and check["received"] == 1
+
+    # The team's desktop lists the requests of the condominiums it manages.
+    await login(client, mailer, ADMIN_CONDOOS)
+    rows = (await client.get("/portfolio/delegations")).json()
+    mine = next(r for r in rows if r["id"] == req["id"])
+    assert mine["condominium_id"] == str(acacias) and mine["can_prepare"] is True
+    only_mirante = (await client.get(f"/portfolio/delegations?condominium_id={mirante}")).json()
+    assert all(r["condominium_id"] == str(mirante) for r in only_mirante)
+    for rid in (draft["id"], req["id"]):
+        await client.post(f"{base}/{rid}/close")

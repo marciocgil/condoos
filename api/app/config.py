@@ -46,6 +46,9 @@ class Settings(BaseSettings):
     s3_presign_ttl_seconds: int = 300
     storage_backend: Literal["s3", "memory"] = "s3"
     max_upload_mb: int = 20
+    # Public link routes (D100): requests per client address in the window.
+    public_link_max_requests: int = 60
+    public_link_window_seconds: int = 600
 
     # Inbound e-mail: <slug>@<ingest_email_domain>. The folder provider reads .eml files.
     ingest_email_domain: str = "ingest.condoos.local"

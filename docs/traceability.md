@@ -96,4 +96,5 @@ Data: 07/11/2026. Atualizar ao fim de cada fatia (CLAUDE.md, item 6). "Entrega" 
 | LB-033 envio em lote | `routers/launch.py::batch_status`, `components/condoos/BatchProgress.tsx`, `UploadForm.tsx` | `test_launch.py::test_batch_status_of_an_upload`, e2e `launch.spec.ts` | D94 |
 | Gate LG3 | cenário único: conflito, ausência, duplicidade, ilegível, cobertura | `test_lg3_gate.py` | D94 |
 | LB-045 triagem de arquivos | `ingestion/triage.py`, `ingestion/documents.py::ingest_file` | `test_triage.py` (9), `test_delegation.py` | D95 |
+| LB-041 limite por endereço, LB-044 painel e desktop | `core/ratelimit.py`, `routers/delegations.py` (`board`, `portfolio_requests`, `public_rate_limit`), `DelegationBoard`, `/admin/pedidos/*`, `PublicUpload` (429) | `test_delegation.py` (limite, painel, carteira), e2e `delegation.spec.ts` (celular e desktop) | D100 |
 | LB-040..043 pedido delegado | `app/delegation/`, `routers/delegations.py`, migração 0021, telas `pedidos/*`, `/enviar/[token]`, `DelegationForm`, `DelegationDetailView`, `PublicUpload` | `test_delegation.py` (3), `test_launch.py::test_ask_for_missing_documents_step`, e2e `delegation.spec.ts` | D95 |

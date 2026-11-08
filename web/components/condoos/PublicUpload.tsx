@@ -8,6 +8,8 @@ import { Card } from "@/components/ui/Card";
 import { formatDate } from "@/lib/format";
 import type { PublicDelegation } from "@/lib/types";
 
+const TOO_MANY = "Muitas tentativas a partir desta rede. Tente de novo em alguns minutos.";
+
 const ACCEPT = ".pdf,.xml,.ofx,.csv,.ret,.txt,image/jpeg,image/png,image/webp";
 
 interface Result {
@@ -28,7 +30,11 @@ export function PublicUpload({ token }: { token: string }) {
 
   useEffect(() => {
     fetch(path)
-      .then(async (r) => (r.ok ? setInfo((await r.json()) as PublicDelegation) : setMissing(true)))
+      .then(async (r) => {
+        if (r.ok) setInfo((await r.json()) as PublicDelegation);
+        else if (r.status === 429) setError(TOO_MANY);
+        else setMissing(true);
+      })
       .catch(() => setMissing(true));
   }, [path]);
 
@@ -41,6 +47,7 @@ export function PublicUpload({ token }: { token: string }) {
     try {
       const r = await fetch(`${path}/files`, { method: "POST", body: form });
       if (r.status === 404) setMissing(true);
+      else if (r.status === 429) setError(TOO_MANY);
       else if (!r.ok) setError("Não foi possível enviar. Tente de novo.");
       else setResults([...(await r.json()), ...results]);
     } catch {
@@ -59,7 +66,13 @@ export function PublicUpload({ token }: { token: string }) {
           <p className="mt-2 text-sm text-fg-2">Peça um novo link a quem enviou este.</p>
         </Card>
       ) : !info ? (
-        <p className="text-sm text-fg-2">Carregando…</p>
+        error ? (
+          <p role="alert" className="text-sm text-danger">
+            {error}
+          </p>
+        ) : (
+          <p className="text-sm text-fg-2">Carregando…</p>
+        )
       ) : (
         <>
           <div>

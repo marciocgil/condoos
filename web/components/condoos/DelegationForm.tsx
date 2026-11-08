@@ -24,8 +24,11 @@ export function DelegationForm({
   condominiumId,
   suggestions,
   defaultDue,
+  detailBase,
 }: {
   condominiumId: string;
+  /** Where the new request opens (base path + "/<id>"); defaults to the síndico's screen. */
+  detailBase?: string;
   suggestions: DelegationItem[];
   defaultDue: string; // YYYY-MM-DD, computed on the server (same value when hydrating)
 }) {
@@ -65,7 +68,7 @@ export function DelegationForm({
     });
     setBusy(false);
     if (!r.ok) return setError(r.error);
-    router.push(`/condominio/${condominiumId}/pedidos/${r.data.id}`);
+    router.push(`${detailBase ?? `/condominio/${condominiumId}/pedidos`}/${r.data.id}`);
   }
 
   return (
