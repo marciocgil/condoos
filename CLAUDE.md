@@ -2,7 +2,7 @@
 
 Agente auditor de despesas de condomínios. Ele lê as despesas do mês, confere cada uma contra contrato, CNPJ, extrato e histórico, e entrega ao síndico **achados** priorizados por valor em risco, com evidência. Uma pessoa sempre decide; o sistema nunca move dinheiro.
 
-Especificação completa: o prompt do MVP (seções 0–15) e o PDF "CondoOS — Arquitetura do Agente Auditor (MVP)". Decisões tomadas: `docs/decisions.md`. Regras de auditoria: `docs/rules.md`. Telas de referência: `docs/mockups.md`. **Visual: `CondoOS_Design_System_v1.0` (tema escuro), auditoria e componentes em `docs/ui-audit.md`.** Acurácia da extração: `docs/extraction_accuracy.md`.
+Especificação completa: o prompt do MVP (seções 0–15) e o PDF "CondoOS — Arquitetura do Agente Auditor (MVP)". Decisões tomadas: `docs/decisions.md`. Regras de auditoria: `docs/rules.md`. Telas de referência: `docs/mockups.md`. **Visual: `CondoOS_Design_System_v1.0` (tema escuro), auditoria e componentes em `docs/ui-audit.md`.** Acurácia da extração: `docs/extraction_accuracy.md`. Pesquisa de marca e naming (08/11/2026, provisória, nada executado): `docs/brand-strategy/00_RESUMO_EXECUTIVO_E_DECISAO.md`.
 
 ## Planejamento estratégico (`docs/condoos-planning/`, v1.0 de 06/11/2026)
 
