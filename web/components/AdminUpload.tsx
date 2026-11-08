@@ -23,7 +23,7 @@ export function AdminUpload({ condos, initial }: { condos: Condo[]; initial?: st
       <Field
         id="condo-select"
         label="Condomínio"
-        hint={current ? `E-mail de entrada: ${current.slug}@ingest.condoos.local` : undefined}
+        hint={current ? "O e-mail de entrada do condomínio está em Configurações." : undefined}
       >
         <select
           id="condo-select"

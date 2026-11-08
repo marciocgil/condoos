@@ -97,3 +97,19 @@ test("síndica envia um lote e acompanha a leitura de cada arquivo", async ({ pa
   await expect(batch).toContainText("leitura concluída", { timeout: 120_000 });
   await expect(batch.getByRole("listitem")).toHaveCount(2);
 });
+
+// D101 (LF5): the síndica sees the inbound address and changes it; the old one stops.
+test("síndica vê o e-mail de entrada e troca o endereço", async ({ page }, info) => {
+  test.skip(info.project.name !== "sindico-mobile", "fluxo do celular");
+  await loginAs(page, "carla.sindica@mirante.example.com");
+  const id = page.url().match(/condominio\/([^/]+)/)?.[1];
+  await page.goto(`/condominio/${id}/ajustes`);
+  const card = page.getByRole("region", { name: "E-mail de entrada" });
+  const address = card.getByTestId("inbound-address");
+  const before = await address.innerText();
+  expect(before).toMatch(/^mirante-do-vale-[a-z2-9]{8}@/);
+  await card.getByRole("button", { name: "Trocar o endereço" }).click();
+  await card.getByRole("button", { name: "Trocar endereço", exact: true }).click();
+  await expect(address).not.toHaveText(before);
+  await expect(address).toHaveText(/^mirante-do-vale-[a-z2-9]{8}@/);
+});

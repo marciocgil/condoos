@@ -11,7 +11,7 @@
 | LF2 Primeiro valor | **validado** — LG2 no docker em 08/11/2026 (D96) | ver abaixo |
 | LF3 Dados e reconciliação | **validado** — LG3 no docker em 08/11/2026 (D96) | `07-lf3-proposta-conflitos.md` |
 | LF4 Colaborativo | **validado** — LG4 no docker em 08/11/2026 (D96); sobras entregues e validadas no docker (D100) | `08-lf4-proposta-delegacao.md` |
-| LF5 | proposta aguardando decisão | `09-lf5-proposta-email-entrada.md` |
+| LF5 | **LB-050/051 entregues com bucket simulado (D101)**; falta domínio para o SES real; LB-052..055 pendentes | `09-lf5-proposta-email-entrada.md` |
 | LF6–LF8 | nao_iniciado | `05-backlog.md` |
 
 **LF2-a entregue (D89):** LB-001 (`launch_state`, migração 0018), LB-002 (marcos por fatos), LB-003 (próximos passos), LB-004 (rotas), LB-005 (cartão de jornada no Hoje), LB-006/007 (cartão de primeiro valor no envio), LB-008 ("o que já fiz por você"), LB-010 (prontidão C1–C3), LB-021 (SEC-02), LB-090 parcial (eventos `launch.*`). Verificação: 322 testes do backend, lint backend e frontend, migração ida e volta, E2E `launch.spec.ts` passando numa stack local sem Docker (API e worker num processo, armazenamento em memória, `next dev`, substituto do Mailpit). Na suíte E2E inteira nessa stack, só `correction.spec.ts` falhou, e falha igual sem as mudanças desta fatia (efeito da stack local); **rodar `make e2e` na stack do docker** para confirmar.
@@ -40,7 +40,7 @@ Marcos do Launch **LM1–LM5** · fases **LF0–LF8** · gates **LG0–LG8** · 
 | `06-testes-pilotos-metricas.md` | Cenários, métricas, experimentos |
 | `07-lf3-proposta-conflitos.md` | Proposta da LF3-b: conflitos de dados, Central de Validação, migração 0020 |
 | `08-lf4-proposta-delegacao.md` | Proposta da LF4: pedido delegado com link de envio, migração 0021, triagem de arquivos |
-| `09-lf5-proposta-email-entrada.md` | Proposta da LF5: e-mail de entrada real (SES São Paulo → S3), endereço com parte aleatória, saúde do canal, migração 0022 — **aguardando decisão** |
+| `09-lf5-proposta-email-entrada.md` | Proposta da LF5: e-mail de entrada real (SES São Paulo → S3), endereço com parte aleatória, saúde do canal, migração 0022 — aprovada e implementada (D101) |
 
 ## Perguntas para o Marcio — respondidas em 07/11/2026 (D89)
 
@@ -57,7 +57,7 @@ Q-L01 assistida pelo Admin · Q-L02 síndico envia o link/texto · Q-L03 LF2 ant
 
 1. ~~Gates LG2, LG3 e LG4~~ **validados no docker (D96).**
 2. ~~Sobras da LF4~~ **entregues e validadas no docker (D100):** pedidos no desktop da equipe, "com você × com outros" no Hoje, limite por endereço na rota pública; `make e2e` 33 passaram, nenhuma falha.
-3. **LF5 (captura recorrente e canais):** proposta em `09-lf5-proposta-email-entrada.md` (08/11/2026), aguardando as 4 decisões da seção 7. WhatsApp segue só especificado (⛓).
+3. **LF5 (captura recorrente e canais):** e-mail de entrada entregue (D101) com bucket simulado; quando houver domínio, seguir `docs/deploy.md` seção 7. Próximo: LB-052 (documento esperado conferido em todos os canais antes de virar ausência) e LB-055 (cobertura por competência na Agenda). WhatsApp segue só especificado (⛓).
 
 ## Ritual de cada incremento
 

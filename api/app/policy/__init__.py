@@ -30,6 +30,8 @@ PAUSABLE_JOBS: dict[str, str] = {
     "finding.explain": "Reescrita das explicações por IA",
     # Not a job: pausing it makes every upload link of the condominium stop (D95).
     "delegation.link": "Links de envio de documentos",
+    # Not a job either: messages wait in the inbox, nothing is lost (D101).
+    "email.inbound": "Entrada de documentos por e-mail",
 }
 
 

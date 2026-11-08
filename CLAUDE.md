@@ -68,6 +68,7 @@ api/            FastAPI + SQLAlchemy 2 (async) + Alembic; worker da fila de jobs
   app/data_issues/ conflitos entre documentos (D93): detectores, ciclo, Central de Validação
   app/delegation/ pedido de documentos a terceiros com link só de envio (D95)
   app/ingestion/triage.py  triagem de arquivos em todo envio (D95)
+  app/ingestion/email.py   e-mail de entrada: pasta local ou SES → S3, endereço com parte aleatória (D101)
   scripts/pilot_run.py   aceite do Marco 6: condomínio fictício do upload ao relatório
   app/prompts/    prompts versionados (*.md)
   app/db/         models.py, enums.py, session.py, migrations/
@@ -119,7 +120,7 @@ make pilot         # aceite do Marco 6 (após reset + up) → docs/pilot/run.md
 - Testes do backend: `TEST_DATABASE_ADMIN_URL` (padrão `postgresql+asyncpg://postgres:postgres@localhost:5432/postgres`). A suíte recria o banco `condoos_test`, aplica as migrações e carrega o seed.
 - E2E com um Chromium do sistema: `PW_CHROMIUM_PATH=/caminho/do/chrome make e2e`.
 - LLM: sem `ANTHROPIC_API_KEY`, o modo é `replay` (só respostas gravadas; o resto vai para a fila). Para gravar respostas reais: `LLM_MODE=record`. A suíte de testes nunca chama a API.
-- E-mail de entrada local: coloque `.eml` em `data/inbound-email/` (para `<slug>@ingest.condoos.local`); o worker lê a cada 30 s.
+- E-mail de entrada local: coloque `.eml` em `data/inbound-email/` (para `<slug>-<parte aleatória>@ingest.condoos.local`, mostrado em Ajustes; fora de produção `<slug>@` também vale); o worker lê a cada 30 s. Produção: Amazon SES em São Paulo → S3 (`docs/deploy.md` seção 7, D101).
 
 ## Convenções importantes
 
@@ -148,6 +149,7 @@ make pilot         # aceite do Marco 6 (após reset + up) → docs/pilot/run.md
 - **Launch** (D89): marcos (LM1–LM5) e prontidão (C1–C3) são calculados dos dados a cada leitura, nunca gravados, e não liberam nada; só objetivo, adiados e cartão oculto ficam em `launch_state`. O cartão de primeiro valor só mostra valores de `document.extracted` (abaixo de 0,9 = "a confirmar") e sempre diz o que a leitura não cobre. Prompt que recebe documento traz a regra de conteúdo não confiável (`tests/test_prompt_injection.py`).
 - **Conflitos de dados** (D93): só `app/data_issues/` detecta (determinístico, detector versionado, idempotente por `dedupe_key`); conflito sem ação de pessoa que some vira "superado", o que uma pessoa decidiu fica. Resolver exige um dos lados e motivo e não altera o contrato. Enquanto aberto: C2/C3 parciais, campo "conflitante" no cartão, linha na evidência dos achados e a política nega ação com o fornecedor. `data_issue_event` só aceita inclusão. Detector novo: teste positivo e negativo em `tests/test_data_issues.py` e conferir que o seed não gera falso positivo.
 - **Pedidos a terceiros e triagem** (D95): o CondoOS gera o link e o texto, **o síndico envia**; nada sai do sistema e "já enviei" é declaração. Token guardado só como hash; a rota pública acha o condomínio por `app_delegation_link_condominium` e roda com o papel da aplicação (RLS), só grava e responde o mesmo 404 para link inválido, vencido, revogado, fechado ou pausado. Destinatário só com nome e papel. `delegation_event` só aceita inclusão. Rotas públicas do link têm limite por endereço em memória (`core/ratelimit.py`, último item de `X-Forwarded-For`, nenhum IP gravado; D100). Todo arquivo passa por `ingestion/triage.py` (PDF com conteúdo ativo ou senha de abertura recusado; imagem regravada); em teste, use arquivos reais (`tests/helpers.py::jpeg_bytes`, `web/tests/e2e/files.ts::uniquePng`), não só a assinatura.
+- **E-mail de entrada** (D101): endereço `<slug>-<inbound_token>@<domínio>`, os dois pedaços precisam bater; trocar o endereço invalida o antigo. Cada mensagem deixa uma linha em `inbound_message` (só inclusão; domínio do remetente e contagens, nunca assunto, corpo ou endereço completo); `Message-ID` em hash evita duplicar. Pausa `email.inbound` deixa a mensagem esperando. Nada é respondido ao remetente.
 - **Revisão** (D74, D79): o status inicial de um achado vem da política (`app/review/`), não da severidade direto. Status novo precisa entrar em `NOT_AT_RISK`/`UNDER_REVIEW` (`db/enums.py`) quando couber.
 - **Telas da administradora** aceitam `?condominio=<id>` (filtro por condomínio, D69); o menu lateral mantém a escolha.
 - **Interface:** use os tokens e os componentes de `components/ui` e `components/condoos`; status sempre com texto e ícone, nunca só cor; verde-lima só em ação primária e item ativo.

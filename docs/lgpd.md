@@ -43,6 +43,7 @@ Mapeia cada requisito de privacidade (seção 12 da especificação e boas prát
 | 23 | Canal do titular (acesso, correção, exclusão) | ⏳ pendente | hoje por solicitação à administradora; usuários são desativados por `app_user.is_active` |
 | 24 | Relatório de impacto (RIPD) antes do uso em escala | ⏳ pendente | após o piloto |
 | 25 | Revisão da licença do executável embutido no Agent SDK | ⏳ pendente | D54 |
+| 26 | E-mail de entrada com dados no Brasil e registro mínimo | ✅ | SES e bucket em São Paulo; `inbound_message` guarda só o domínio do remetente e contagens (sem assunto, corpo ou endereço completo); mensagens apagadas do bucket de entrada em 30 dias; endereço com parte aleatória que o síndico pode trocar (D101) |
 
 ## Dados enviados à IA (Anthropic)
 

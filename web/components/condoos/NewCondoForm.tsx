@@ -100,7 +100,7 @@ export function NewCondoForm() {
               id="n-slug"
               label="Endereço curto"
               required
-              hint="Usado no e-mail de entrada: <endereço>@ingest..."
+              hint="Faz parte do e-mail de entrada, junto com uma parte aleatória."
             >
               <input
                 id="n-slug"

@@ -19,7 +19,7 @@ from app.enrichment.suppliers import enrich_job
 from app.extraction.pipeline import process_document
 from app.findings.explain import explain_job
 from app.ingestion.documents import PROCESS_JOB
-from app.ingestion.email import FolderEmailProvider, poll_provider
+from app.ingestion.email import poll_provider, provider_from_settings
 from app.matching.bank import match_bank_job
 from app.matching.documents import match_document_job
 from app.policy import job_paused
@@ -81,9 +81,7 @@ async def main() -> None:
         loop.add_signal_handler(sig, stop.set)
 
     logger.info("worker started")
-    provider = (
-        FolderEmailProvider(settings.inbound_email_dir) if settings.inbound_email_dir else None
-    )
+    provider = provider_from_settings()
     next_email_poll = 0.0
     while not stop.is_set():
         await _schedule_daily(maker)

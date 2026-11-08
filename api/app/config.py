@@ -50,10 +50,21 @@ class Settings(BaseSettings):
     public_link_max_requests: int = 60
     public_link_window_seconds: int = 600
 
-    # Inbound e-mail: <slug>@<ingest_email_domain>. The folder provider reads .eml files.
+    # Inbound e-mail (D101): <slug>-<token>@<ingest_email_domain>. Providers: "folder" reads
+    # .eml files from inbound_email_dir (local); "s3" reads what Amazon SES stored in a bucket.
     ingest_email_domain: str = "ingest.condoos.local"
-    inbound_email_dir: str | None = None
+    inbound_email_provider: Literal["none", "folder", "s3"] = "none"
+    inbound_email_dir: str | None = None  # set alone (no provider), it means "folder"
     inbound_email_poll_seconds: float = 30.0
+    inbound_email_s3_bucket: str | None = None
+    inbound_email_s3_prefix: str = "inbound/"
+    inbound_email_s3_region: str = "sa-east-1"
+    inbound_email_s3_endpoint_url: str | None = None  # only for a local S3 (SeaweedFS)
+    inbound_email_s3_access_key_id: SecretStr | None = None  # default: the S3_* credentials
+    inbound_email_s3_secret_access_key: SecretStr | None = None
+    # The old address without the random part (<slug>@...). Default: accepted outside
+    # production only.
+    inbound_accept_slug_address: bool | None = None
 
     # LLM (used from milestone 2 on)
     anthropic_api_key: SecretStr | None = None

@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { BoardCard, MembersCard, ProfileCard } from "@/components/condoos/RegistryCards";
 import { CapabilityReadinessCard } from "@/components/condoos/CapabilityReadiness";
+import { InboundEmailCard } from "@/components/condoos/InboundEmailCard";
 import { AutomationPausesCard } from "@/components/condoos/AutomationPausesCard";
 import { ReviewPolicyCard } from "@/components/condoos/ReviewPolicyCard";
 import { SettingsForm } from "@/components/condoos/SettingsForm";
@@ -12,6 +13,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { apiGet } from "@/lib/api";
 import type {
   AutomationPauses,
+  InboundChannel,
   Launch,
   Me,
   ReviewPolicy,
@@ -38,11 +40,12 @@ export default async function ConfiguracoesPage({
     );
   }
   const current = condos.find((c) => c.id === condominio) ?? condos[0]!;
-  const [settings, policy, pauses, launch] = await Promise.all([
+  const [settings, policy, pauses, launch, inbound] = await Promise.all([
     apiGet<Settings>(`/condominiums/${current.id}/settings`),
     apiGet<ReviewPolicy>(`/condominiums/${current.id}/review-policy`),
     apiGet<AutomationPauses>(`/condominiums/${current.id}/automation-pauses`),
     apiGet<Launch>(`/condominiums/${current.id}/launch`),
+    apiGet<InboundChannel>(`/condominiums/${current.id}/inbound`),
   ]);
   const staff = current.permissions.includes("manage_platform")
     ? await apiGet<StaffAssignment[]>(`/condominiums/${current.id}/assignments`)
@@ -74,6 +77,7 @@ export default async function ConfiguracoesPage({
         <SettingsForm key={current.id} condominiumId={current.id} settings={settings} />
         <div className="space-y-6">
           <CapabilityReadinessCard key={`c-${current.id}`} items={launch.readiness} />
+          <InboundEmailCard key={`e-${current.id}`} condominiumId={current.id} channel={inbound} />
           <ProfileCard
             key={`p-${current.id}`}
             condominiumId={current.id}

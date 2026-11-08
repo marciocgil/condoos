@@ -421,3 +421,11 @@ class DelegationEventKind(StrEnum):
     ENCERRADO = "encerrado"
     EXPIRADO = "expirado"
     REVOGADO = "revogado"
+
+
+class InboundMessageStatus(StrEnum):
+    """One inbound e-mail (D101). Only ids and counts are kept, never subject or body."""
+
+    PROCESSADA = "processada"  # at least one document created or already received
+    RECUSADA = "recusada"  # unknown address, no attachment, or every attachment refused
+    FALHOU = "falhou"  # processing raised; the message goes to rejected/

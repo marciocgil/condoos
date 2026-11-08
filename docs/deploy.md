@@ -64,7 +64,7 @@ Todas estão em `.env.example`. Segredos vêm do cofre do provedor (Secrets Mana
    ```
    O comando recusa slug ou CNPJ já cadastrados (nunca sobrescreve) e registra `condominium.onboarded` na auditoria.
 3. Usuários da administradora: membros com papel `gerente` ou `analista` na administradora já enxergam o condomínio novo.
-4. Envie os **contratos** primeiro (tela "Enviar documentos" ou e-mail `<slug>@<INGEST_EMAIL_DOMAIN>`): cada contrato validado vira contrato do condomínio (D59). Depois, notas, boletos, recibos e o extrato do mês.
+4. Envie os **contratos** primeiro (tela "Enviar documentos" ou o e-mail de entrada mostrado em Configurações, `<slug>-<parte aleatória>@<INGEST_EMAIL_DOMAIN>`): cada contrato validado vira contrato do condomínio (D59). Depois, notas, boletos, recibos e o extrato do mês.
 
 ## 6. Operação
 
@@ -75,7 +75,19 @@ Todas estão em `.env.example`. Segredos vêm do cofre do provedor (Secrets Mana
 - **Saúde:** `GET /health` na `api`. O `worker` não expõe HTTP: monitore a tabela `job` (itens `queued` antigos ou `failed` indicam problema).
 - **Backup:** PostgreSQL com PITR (7 dias no mínimo) e versionamento no bucket. Teste a restauração antes do piloto.
 
-## 7. Verificação de aceite
+## 7. E-mail de entrada (Amazon SES em São Paulo, D101)
+
+Feito uma vez, quando houver domínio. Nada é respondido ao remetente.
+
+1. **Subdomínio só para entrada**, por exemplo `entrada.seudominio.com.br` (não use o domínio do e-mail da empresa).
+2. **Bucket S3 em `sa-east-1`**, privado, só para a entrada (ex.: `condoos-entrada`), com uma regra de ciclo de vida que apaga `processed/` e `rejected/` depois de 30 dias. A política do bucket permite ao serviço SES gravar em `inbound/`.
+3. **SES (região São Paulo):** verificar o subdomínio; criar um *receipt rule set* ativo com uma regra para o subdomínio: varredura de spam e vírus ligada, recusar o que vier marcado e entregar ao S3 no prefixo `inbound/`.
+4. **DNS:** registro `MX 10 inbound-smtp.sa-east-1.amazonaws.com` no subdomínio.
+5. **Credencial do worker:** usuário IAM só com `ListBucket` no bucket e `GetObject`, `PutObject` e `DeleteObject` em `inbound/*`, `processed/*` e `rejected/*`.
+6. **Variáveis do worker:** `INGEST_EMAIL_DOMAIN=entrada.seudominio.com.br`, `INBOUND_EMAIL_PROVIDER=s3`, `INBOUND_EMAIL_S3_BUCKET`, `INBOUND_EMAIL_S3_REGION=sa-east-1` e a credencial do passo 5. Em produção, o endereço sem a parte aleatória é recusado.
+7. **Teste:** mande um e-mail com um PDF para o endereço de Configurações. Em até 30 s ele aparece em "E-mail de entrada" como processado, e o documento entra na fila de leitura.
+
+## 8. Verificação de aceite
 
 Num ambiente de homologação com o seed:
 

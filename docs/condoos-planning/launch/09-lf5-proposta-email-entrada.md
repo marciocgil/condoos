@@ -1,6 +1,6 @@
 # Launch LF5 — proposta: e-mail de entrada real (LB-050, LB-051)
 
-Data: 08/11/2026. **Aguardando decisão do Marcio.** Nada foi implementado. Detalha LB-050 (provedor real com mock nos testes) e LB-051 (saúde do canal) de `05-backlog.md`; LB-052..055 ficam para depois.
+Data: 08/11/2026. **Aprovada pelo Marcio em 08/11/2026 (opção A, endereço com parte aleatória, migração 0022) e implementada com o bucket simulado (D101).** Ainda não há domínio; a configuração real está em `docs/deploy.md`, seção 7. Detalha LB-050 (provedor real com mock nos testes) e LB-051 (saúde do canal) de `05-backlog.md`; LB-052..055 ficam para depois.
 
 ## 1. Problema
 

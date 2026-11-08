@@ -60,6 +60,7 @@ from app.db.enums import (
     DocumentType,
     ExtractionStatus,
     FindingStatus,
+    InboundMessageStatus,
     JobStatus,
     OpportunityReviewAction,
     OpportunityStatus,
@@ -76,6 +77,15 @@ from app.db.enums import (
 Json = JSON().with_variant(JSONB(), "postgresql")
 EMBEDDING_DIM = 384
 Money = Numeric(14, 2)
+
+
+INBOUND_TOKEN_ALPHABET = "abcdefghjkmnpqrstuvwxyz23456789"  # noqa: S105 (no 0/o, 1/l/i)
+
+
+def new_inbound_token() -> str:
+    import secrets
+
+    return "".join(secrets.choice(INBOUND_TOKEN_ALPHABET) for _ in range(8))
 
 
 def _enum_check(column: str, enum: type[StrEnum]) -> CheckConstraint:
@@ -125,6 +135,11 @@ class Condominium(IdTimestampMixin, Base):
     # the condominium is the client and never depends on a management company (D73).
     management_company_reviews: Mapped[bool] = mapped_column(
         Boolean, default=False, server_default="false"
+    )
+    # Random part of the inbound e-mail address <slug>-<token>@<domain> (D101). The síndico
+    # can change it; the old address stops working.
+    inbound_token: Mapped[str] = mapped_column(
+        String(16), unique=True, default=lambda: new_inbound_token()
     )
 
 
@@ -1168,6 +1183,25 @@ class DelegationEvent(IdTimestampMixin, Base):
     payload: Mapped[dict[str, Any]] = mapped_column(Json, default=dict)
 
 
+class InboundMessage(IdTimestampMixin, Base):
+    """One inbound e-mail and what became of it (D101, LB-051). Append only. No subject, body
+    or full sender address: the sender's domain and counts only. ``condominium_id`` is null
+    when the address matched no condominium (such rows are invisible to the app role)."""
+
+    __tablename__ = "inbound_message"
+    __table_args__ = (_enum_check("status", InboundMessageStatus),)
+
+    condominium_id: Mapped[uuid.UUID | None] = _uuid_fk("condominium.id", nullable=True)
+    message_hash: Mapped[str] = mapped_column(String(64), unique=True)
+    sender_domain: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    status: Mapped[str] = mapped_column(String(20))
+    attachments: Mapped[int] = mapped_column(Integer, default=0)
+    documents: Mapped[int] = mapped_column(Integer, default=0)
+    duplicates: Mapped[int] = mapped_column(Integer, default=0)
+    refused: Mapped[int] = mapped_column(Integer, default=0)
+    reasons: Mapped[list[str]] = mapped_column(Json, default=list)
+
+
 # Tables protected by Row-Level Security, with the column holding the tenant id.
 RLS_TABLES: dict[str, str] = {
     "condominium": "id",
@@ -1209,6 +1243,7 @@ RLS_TABLES: dict[str, str] = {
     "delegation_request": "condominium_id",
     "delegation_link": "condominium_id",
     "delegation_event": "condominium_id",
+    "inbound_message": "condominium_id",
 }
 
 # Tables the application role may only read and insert into (never update or delete).
@@ -1223,4 +1258,5 @@ APPEND_ONLY_TABLES: tuple[str, ...] = (
     "condominium_settings_version",
     "data_issue_event",
     "delegation_event",
+    "inbound_message",
 )

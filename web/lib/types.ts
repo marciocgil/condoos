@@ -937,3 +937,25 @@ export interface DelegationBoard {
   mine: BoardMine[];
   others: BoardOthers[];
 }
+
+export type InboundStatus = "processada" | "recusada" | "falhou";
+
+export interface InboundChannel {
+  address: string;
+  can_change: boolean;
+  paused: boolean;
+  last_message_at: string | null;
+  last_document_at: string | null;
+  days_since_last_message: number | null;
+  last_30_days: { messages: number; documents: number; not_processed: number };
+  recent: {
+    received_at: string;
+    sender_domain: string | null;
+    status: InboundStatus;
+    attachments: number;
+    documents: number;
+    duplicates: number;
+    refused: number;
+    reasons: string[];
+  }[];
+}
