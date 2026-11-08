@@ -61,6 +61,8 @@ class DocResult:
     field_ok: dict[str, bool] = field(default_factory=dict)
     # A filled value that differs from the truth, or a required field that differs.
     field_wrong: dict[str, bool] = field(default_factory=dict)
+    # Field -> (expected, got) for every field not read correctly (fictitious corpus data).
+    mismatches: dict[str, tuple[Any, Any]] = field(default_factory=dict)
     reasons: list[str] = field(default_factory=list)
     source: str = ""
     seconds: float = 0.0
@@ -117,6 +119,8 @@ async def evaluate() -> list[DocResult]:
                 ok = same(kinds[fname], expected, got)
                 res.field_ok[fname] = ok
                 res.field_wrong[fname] = not ok and (got is not None or fname in required)
+                if not ok:
+                    res.mismatches[fname] = (expected, got)
             results.append(res)
     finally:
         if session_cm is not None:
@@ -170,6 +174,23 @@ def report(results: list[DocResult]) -> str:
             f"| {r.name} | {r.expected_type} | {r.got_type} | {'sim' if r.automatic else 'não'} "
             f"| {n_ok}/{len(r.field_ok)} | {r.source} | {reason} |"
         )
+    lines += [
+        "",
+        "## Campos não lidos corretamente",
+        "",
+        "Divergente = valor preenchido diferente do gabarito (ou obrigatório errado); "
+        "ausente = campo deixado vazio (baixa confiança), que é o comportamento esperado.",
+        "",
+        "| Arquivo | Automático | Campo | Situação | Esperado | Obtido |",
+        "| --- | --- | --- | --- | --- | --- |",
+    ]
+    for r in results:
+        for fname, (expected, got) in r.mismatches.items():
+            situation = "divergente" if r.field_wrong.get(fname) else "ausente"
+            lines.append(
+                f"| {r.name} | {'sim' if r.automatic else 'não'} | {fname} | {situation} | "
+                f"{str(expected)[:80]} | {'—' if got is None else str(got)[:80]} |"
+            )
     return "\n".join(lines) + "\n"
 
 

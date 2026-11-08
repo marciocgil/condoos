@@ -310,11 +310,12 @@ class ChatTools:
             stmt = stmt.where(Expense.amount <= high)
         if text := args.get("text"):
             stmt = stmt.where(Expense.description.ilike(f"%{text}%"))
+        # Count and sum over the filtered rows themselves (summing ``Expense.amount`` against
+        # the subquery made a cartesian product: every expense times every match).
+        filtered = stmt.subquery()
         totals = (
             await self.session.execute(
-                select(func.count(), func.coalesce(func.sum(Expense.amount), 0)).select_from(
-                    stmt.subquery()
-                )
+                select(func.count(), func.coalesce(func.sum(filtered.c.amount), 0))
             )
         ).one()
         rows = list(

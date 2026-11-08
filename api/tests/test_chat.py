@@ -12,7 +12,7 @@ from typing import Any
 
 import httpx
 import pytest
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncEngine
 
 from app.auth.mailer import MemoryMailer
@@ -21,7 +21,7 @@ from app.chat import agent as agent_mod
 from app.chat.agent import AgentReply, ChatUnavailable
 from app.chat.tools import ChatTools, ScreenContext
 from app.db.enums import Role
-from app.db.models import ChatMessage, Finding, LlmCall
+from app.db.models import ChatMessage, Expense, Finding, LlmCall
 from app.db.session import sessionmaker_for, set_tenant_scope
 from tests.helpers import (
     CONSELHEIRO_ACACIAS,
@@ -99,6 +99,22 @@ async def test_tools_are_read_only_and_bound_to_the_condominium(
 
         expenses = await tools.run("search_expenses", {"category": "portaria"})
         assert expenses["total_encontrado"] > 0
+        # The total is the sum of the matching expenses only (it used to multiply them, D98).
+        energy = await tools.run(
+            "search_expenses",
+            {"category": "energia", "month_from": "2026-09", "month_to": "2026-09"},
+        )
+        real_sum, real_count = (
+            await s.execute(
+                select(func.coalesce(func.sum(Expense.amount), 0), func.count()).where(
+                    Expense.condominium_id == acacias,
+                    Expense.category == "energia",
+                    Expense.competence == date(2026, 9, 1),
+                )
+            )
+        ).one()
+        assert energy["total_encontrado"] == real_count == 1
+        assert Decimal(energy["soma"]) == real_sum
         assert all(r["ref"].startswith("despesa:") for r in expenses["despesas"])
 
         contract = await tools.run("get_contract", {"supplier": "Vigilare"})
@@ -314,3 +330,23 @@ async def test_runner_without_key_is_unavailable(
     )
     with pytest.raises(ChatUnavailable, match="chave de API"):
         await ClaudeAgentRunner()(system="", prompt="oi", tools=None)  # type: ignore[arg-type]
+
+
+def test_numbers_from_document_passages_are_accepted_invented_ones_are_not() -> None:
+    """D98: passages come back as Brazilian text; a value quoted from them is from the data.
+    A value the tools did not return is still refused."""
+    from types import SimpleNamespace
+    from typing import cast
+
+    from app.chat.service import allowed_numbers
+    from app.findings.explain import invalid_numbers
+
+    passage = (
+        '{"trechos": [{"texto": "CLÁUSULA 9 - Rescisão antecipada: multa de R$ 9.250,00 e '
+        'aviso prévio de 30 (trinta) dias. Obras acima de R$ 5.000,00 exigem 3 orçamentos."}]}'
+    )
+    tools = cast(ChatTools, SimpleNamespace(outputs=[passage]))
+    allowed = allowed_numbers(tools, "Qual a multa de rescisão da portaria?")
+    assert invalid_numbers("A multa é de R$ 9.250,00, com aviso de 30 dias.", allowed) == []
+    assert invalid_numbers("Acima de R$ 5.000,00 são 3 orçamentos.", allowed) == []
+    assert invalid_numbers("A multa é de R$ 9.300,00.", allowed) == ["9.300,00"]

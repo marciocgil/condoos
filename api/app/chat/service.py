@@ -59,6 +59,10 @@ def allowed_numbers(tools: ChatTools, question: str) -> set[Decimal]:
     for text in [*tools.outputs, question, f"{date.today():%Y-%m-%d}"]:
         for match in _MACHINE.finditer(_cnpj_as_digits(text)):
             allowed.add(Decimal(match.group(0)))
+    # Document passages come back as Brazilian text ("multa de R$ 9.250,00"): a number written
+    # that way in a tool output is a number from the data too (D98).
+    for text in tools.outputs:
+        allowed |= {value for value, _ in numbers_in(_cnpj_as_digits(text))}
     # pt-BR numbers the user typed (e.g. "R$ 1.234,56") are fair to repeat
     allowed |= {value for value, _ in numbers_in(question)}
     return allowed

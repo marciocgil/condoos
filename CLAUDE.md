@@ -107,6 +107,7 @@ make e2e           # Playwright contra a stack (zera o limite de links por hora 
 make migrate seed  # migrações e seed no banco de DATABASE_ADMIN_URL
 make corpus        # regera o corpus fictício (determinístico)
 make accuracy      # relatório de acurácia por campo → docs/extraction_accuracy.md
+make rules-eval    # casos plantados com o modelo real para R04/R07 (exige chave) → docs/rules_eval.md
 make chat-eval     # avaliação do chat ao vivo (exige ANTHROPIC_API_KEY) → docs/chat_eval.md
 make pilot         # aceite do Marco 6 (após reset + up) → docs/pilot/run.md
 ```
@@ -168,9 +169,9 @@ make pilot         # aceite do Marco 6 (após reset + up) → docs/pilot/run.md
 
 ### Pendências conhecidas
 
-- **Meta de 90% sem revisão ainda não medida com o LLM**: sem chave, 12/30 (40%) com 0 erro automático. Medir com `LLM_MODE=record make accuracy` quando houver chave.
+- **Acurácia com o LLM** (D98, sem Docling): 26/30 (87%) sem revisão, meta 90%; 1 automático com dado divergente (campo `objeto` do contrato, a confirmar com a seção "Campos não lidos corretamente"). Repetir sem custo com `LLM_MODE=replay make accuracy` (usa `api/corpus/cassettes/`).
 - Layouts CNAB não validados com arquivo real de banco (D28).
-- R04 e R07 (parte por IA) só são avaliadas de verdade com chave de API; hoje são testadas com respostas de modelo simuladas.
+- R04 com o modelo real: aprovada (`make rules-eval`, D98). A parte por IA da R07 ainda não tem caso plantado.
 - Sem chave de API, as explicações ficam no texto determinístico da regra (a reescrita por IA roda quando há chave).
-- **Avaliação do chat ao vivo não rodada**: sem chave de API, o chat responde 503 e só o gabarito da avaliação é testado. Rodar `make chat-eval` quando houver chave (aceite: ≥ 90%, zero vazamento).
+- **Chat ao vivo** (D98): 28/33 (85%), zero vazamento; as 5 falhas vieram da soma errada em `search_expenses` e do verificador recusando números de trechos, ambos corrigidos. Repetir `make chat-eval` para confirmar ≥ 90%.
 - O executável do Claude Code embutido no `claude-agent-sdk` segue termos comerciais da Anthropic (D54): revisar antes do piloto.
