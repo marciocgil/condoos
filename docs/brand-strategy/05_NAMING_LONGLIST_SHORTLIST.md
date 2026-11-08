@@ -1,5 +1,7 @@
 # 05 — Naming: longlist, shortlist e finalistas
 
+> **Atualização (rodada 2, 08/11/2026):** Arrimo saiu da final por remeter a obras (avaliação do Marcio). A recomendação passou a ser **Ciente**, com **Síndico Ciente** como reserva. Ver `11_VARREDURA_COMPLEMENTAR.md`. Este documento fica como registro da rodada 1.
+
 Pesquisa de 08/11/2026. **Nenhum nome deste documento está "disponível para registro".** A triagem foi feita com buscas abertas, busca no USPTO, consulta RDAP aos registros de domínio e App Store; **o INPI não pôde ser consultado desta rede** (ver `06`). Notas são julgamento analítico, não teste com clientes.
 
 Legenda de risco preliminar: **baixo aparente** · **atenção** · **alto** · **NV** (não verificado). Detalhe das evidências em `06_TRIAGEM_MARCAS_DOMINIOS.md`.

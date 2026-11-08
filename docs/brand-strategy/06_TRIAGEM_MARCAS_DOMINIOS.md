@@ -1,5 +1,7 @@
 # 06 — Triagem preliminar de marcas, domínios e linguagem
 
+> **Atualização (rodada 2, 08/11/2026):** triagem de Ciente, Síndico Ciente, Conferi, Sossego, Escudeiro e outros em `11_VARREDURA_COMPLEMENTAR.md`. Os finalistas para o advogado passam a ser **Ciente, Síndico Ciente e Prumea**.
+
 Pesquisa de 08/11/2026. **Isto não é parecer jurídico.** É uma triagem técnica de buscas abertas e bases públicas para decidir o que levar a um advogado de marcas. Ausência de resultado **não** significa disponibilidade; existência de site **não** significa registro de marca.
 
 Legenda: **F** fato verificado na fonte (com data) · **I** inferência · **NV** não verificado. Risco: **baixo aparente / atenção / alto / NV**.

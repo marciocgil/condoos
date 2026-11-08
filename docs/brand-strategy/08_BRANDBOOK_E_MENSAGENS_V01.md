@@ -1,6 +1,6 @@
 # 08 — Mini brandbook estratégico v0.1 e messaging house
 
-Versão 0.1 de 08/11/2026. Textos para **teste**, não validados com clientes. Os exemplos usam **Arrimo** (finalista 1, provisório); trocar pelo nome que vencer a triagem jurídica e o teste. Nada aqui altera o produto, o Design System ou os nomes internos.
+Versão 0.1 de 08/11/2026. Textos para **teste**, não validados com clientes. Os exemplos usam **Ciente** (recomendação provisória após a rodada 2, ver `11`); trocar pelo nome que vencer a triagem jurídica e o teste. Nada aqui altera o produto, o Design System ou os nomes internos.
 
 Regra de verdade: **só comunicar como presente o que existe no produto** (ver `01`, §1.1). Nenhum número de economia ou de tempo poupado aparece até haver piloto medido.
 
@@ -51,11 +51,11 @@ Regra de verdade: **só comunicar como presente o que existe no produto** (ver `
 | Formato | Texto |
 |---|---|
 | **5 segundos** | "Cada despesa do condomínio conferida, com a prova." |
-| **15 segundos** | "O Arrimo confere todo mês cada despesa do condomínio contra o contrato, a nota e o extrato do banco, e te mostra só o que merece atenção. Você decide." |
-| **30 segundos** | "Todo mês a administradora manda a pasta e você assina as contas. Mas quem confere? O Arrimo lê os documentos do mês, confere cada despesa contra o contrato com reajuste, a nota, o CNPJ e o extrato, e te mostra só os pontos de atenção, com o documento ao lado e o valor em jogo. Quando há espaço para economizar, mostramos a conta. Nada é pago nem enviado sem você." |
-| **2 minutos** | "Quem é síndico sabe: a responsabilidade pelas contas é sua, mas o tempo e o conhecimento para conferir tudo, não. A pasta chega, você olha por cima, confia na administradora e assina. Quando um condômino pergunta por que a cota subiu, a resposta é difícil. O Arrimo foi feito para isso. Ele recebe os documentos do mês, os mesmos que a administradora já envia, mais o extrato e os contratos. Confere cada despesa: o valor bate com o contrato reajustado? A nota é do fornecedor certo? O pagamento saiu do jeito que deveria? Aconteceu algo fora do padrão dos meses anteriores? O que estiver normal fica em silêncio. O que merece atenção chega para você com o documento, o valor e uma explicação curta, e você decide: pedir esclarecimento, aceitar, registrar. Quando enxergamos espaço para economizar num contrato, uma pessoa da nossa equipe revisa antes de te mostrar, e depois medimos se a economia aconteceu de verdade. Nada é pago nem enviado pelo sistema. A administradora continua a mesma; o Arrimo trabalha para o condomínio. No fim do mês, você tem um relatório pronto para o conselho." |
+| **15 segundos** | "O Ciente confere todo mês cada despesa do condomínio contra o contrato, a nota e o extrato do banco, e te mostra só o que merece atenção. Você decide." |
+| **30 segundos** | "Todo mês a administradora manda a pasta e você assina as contas. Mas quem confere? O Ciente lê os documentos do mês, confere cada despesa contra o contrato com reajuste, a nota, o CNPJ e o extrato, e te mostra só os pontos de atenção, com o documento ao lado e o valor em jogo. Quando há espaço para economizar, mostramos a conta. Nada é pago nem enviado sem você." |
+| **2 minutos** | "Quem é síndico sabe: a responsabilidade pelas contas é sua, mas o tempo e o conhecimento para conferir tudo, não. A pasta chega, você olha por cima, confia na administradora e assina. Quando um condômino pergunta por que a cota subiu, a resposta é difícil. O Ciente foi feito para isso. Ele recebe os documentos do mês, os mesmos que a administradora já envia, mais o extrato e os contratos. Confere cada despesa: o valor bate com o contrato reajustado? A nota é do fornecedor certo? O pagamento saiu do jeito que deveria? Aconteceu algo fora do padrão dos meses anteriores? O que estiver normal fica em silêncio. O que merece atenção chega para você com o documento, o valor e uma explicação curta, e você decide: pedir esclarecimento, aceitar, registrar. Quando enxergamos espaço para economizar num contrato, uma pessoa da nossa equipe revisa antes de te mostrar, e depois medimos se a economia aconteceu de verdade. Nada é pago nem enviado pelo sistema. A administradora continua a mesma; o Ciente trabalha para o condomínio. No fim do mês, você tem um relatório pronto para o conselho." |
 | **Loja de apps (curta, 80 caracteres)** | "Conferência mensal das contas do condomínio, com a prova. Você decide." |
-| **Loja de apps (longa)** | "O Arrimo é o assistente de gestão do síndico. Todo mês ele confere as despesas do condomínio contra contratos, notas fiscais e extrato bancário, e mostra só os pontos que merecem atenção, cada um com o documento e o valor. Você decide o que fazer e tudo fica registrado. Resumo do dia, assuntos com prazo e responsável, perguntas sobre contratos, convenção e atas com a página de origem, e relatório para o conselho. O Arrimo não faz pagamentos nem envia nada em seu nome." |
+| **Loja de apps (longa)** | "O Ciente é o assistente de gestão do síndico. Todo mês ele confere as despesas do condomínio contra contratos, notas fiscais e extrato bancário, e mostra só os pontos que merecem atenção, cada um com o documento e o valor. Você decide o que fazer e tudo fica registrado. Resumo do dia, assuntos com prazo e responsável, perguntas sobre contratos, convenção e atas com a página de origem, e relatório para o conselho. O Ciente não faz pagamentos nem envia nada em seu nome." |
 
 ## 4. Página inicial (rascunho)
 
@@ -67,7 +67,7 @@ Regra de verdade: **só comunicar como presente o que existe no produto** (ver `
   2. **Prova em cada ponto** — o documento ao lado, o valor em jogo e uma explicação curta.
   3. **Você no controle** — nada é pago nem enviado sem você; ponto de atenção é indício, não acusação.
 - **Como funciona (3 passos):** 1. Você autoriza e a gente recebe os documentos do mês (os mesmos da pasta). 2. Conferimos tudo. 3. Você recebe o resumo, decide e leva o relatório ao conselho.
-- **Integração com a administradora:** "Sua administradora continua a mesma. O Arrimo usa os documentos que ela já envia e ajuda a resolver dúvidas com menos idas e vindas."
+- **Integração com a administradora:** "Sua administradora continua a mesma. O Ciente usa os documentos que ela já envia e ajuda a resolver dúvidas com menos idas e vindas."
 - **Prova (sem cliente real ainda):** "Veja um relatório de exemplo" (dados fictícios, marcado como exemplo). **Não** publicar depoimento, número de clientes ou economia até haver piloto.
 - **Segurança:** "Dados de cada condomínio isolados. Acesso por papel. Tudo registrado. Em conformidade com a LGPD" (só depois de revisão jurídica do texto).
 - **Preço:** "Planos por condomínio a partir de R$ ___/mês" (só depois do teste de preço; ver `07`).
@@ -85,8 +85,8 @@ Regra de verdade: **só comunicar como presente o que existe no produto** (ver `
 
 | Objeção | Resposta |
 |---|---|
-| "Já temos administradora." | "Ótimo, ela continua. O Arrimo é a segunda conferência, a favor do condomínio, usando os documentos que ela já envia." |
-| "Já temos software." | "O sistema da administradora registra o que aconteceu. O Arrimo confere se está certo e mostra o que merece atenção." |
+| "Já temos administradora." | "Ótimo, ela continua. O Ciente é a segunda conferência, a favor do condomínio, usando os documentos que ela já envia." |
+| "Já temos software." | "O sistema da administradora registra o que aconteceu. O Ciente confere se está certo e mostra o que merece atenção." |
 | "Não quero outro sistema." | "Você não precisa lançar nada. Recebe um resumo, decide em poucos toques e leva o relatório ao conselho." |
 | "A IA pode errar." | "Pode, por isso cada ponto vem com o documento para você conferir, a conta é refeita por regra e nenhuma economia chega até você sem revisão de uma pessoa da nossa equipe. Quem decide é sempre você." |
 | "Quem fornece os dados?" | "Os documentos que a administradora já envia, o extrato do banco e os contratos. Com sua autorização, ajudamos a pedir o que faltar." |
@@ -104,7 +104,7 @@ Regra de verdade: **só comunicar como presente o que existe no produto** (ver `
 
 | Uso | Termo |
 |---|---|
-| Marca | Arrimo (provisório) |
+| Marca | Ciente (provisório) |
 | Descritor de categoria | "conferência contínua das contas do condomínio" / "assistente de gestão do síndico" |
 | Funções visíveis | Conferência do mês · Pontos de atenção · Economia · Hoje · Assuntos · Perguntar · Relatório do conselho · Implantação |
 | Somente interno | Optimize, Advisor, Operate, Launch, Procurement, Core, achado (na interface técnica pode ficar), regra R01–R12, Data Readiness, kill switch, outbox |
@@ -139,4 +139,4 @@ Regra de verdade: **só comunicar como presente o que existe no produto** (ver `
 - **Iconografia:** documentos, marcas de conferência, balança; evitar robôs, cérebros, raios, "brilhos" de IA.
 - **Referências de estilo:** relatórios financeiros claros, extratos bancários modernos, apps de banco digital brasileiros (sem copiar).
 - **Perigos:** imitar o roxo/azul de fintech e ERP do setor; cadeados e escudos em excesso (sugere medo); "OS"/terminal (sugere técnico); fotos de prédios genéricas.
-- **Logo (Arrimo, se aprovado):** explorar a ideia de estrutura que sustenta (linha de muro de arrimo, degrau, coluna), não um "A" genérico.
+- **Logo (Ciente, se aprovado):** explorar a ideia de visto/conferido e de "dar ciência" (marca de conferência, rubrica, olho atento sem vigilância), não um "C" genérico.

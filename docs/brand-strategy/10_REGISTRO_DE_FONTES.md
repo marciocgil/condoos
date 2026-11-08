@@ -51,6 +51,15 @@ Todas as fontes acessadas em **08/11/2026**, salvo indicação. Qualidade: **alt
 | Condora (App Store) | https://apps.apple.com/br/app/condora/id6758959663 | "Condora – Gestão de Condomínios", Rocketbr | alta |
 | Zelo Facilities / Zello | https://apps.apple.com/us/app/id6444430939 ; https://apps.apple.com/app/id6476882276 | Apps de condomínio | alta |
 
+### Rodada 2 (ver `11`)
+
+| Fonte | URL | Achado | Qualidade |
+|---|---|---|---|
+| SíndicoNet, guia de prestação de contas (Karine Prisco) | https://www.sindiconet.com.br/informese/guia-prestacao-contas-condominio-boas-praticas-colunistas-artigos-e-opinioes | Item de trilha da despesa: "A autorização ou ciência do síndico" (15/05/2026) | média |
+| RDAP Registro.br | rdap.registro.br | `conferi.com.br` (Conferi Contabilidade, 2012); `sossego.com.br` (corretora de seguros, 2007); `escudeiro.com.br` (treinamento, 1998); `sindicociente.com.br` sem registro | alta |
+| B2B Stack | https://www.b2bstack.com.br/product/confere | "Confere": conciliador de cartões, fundado em 2017 | média |
+| App Store (API) e USPTO (API) | itunes.apple.com/search; tmsearch.uspto.gov | Ciente, Síndico Ciente: nenhum app de gestão/finanças e 0 no USPTO; "Sossego: bloquear apps"; Presto: 655 resultados USPTO | alta |
+
 ## 4. Concorrência (ver `02`)
 
 | Marca | URL | Dado usado | Qualidade | Limitação |
