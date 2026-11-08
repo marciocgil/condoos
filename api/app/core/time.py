@@ -35,3 +35,13 @@ def local_today(timezone: str | None) -> date:
     except (ZoneInfoNotFoundError, ValueError):
         zone = ZoneInfo(DEFAULT_TIMEZONE)
     return datetime.now(zone).date()
+
+
+def local_date(moment: datetime, timezone: str | None) -> date:
+    """The date of an instant in a condominium's time zone (an event at 23h in São Paulo is
+    on that day, although it is already the next day in UTC)."""
+    try:
+        zone = ZoneInfo(timezone or DEFAULT_TIMEZONE)
+    except (ZoneInfoNotFoundError, ValueError):
+        zone = ZoneInfo(DEFAULT_TIMEZONE)
+    return moment.astimezone(zone).date()

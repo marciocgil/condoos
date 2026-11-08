@@ -12,7 +12,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.audit import record_audit
-from app.core.time import utcnow
+from app.core.time import local_date, utcnow
 from app.db.enums import CLOSED_CASE, Role
 from app.db.models import AuditLog, CaseRecord, Condominium, Document, Membership
 from app.db.models import LaunchState as LaunchStateRow
@@ -170,7 +170,8 @@ async def portfolio_row(session: AsyncSession, condo: Condominium, today: date) 
         "capabilities_working": sum(1 for r in ready if r.state == "supervisionada"),
         "capabilities_total": len(ready),
         "last_activity": last.isoformat() if last else None,
-        "days_idle": (today - last.date()).days if last else None,
+        # Both dates in the condominium's time zone (``today`` already is).
+        "days_idle": (today - local_date(last, condo.timezone)).days if last else None,
         "first_login_at": first_login.isoformat() if first_login else None,
         "first_value_at": first_value_at.isoformat() if first_value_at else None,
         "hours_to_first_value": hours_to_value,

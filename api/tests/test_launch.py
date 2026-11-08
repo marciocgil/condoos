@@ -14,7 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession
 from app.auth.mailer import MemoryMailer
 from app.core.br import generate_cnpj
 from app.core.money import brl
-from app.core.time import utcnow
+from app.core.time import local_date, local_today, utcnow
 from app.db.enums import PolicyDecision
 from app.db.models import (
     AuditLog,
@@ -437,11 +437,15 @@ async def test_portfolio_launch_and_time_to_first_value(
                 created_at=login_at + timedelta(hours=1, minutes=30),
             )
         )
-        today = date.today()
+        today = local_today(condo.timezone)
         row = await portfolio_row(s, condo, today)
     assert row["milestones_done"] == 1 and row["next_milestone"] == "Seu condomínio ganhou memória"
     assert row["hours_to_first_value"] == 1.5
-    assert row["days_idle"] == 0 and row["capabilities_total"] == 7
+    # The last event, 1h30 ago, counted on its own date in the condominium's time zone.
+    expected_idle = (
+        today - local_date(login_at + timedelta(hours=1, minutes=30), condo.timezone)
+    ).days
+    assert row["days_idle"] == expected_idle and row["capabilities_total"] == 7
 
     await login(client, mailer, SINDICA_ACACIAS)
     assert (await client.get("/portfolio/launch")).json() == []
