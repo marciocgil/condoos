@@ -77,7 +77,9 @@ Todas estão em `.env.example`. Segredos vêm do cofre do provedor (Secrets Mana
 
 ## 7. E-mail: entrada e saída pela Amazon SES em São Paulo (D101, D103)
 
-Domínio do CondoOS: **`condoos.ia.br`** (DNS no registro.br). Uma conta AWS, região **São Paulo (`sa-east-1`)**, faz as duas coisas. Nenhuma caixa de e-mail é necessária: o sistema lê o que chega e as respostas aos pedidos vão para o e-mail do síndico ("responder para").
+Domínio do CondoOS: **`condoos.ia.br`** (DNS no registro.br, **modo avançado** em "Configurar endereçamento" para criar CNAME, TXT e MX; a troca de modo leva umas 3 horas).
+
+**Conta AWS:** a do projeto (não a de gerenciamento da organização). Se o console disser que a ação é negada por uma *service control policy*, na conta de gerenciamento → Organizations → Políticas de controle de serviço → `AdvancedModeRegionRestrictionSecurityControlPolicy`, bloco `RegionFloor`, acrescente `"sa-east-1"` à lista `aws:RequestedRegion`; depois, em Configurações unificadas → Configurações da conta → Regiões visíveis, inclua São Paulo. No SES, plano **Essentials** (sem mensalidade) e etapa 4 do assistente desligada (sem rastreamento de abertura e de links). Uma conta AWS, região **São Paulo (`sa-east-1`)**, faz as duas coisas. Nenhuma caixa de e-mail é necessária: o sistema lê o que chega e as respostas aos pedidos vão para o e-mail do síndico ("responder para").
 
 | Uso | Endereço | DNS |
 |---|---|---|
@@ -96,9 +98,16 @@ O domínio principal (`condoos.ia.br`) continua livre para uma caixa de pessoas 
 
 ### 7.2 Entrada
 
-1. **S3 (São Paulo):** bucket privado `condoos-entrada`, com regra de ciclo de vida que apaga `processed/` e `rejected/` em 30 dias. Na política do bucket, permita ao serviço `ses.amazonaws.com` gravar em `inbound/*` (o console do SES oferece criar essa política na hora de escolher o bucket).
+1. **S3 (São Paulo):** bucket privado `condoos-entrada` (acesso público bloqueado, SSE-S3), com duas regras de ciclo de vida que expiram `processed/` e `rejected/` em 30 dias. Política do bucket (só o SES desta conta, em São Paulo, grava, e só em `inbound/`):
+   ```json
+   {"Version": "2012-10-17", "Statement": [{"Sid": "PermitirSESGravarEntrada", "Effect": "Allow",
+     "Principal": {"Service": "ses.amazonaws.com"}, "Action": "s3:PutObject",
+     "Resource": "arn:aws:s3:::condoos-entrada/inbound/*",
+     "Condition": {"StringEquals": {"AWS:SourceAccount": "<id da conta>"},
+                   "StringLike": {"AWS:SourceArn": "arn:aws:ses:sa-east-1:<id da conta>:receipt-rule-set/*"}}}]}
+   ```
 2. **SES → Identities:** a identidade `condoos.ia.br` já cobre `entrada.condoos.ia.br`.
-3. **SES → Email receiving → Rule sets:** crie e **ative** um rule set com uma regra para `entrada.condoos.ia.br`: *spam and virus scanning* ligado, ação *Deliver to S3 bucket* `condoos-entrada`, prefixo `inbound/`. Antes, acrescente uma ação *Bounce* ou *Stop* para mensagens marcadas como vírus.
+3. **SES → Email receiving → Rule sets:** crie e **ative** um rule set (`condoos`) com uma regra (`entrada-documentos`) para `entrada.condoos.ia.br`: TLS opcional, *spam and virus scanning* ligado, ação *Deliver to S3 bucket* `condoos-entrada`, prefixo `inbound/`, sem perfil IAM nem SNS. O SES só marca (cabeçalhos `X-SES-Virus-Verdict` e `X-SES-Spam-Verdict`); o CondoOS recusa a mensagem com vírus (`FAIL`) e lê, com uma nota, a marcada como possível spam.
 4. **registro.br:** registro **MX** em `entrada` com prioridade 10 apontando para `inbound-smtp.sa-east-1.amazonaws.com`.
 5. **IAM → Users:** usuário `condoos-worker` só com `s3:ListBucket` no bucket e `s3:GetObject`, `s3:PutObject` e `s3:DeleteObject` em `inbound/*`, `processed/*` e `rejected/*`. Crie uma *access key*.
 6. **Variáveis do worker:** `INGEST_EMAIL_DOMAIN=entrada.condoos.ia.br`, `INBOUND_EMAIL_PROVIDER=s3`, `INBOUND_EMAIL_S3_BUCKET=condoos-entrada`, `INBOUND_EMAIL_S3_REGION=sa-east-1`, `INBOUND_EMAIL_S3_ACCESS_KEY_ID`, `INBOUND_EMAIL_S3_SECRET_ACCESS_KEY`. Em produção, o endereço sem a parte aleatória é recusado.

@@ -43,12 +43,25 @@ class InboundEmail:
     subject: str
     attachments: list[tuple[str, bytes]] = field(default_factory=list)
     message_hash: str = ""  # SHA-256 of the Message-ID (or of the raw message)
+    # Verdicts Amazon SES adds when spam and virus scanning is on (PASS, FAIL, GRAY...).
+    # Only FAIL is acted on: a forged header can only make the sender's own e-mail refused.
+    virus_verdict: str | None = None
+    spam_verdict: str | None = None
     sender_domain: str | None = None
 
 
 class InboundEmailProvider(Protocol):
     def fetch(self) -> Iterator[InboundEmail]: ...
     def ack(self, message: InboundEmail, ok: bool) -> None: ...
+
+
+def _verdict(msg: EmailMessage, header: str) -> str | None:
+    value = msg.get(header)
+    return str(value).strip().upper()[:20] if value else None
+
+
+VIRUS_REASON = "O provedor de e-mail detectou vírus na mensagem."
+SPAM_NOTE = "O provedor de e-mail marcou a mensagem como possível spam."
 
 
 def parse_eml(raw: bytes, ref: str) -> InboundEmail:
@@ -76,6 +89,8 @@ def parse_eml(raw: bytes, ref: str) -> InboundEmail:
         attachments=attachments,
         message_hash=digest,
         sender_domain=senders[0].rsplit("@", 1)[1].lower()[:255] if senders else None,
+        virus_verdict=_verdict(msg, "X-SES-Virus-Verdict"),
+        spam_verdict=_verdict(msg, "X-SES-Spam-Verdict"),
     )
 
 
@@ -246,6 +261,10 @@ async def process_inbound(session: AsyncSession, message: InboundEmail) -> Handl
         return Handled(InboundMessageStatus.RECUSADA.value)
     if await active_pause(session, condo.id, PAUSE_TYPE):
         return Handled(None)
+    if message.virus_verdict == "FAIL":
+        logger.warning("inbound email with virus verdict ref=%s", message.ref)
+        session.add(_log(message, condo.id, InboundMessageStatus.RECUSADA, reasons=[VIRUS_REASON]))
+        return Handled(InboundMessageStatus.RECUSADA.value)
     if not message.attachments:
         session.add(
             _log(message, condo.id, InboundMessageStatus.RECUSADA, reasons=["E-mail sem anexo."])
@@ -265,7 +284,9 @@ async def process_inbound(session: AsyncSession, message: InboundEmail) -> Handl
         )
     accepted = any(o.document_id is not None for o in outcomes)
     status = InboundMessageStatus.PROCESSADA if accepted else InboundMessageStatus.RECUSADA
-    session.add(_log(message, condo.id, status, outcomes))
+    # Possible spam is still read (an invoice may be misjudged); the note shows it.
+    note = [SPAM_NOTE] if message.spam_verdict == "FAIL" else None
+    session.add(_log(message, condo.id, status, outcomes, reasons=note))
     return Handled(status.value, outcomes)
 
 

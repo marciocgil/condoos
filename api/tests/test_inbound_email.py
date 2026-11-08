@@ -269,3 +269,31 @@ async def test_channel_health_and_changing_the_address(
     assert (await client.post(f"{path}/change-address")).status_code == 403
     await login(client, mailer, SINDICA_MIRANTE)
     assert (await client.get(path)).status_code == 404
+
+
+async def test_ses_virus_verdict_refuses_and_spam_is_noted(
+    bucket: tuple[FakeS3, S3EmailProvider], worker_engine: AsyncEngine
+) -> None:
+    s3, provider = bucket
+    acacias = await _condo(worker_engine, "jardim-das-acacias")
+    address = inbound_address(acacias)
+
+    def with_verdicts(virus: str, spam: str) -> bytes:
+        raw = _eml(address, ("nf.pdf", _pdf()))
+        head = f"X-SES-Virus-Verdict: {virus}\r\nX-SES-Spam-Verdict: {spam}\r\n".encode()
+        return head + raw
+
+    virus = with_verdicts("FAIL", "PASS")
+    spam = with_verdicts("PASS", "FAIL")
+    s3.objects["inbound/virus"] = virus
+    s3.objects["inbound/spam"] = spam
+    before = await _email_docs(worker_engine, acacias.id)
+    assert await poll_provider(sessionmaker_for(worker_engine), provider) == 1
+    assert "rejected/virus" in s3.objects and "processed/spam" in s3.objects
+    assert await _email_docs(worker_engine, acacias.id) == before + 1  # only the spam one
+    row = await _log(worker_engine, virus)
+    assert row is not None and row.status == "recusada" and row.documents == 0
+    assert row.reasons == [inbound.VIRUS_REASON]
+    row = await _log(worker_engine, spam)
+    assert row is not None and row.status == "processada"
+    assert row.reasons == [inbound.SPAM_NOTE]
