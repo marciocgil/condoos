@@ -28,7 +28,26 @@ test("gerente envia um recibo, corrige a extração e o item sai da fila", async
   });
   await expect(page.getByRole("list", { name: "Resultado do envio" })).toContainText("Recebido");
 
-  // The worker classifies and extracts in the background; wait for the queue item.
+  // The worker classifies and extracts in the background. With the full reader (Docling in
+  // the docker worker) or a model key, the receipt may be read completely and never need a
+  // correction: then there is nothing to correct and the flow does not apply.
+  const portfolio = await (await page.request.get("/api/portfolio")).json();
+  const acacias = portfolio.condominiums.find((c: { name: string }) =>
+    c.name.includes("Jardim das Acácias"),
+  );
+  let read: { extraction_status: string; needs_review: boolean } | undefined;
+  await expect(async () => {
+    const docs = (await (
+      await page.request.get(`/api/condominiums/${acacias.id}/documents`)
+    ).json()) as { original_filename: string; extraction_status: string; needs_review: boolean }[];
+    read = docs.find((d) => d.original_filename === filename);
+    expect(read && !["pending", "processing"].includes(read.extraction_status)).toBeTruthy();
+  }).toPass({ timeout: 90_000 });
+  test.skip(
+    read?.extraction_status === "done" && !read.needs_review,
+    "O recibo foi lido por completo, sem precisar de correção (leitor completo ou IA ativa).",
+  );
+
   const item = page.getByRole("listitem").filter({ hasText: filename });
   await expect(async () => {
     await page.goto("/admin/fila");
