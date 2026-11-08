@@ -11,7 +11,7 @@
 | LF2 Primeiro valor | **validado** — LG2 no docker em 08/11/2026 (D96) | ver abaixo |
 | LF3 Dados e reconciliação | **validado** — LG3 no docker em 08/11/2026 (D96) | `07-lf3-proposta-conflitos.md` |
 | LF4 Colaborativo | **validado** — LG4 no docker em 08/11/2026 (D96); sobras entregues e validadas no docker (D100) | `08-lf4-proposta-delegacao.md` |
-| LF5 | **LB-050/051 entregues com bucket simulado (D101)**; falta domínio para o SES real; LB-052..055 pendentes | `09-lf5-proposta-email-entrada.md` |
+| LF5 | **LB-050/051 entregues com bucket simulado e validados no docker (D101, `make e2e` 34 passaram)**; falta domínio para o SES real; LB-052..055 pendentes | `09-lf5-proposta-email-entrada.md` |
 | LF6–LF8 | nao_iniciado | `05-backlog.md` |
 
 **LF2-a entregue (D89):** LB-001 (`launch_state`, migração 0018), LB-002 (marcos por fatos), LB-003 (próximos passos), LB-004 (rotas), LB-005 (cartão de jornada no Hoje), LB-006/007 (cartão de primeiro valor no envio), LB-008 ("o que já fiz por você"), LB-010 (prontidão C1–C3), LB-021 (SEC-02), LB-090 parcial (eventos `launch.*`). Verificação: 322 testes do backend, lint backend e frontend, migração ida e volta, E2E `launch.spec.ts` passando numa stack local sem Docker (API e worker num processo, armazenamento em memória, `next dev`, substituto do Mailpit). Na suíte E2E inteira nessa stack, só `correction.spec.ts` falhou, e falha igual sem as mudanças desta fatia (efeito da stack local); **rodar `make e2e` na stack do docker** para confirmar.
