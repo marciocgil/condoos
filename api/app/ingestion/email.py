@@ -141,11 +141,16 @@ def provider_from_settings() -> InboundEmailProvider | None:
         import boto3
         from botocore.config import Config
 
-        key = s.inbound_email_s3_access_key_id or s.s3_access_key_id
-        secret = s.inbound_email_s3_secret_access_key or s.s3_secret_access_key
+        # Empty values (unset in docker compose) fall back to the storage credentials.
+        key = s.inbound_email_s3_access_key_id
+        secret = s.inbound_email_s3_secret_access_key
+        if key is None or not key.get_secret_value():
+            key = s.s3_access_key_id
+        if secret is None or not secret.get_secret_value():
+            secret = s.s3_secret_access_key
         client = boto3.client(
             "s3",
-            endpoint_url=s.inbound_email_s3_endpoint_url,
+            endpoint_url=s.inbound_email_s3_endpoint_url or None,
             region_name=s.inbound_email_s3_region,
             aws_access_key_id=key.get_secret_value(),
             aws_secret_access_key=secret.get_secret_value(),

@@ -75,17 +75,40 @@ Todas estão em `.env.example`. Segredos vêm do cofre do provedor (Secrets Mana
 - **Saúde:** `GET /health` na `api`. O `worker` não expõe HTTP: monitore a tabela `job` (itens `queued` antigos ou `failed` indicam problema).
 - **Backup:** PostgreSQL com PITR (7 dias no mínimo) e versionamento no bucket. Teste a restauração antes do piloto.
 
-## 7. E-mail de entrada (Amazon SES em São Paulo, D101)
+## 7. E-mail: entrada e saída pela Amazon SES em São Paulo (D101, D103)
 
-Feito uma vez, quando houver domínio. Nada é respondido ao remetente.
+Domínio do CondoOS: **`condoos.ia.br`** (DNS no registro.br). Uma conta AWS, região **São Paulo (`sa-east-1`)**, faz as duas coisas. Nenhuma caixa de e-mail é necessária: o sistema lê o que chega e as respostas aos pedidos vão para o e-mail do síndico ("responder para").
 
-1. **Subdomínio só para entrada**, por exemplo `entrada.seudominio.com.br` (não use o domínio do e-mail da empresa).
-2. **Bucket S3 em `sa-east-1`**, privado, só para a entrada (ex.: `condoos-entrada`), com uma regra de ciclo de vida que apaga `processed/` e `rejected/` depois de 30 dias. A política do bucket permite ao serviço SES gravar em `inbound/`.
-3. **SES (região São Paulo):** verificar o subdomínio; criar um *receipt rule set* ativo com uma regra para o subdomínio: varredura de spam e vírus ligada, recusar o que vier marcado e entregar ao S3 no prefixo `inbound/`.
-4. **DNS:** registro `MX 10 inbound-smtp.sa-east-1.amazonaws.com` no subdomínio.
-5. **Credencial do worker:** usuário IAM só com `ListBucket` no bucket e `GetObject`, `PutObject` e `DeleteObject` em `inbound/*`, `processed/*` e `rejected/*`.
-6. **Variáveis do worker:** `INGEST_EMAIL_DOMAIN=entrada.seudominio.com.br`, `INBOUND_EMAIL_PROVIDER=s3`, `INBOUND_EMAIL_S3_BUCKET`, `INBOUND_EMAIL_S3_REGION=sa-east-1` e a credencial do passo 5. Em produção, o endereço sem a parte aleatória é recusado.
-7. **Teste:** mande um e-mail com um PDF para o endereço de Configurações. Em até 30 s ele aparece em "E-mail de entrada" como processado, e o documento entra na fila de leitura.
+| Uso | Endereço | DNS |
+|---|---|---|
+| Saída (link de acesso e pedido de documentos) | `nao-responda@condoos.ia.br` | 3 CNAME do DKIM + TXT do DMARC |
+| Entrada (notas e boletos de cada condomínio) | `<slug>-<parte aleatória>@entrada.condoos.ia.br` | MX de `entrada` |
+
+O domínio principal (`condoos.ia.br`) continua livre para uma caixa de pessoas (Google Workspace, Zoho), se um dia houver.
+
+### 7.1 Saída
+
+1. **SES → Identities → Create identity → Domain:** `condoos.ia.br`, com *Easy DKIM* (RSA 2048). A Amazon mostra **3 registros CNAME**.
+2. **registro.br → domínio → DNS → Editar zona:** crie os 3 CNAME exatamente como mostrados. Crie também um TXT em `_dmarc` com `v=DMARC1; p=none`. Em até algumas horas, a identidade fica "Verified".
+3. **Sair do modo de teste:** SES → *Account dashboard* → *Request production access* (tipo transacional; descreva: "e-mails de acesso e pedidos de documentos aprovados pelo síndico, sem marketing"). Até a liberação, o SES só envia para endereços verificados.
+4. **SES → SMTP settings → Create SMTP credentials:** guarde o usuário e a senha (são mostrados uma vez).
+5. **Variáveis:** `SMTP_HOST=email-smtp.sa-east-1.amazonaws.com`, `SMTP_PORT=587` (o envio usa STARTTLS sozinho), `SMTP_USER`, `SMTP_PASSWORD`, `MAIL_FROM=CondoOS <nao-responda@condoos.ia.br>`.
+
+### 7.2 Entrada
+
+1. **S3 (São Paulo):** bucket privado `condoos-entrada`, com regra de ciclo de vida que apaga `processed/` e `rejected/` em 30 dias. Na política do bucket, permita ao serviço `ses.amazonaws.com` gravar em `inbound/*` (o console do SES oferece criar essa política na hora de escolher o bucket).
+2. **SES → Identities:** a identidade `condoos.ia.br` já cobre `entrada.condoos.ia.br`.
+3. **SES → Email receiving → Rule sets:** crie e **ative** um rule set com uma regra para `entrada.condoos.ia.br`: *spam and virus scanning* ligado, ação *Deliver to S3 bucket* `condoos-entrada`, prefixo `inbound/`. Antes, acrescente uma ação *Bounce* ou *Stop* para mensagens marcadas como vírus.
+4. **registro.br:** registro **MX** em `entrada` com prioridade 10 apontando para `inbound-smtp.sa-east-1.amazonaws.com`.
+5. **IAM → Users:** usuário `condoos-worker` só com `s3:ListBucket` no bucket e `s3:GetObject`, `s3:PutObject` e `s3:DeleteObject` em `inbound/*`, `processed/*` e `rejected/*`. Crie uma *access key*.
+6. **Variáveis do worker:** `INGEST_EMAIL_DOMAIN=entrada.condoos.ia.br`, `INBOUND_EMAIL_PROVIDER=s3`, `INBOUND_EMAIL_S3_BUCKET=condoos-entrada`, `INBOUND_EMAIL_S3_REGION=sa-east-1`, `INBOUND_EMAIL_S3_ACCESS_KEY_ID`, `INBOUND_EMAIL_S3_SECRET_ACCESS_KEY`. Em produção, o endereço sem a parte aleatória é recusado.
+
+### 7.3 Testar antes da hospedagem (no docker local)
+
+Com as variáveis de 7.1 e 7.2 no `.env` da raiz (nunca commitado), `make up` passa a enviar pela Amazon e a ler o bucket real. Os links dos e-mails apontam para `WEB_BASE_URL` (`http://localhost:3000`), então só abrem no próprio computador. Para voltar ao Mailpit, apague essas linhas do `.env` e rode `make up` de novo.
+
+- **Saída:** peça o link de acesso com um e-mail seu cadastrado (ou mande um pedido de documentos para o seu e-mail). Ele deve chegar na caixa de entrada, não no spam.
+- **Entrada:** mande, de qualquer e-mail, um PDF para o endereço de Ajustes. Em até 30 s, ele aparece em "E-mail de entrada" como processado.
 
 ## 8. Verificação de aceite
 

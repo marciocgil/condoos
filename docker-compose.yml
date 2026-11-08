@@ -8,8 +8,13 @@ x-api-env: &api-env
   DATABASE_ADMIN_URL: postgresql+asyncpg://postgres:${POSTGRES_PASSWORD:-postgres}@postgres:5432/condoos
   WEB_BASE_URL: ${WEB_BASE_URL:-http://localhost:3000}
   MAILER: smtp
-  SMTP_HOST: mailpit
-  SMTP_PORT: 1025
+  # Mailpit by default; set these in .env to send through Amazon SES (docs/deploy.md, 7).
+  SMTP_HOST: ${SMTP_HOST:-mailpit}
+  SMTP_PORT: ${SMTP_PORT:-1025}
+  SMTP_USER: ${SMTP_USER:-}
+  SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+  MAIL_FROM: ${MAIL_FROM:-CondoOS <nao-responda@condoos.local>}
+  INGEST_EMAIL_DOMAIN: ${INGEST_EMAIL_DOMAIN:-ingest.condoos.local}
   S3_ENDPOINT_URL: http://s3:8333
   S3_PUBLIC_ENDPOINT_URL: ${S3_PUBLIC_ENDPOINT_URL:-http://localhost:8333}
   S3_BUCKET: ${S3_BUCKET:-condoos-documents}
@@ -79,6 +84,12 @@ services:
       DOCUMENT_CONVERTER: auto
       HF_HUB_OFFLINE: "1"
       INBOUND_EMAIL_DIR: /inbound-email
+      # "s3" reads what Amazon SES stored in the inbound bucket (D101); default: the folder.
+      INBOUND_EMAIL_PROVIDER: ${INBOUND_EMAIL_PROVIDER:-none}
+      INBOUND_EMAIL_S3_BUCKET: ${INBOUND_EMAIL_S3_BUCKET:-}
+      INBOUND_EMAIL_S3_REGION: ${INBOUND_EMAIL_S3_REGION:-sa-east-1}
+      INBOUND_EMAIL_S3_ACCESS_KEY_ID: ${INBOUND_EMAIL_S3_ACCESS_KEY_ID:-}
+      INBOUND_EMAIL_S3_SECRET_ACCESS_KEY: ${INBOUND_EMAIL_S3_SECRET_ACCESS_KEY:-}
     volumes:
       # Drop .eml files here to simulate the condominium inboxes (<slug>@ingest.condoos.local).
       - ./data/inbound-email:/inbound-email

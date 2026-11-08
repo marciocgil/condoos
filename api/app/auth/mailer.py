@@ -50,8 +50,9 @@ class SmtpMailer:
             msg,
             hostname=s.smtp_host,
             port=s.smtp_port,
-            username=s.smtp_user,
-            password=s.smtp_password.get_secret_value() if s.smtp_password else None,
+            # Empty values (unset in docker compose) mean no login, as with Mailpit.
+            username=s.smtp_user or None,
+            password=(s.smtp_password.get_secret_value() or None) if s.smtp_password else None,
         )
         return message_id
 
