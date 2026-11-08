@@ -94,3 +94,18 @@ Sem registro no RDAP: `cienteapp.com.br`, `usaciente.com.br`, `fiqueciente.com.b
 1. "Ciente" é registrável como marca nominativa nas classes 9, 35, 36 e 42, ou só mista? Há anterioridade para CIENTE e CIENT?
 2. "Síndico Ciente" agrega proteção em relação a "Ciente" sozinho?
 3. CONFERI CONTABILIDADE e o software CONFERE impedem nomes com radical CONFER-? (para descartar ou manter "Conta Conferida" como slogan)
+
+## 7. Avaliação de "Eficiente" como marca-família (pedido do Marcio, 08/11/2026)
+
+Proposta avaliada: "Eficiente" como marca, com as frentes como complemento: Síndico Eficiente, Administração Eficiente, Condomínio Eficiente etc.
+
+| Ponto | Achado (F, 08/11/2026) ou leitura (I) |
+|---|---|
+| Uso no setor | A tagline da **Condomob** (Grupo Superlógica) é "A solução inteligente para uma gestão condominial **eficiente**" (F, `02`). "Eficiência" está na lista de palavras gastas do setor (`02`, §4). SíndicoNet publica artigo "técnicas do síndico eficiente" (F). App "Eficaz Cond" (gestão condominial) e "EFICIENT Sistemas de Gestão" na App Store (F) |
+| Domínios | `eficiente.com.br` (empresa, 2006) e `eficiente.com` (1999) registrados; `condominioeficiente.com.br` com pessoa física desde 2014; `sindicoeficiente.com.br`, `sindicoeficiente.com`, `condominioeficiente.com` e `administracaoeficiente.com` sem registro no RDAP (F) |
+| Registro de marca | Adjetivo de qualidade: tende a cair na proibição de sinal que designa qualidade do serviço (Lei 9.279/96, art. 124, VI). Proteção provável só como marca mista (logo), sem impedir concorrentes de usar "condomínio eficiente" em anúncios (I, a confirmar com advogado). USPTO: 2 resultados para "eficiente" e 0 para as combinações (F) |
+| Posicionamento | É autoelogio ("somos eficientes") e fala de eficiência/operação, não de prova e conferência. Contradiz o princípio "fato antes de adjetivo" (`08`) (I) |
+| Arquitetura | O elemento comum ("Eficiente") é genérico; o que muda ("Síndico", "Condomínio") também. O cliente não teria uma palavra própria para lembrar e buscar. "Administração Eficiente" soa como administradora, e o produto não substitui a administradora (I) |
+| Ponto forte | Clareza imediata e família de nomes fácil de estender (I) |
+
+**Conclusão:** não recomendado como marca. A ideia de família por frente é boa e pode ser aplicada com uma marca distintiva e complementos descritivos: **Ciente Contas** (conferência), **Ciente Contratos** (economia), **Ciente Manutenção** (operação), **Ciente Compras** (procurement), ou só as funções dentro do app. "Eficiente" pode entrar no texto, como benefício: "condomínio mais eficiente, síndico ciente".
