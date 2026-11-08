@@ -107,6 +107,7 @@ make e2e           # Playwright contra a stack (zera o limite de links por hora 
 make migrate seed  # migrações e seed no banco de DATABASE_ADMIN_URL
 make corpus        # regera o corpus fictício (determinístico)
 make accuracy      # relatório de acurácia por campo → docs/extraction_accuracy.md
+make accuracy-docling  # o mesmo no worker do docker, com Docling → docs/extraction_accuracy_docling.md
 make rules-eval    # casos plantados com o modelo real para R04/R07 (exige chave) → docs/rules_eval.md
 make chat-eval     # avaliação do chat ao vivo (exige ANTHROPIC_API_KEY) → docs/chat_eval.md
 make pilot         # aceite do Marco 6 (após reset + up) → docs/pilot/run.md
@@ -169,7 +170,7 @@ make pilot         # aceite do Marco 6 (após reset + up) → docs/pilot/run.md
 
 ### Pendências conhecidas
 
-- **Acurácia com o LLM** (D98, sem Docling): 26/30 (87%) sem revisão, meta 90%; 0 automático com dado divergente (o `objeto` era só redação; texto livre compara por conteúdo). Os erros restantes são fotos degradadas que foram para revisão; medir com Docling. Repetir sem custo com `LLM_MODE=replay make accuracy` (usa `api/corpus/cassettes/`).
+- **Acurácia com o LLM** (D98, D99): 26/30 (87%) sem revisão (meta 90%), com ou sem Docling; 0 automático com dado divergente. PDFs e XMLs 25/25; as 4 fotos degradadas do corpus vão para revisão com motivo. Meta conferida no piloto, sem afrouxar a confiança. Repetir sem custo: `LLM_MODE=replay make accuracy` ou `LLM_MODE=replay make accuracy-docling`.
 - Layouts CNAB não validados com arquivo real de banco (D28).
 - R04 com o modelo real: aprovada (`make rules-eval`, D98). A parte por IA da R07 ainda não tem caso plantado.
 - Sem chave de API, as explicações ficam no texto determinístico da regra (a reescrita por IA roda quando há chave).
