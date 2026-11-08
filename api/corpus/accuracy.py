@@ -44,12 +44,20 @@ def _fold(value: Any) -> Any:
     return value
 
 
-def same(kind: str, expected: Any, got: Any) -> bool:
+# Free-text fields: the model may add words around the same content ("Prestação de serviços
+# de limpeza..." for "limpeza..."). Containment counts as right there, and only there (D98).
+FREE_TEXT = {"objeto", "descricao", "discriminacao"}
+
+
+def same(kind: str, expected: Any, got: Any, field_name: str = "") -> bool:
     try:
         exp = normalize(kind, expected)  # type: ignore[arg-type]
     except InvalidValue:
         exp = expected
-    return bool(_fold(exp) == _fold(got))
+    a, b = _fold(exp), _fold(got)
+    if field_name in FREE_TEXT and isinstance(a, str) and isinstance(b, str) and a and b:
+        return a in b or b in a
+    return bool(a == b)
 
 
 @dataclass
@@ -116,7 +124,7 @@ async def evaluate() -> list[DocResult]:
             )
             for fname, expected in item["fields"].items():
                 got = analysis.values.get(fname)
-                ok = same(kinds[fname], expected, got)
+                ok = same(kinds[fname], expected, got, fname)
                 res.field_ok[fname] = ok
                 res.field_wrong[fname] = not ok and (got is not None or fname in required)
                 if not ok:

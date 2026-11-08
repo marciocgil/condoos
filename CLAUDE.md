@@ -169,9 +169,9 @@ make pilot         # aceite do Marco 6 (após reset + up) → docs/pilot/run.md
 
 ### Pendências conhecidas
 
-- **Acurácia com o LLM** (D98, sem Docling): 26/30 (87%) sem revisão, meta 90%; 1 automático com dado divergente (campo `objeto` do contrato, a confirmar com a seção "Campos não lidos corretamente"). Repetir sem custo com `LLM_MODE=replay make accuracy` (usa `api/corpus/cassettes/`).
+- **Acurácia com o LLM** (D98, sem Docling): 26/30 (87%) sem revisão, meta 90%; 0 automático com dado divergente (o `objeto` era só redação; texto livre compara por conteúdo). Os erros restantes são fotos degradadas que foram para revisão; medir com Docling. Repetir sem custo com `LLM_MODE=replay make accuracy` (usa `api/corpus/cassettes/`).
 - Layouts CNAB não validados com arquivo real de banco (D28).
 - R04 com o modelo real: aprovada (`make rules-eval`, D98). A parte por IA da R07 ainda não tem caso plantado.
 - Sem chave de API, as explicações ficam no texto determinístico da regra (a reescrita por IA roda quando há chave).
-- **Chat ao vivo** (D98): 28/33 (85%), zero vazamento; as 5 falhas vieram da soma errada em `search_expenses` e do verificador recusando números de trechos, ambos corrigidos. Repetir `make chat-eval` para confirmar ≥ 90%.
+- **Chat ao vivo** (D98): aprovado, 32/33 (97%) e zero vazamento, depois de corrigir a soma de `search_expenses` e o verificador de números de trechos.
 - O executável do Claude Code embutido no `claude-agent-sdk` segue termos comerciais da Anthropic (D54): revisar antes do piloto.
