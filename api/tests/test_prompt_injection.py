@@ -23,9 +23,10 @@ from app.db.session import sessionmaker_for
 from app.extraction.convert import Converted
 from app.extraction.heuristics import classify_text, prefill
 from app.extraction.llm_extract import _inputs
+from app.llm.client import ImageInput
 from app.llm.prompts import load_prompt
 from app.policy import CATALOGUE, evaluate
-from tests.helpers import condo_id
+from tests.helpers import condo_id, jpeg_bytes
 
 GUARD = "dado não confiável"
 INJECTION = (
@@ -67,6 +68,18 @@ def test_document_text_goes_inside_delimiters() -> None:
     text, attachments = _inputs(converted, CONTRACT.encode(), "application/pdf")
     assert attachments == []
     assert text.index("<documento>") < text.index(INJECTION) < text.index("</documento>")
+
+
+def test_photo_goes_as_image_even_with_ocr_text() -> None:
+    # D99: OCR text of a photo has letter and digit errors; the model reads the image better.
+    data = jpeg_bytes()
+    converted = Converted(
+        text="Viglare Seriços de Portaria Lita " * 20, page_count=1, engine="docling"
+    )
+    assert converted.quality == "good"
+    text, attachments = _inputs(converted, data, "image/jpeg")
+    assert "Viglare" not in text
+    assert len(attachments) == 1 and isinstance(attachments[0], ImageInput)
 
 
 def test_policy_never_reads_text() -> None:

@@ -131,7 +131,7 @@ make pilot         # aceite do Marco 6 (após reset + up) → docs/pilot/run.md
 - **Logs** só com ids, nunca dados de cliente.
 - **CPF** sempre mascarado (`app.core.br.mask_cpf`).
 - **Migrações** nunca importam listas do código da aplicação (congele os valores na migração).
-- **Extração:** nada de valor "chutado". Campo obrigatório abaixo de 0,9 → fila. A IA recebe só o texto quando há texto; o arquivo só quando não há.
+- **Extração:** nada de valor "chutado". Campo obrigatório abaixo de 0,9 → fila. A IA recebe só o texto quando há texto; o arquivo só quando não há. Foto ou imagem vai sempre como imagem, mesmo com texto do OCR (D99).
 - **Documento revisado por pessoa** (`reviewed_at`) nunca é reprocessado.
 - **Regras** são determinísticas; R04 e R07 usam IA só onde a parte determinística não decide, e sem IA ficam "não avaliadas". Toda mudança de regra exige teste positivo e negativo em `tests/test_rules.py` e manter `tests/test_planted_cases.py` exato (todos os positivos, nenhum extra).
 - **Achados** nunca usam "fraude", "desvio" ou "irregularidade comprovada" (o motor recusa).

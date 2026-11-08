@@ -75,12 +75,14 @@ def _inputs(
     converted: Converted, data: bytes, mime: str
 ) -> tuple[str, list[ImageInput | PdfInput]]:
     limit = get_settings().llm_max_text_chars
+    # A photo always goes as the image (D99): OCR text of a photo carries letter and digit
+    # errors that the model would copy; looking at the image it reads better.
+    if mime in IMAGE_TYPES:
+        return "O documento está em anexo (foto ou imagem).", [ImageInput(mime, data)]
     if converted.quality == "good" and len(converted.text) <= limit:
         return f"Texto do documento:\n<documento>\n{converted.text}\n</documento>", []
     if mime == PDF:
         return "O documento está em anexo (PDF).", [PdfInput(data)]
-    if mime in IMAGE_TYPES:
-        return "O documento está em anexo (foto ou imagem).", [ImageInput(mime, data)]
     return f"Texto do documento:\n<documento>\n{converted.text[:limit]}\n</documento>", []
 
 
