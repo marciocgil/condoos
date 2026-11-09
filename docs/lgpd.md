@@ -39,10 +39,10 @@ Mapeia cada requisito de privacidade (seção 12 da especificação e boas prát
 | 19 | Pessoa sempre decide; sistema não move dinheiro | ✅ | nenhuma integração de pagamento; chat só lê |
 | 20 | Relatórios com aviso de IA em toda página | ✅ | `app/reports/pdf.py`; teste por página |
 | 21 | Registro das operações de tratamento (ROPA) | ⏳ pendente | a administradora preenche com o modelo da tabela "Dados tratados" |
-| 22 | Contrato de operador com a administradora e com subprocessadores (Anthropic, hospedagem, e-mail) | ⏳ pendente | jurídico |
+| 22 | Acordo de tratamento de dados entre o condomínio (controlador) e o fornecedor do CondoOS (operador), com a lista de subprocessadores (Hostinger, AWS, Anthropic) e a transferência internacional para a IA | ⏳ minuta pronta, revisão jurídica e assinatura pendentes | D107; a administradora já é operadora do condomínio e não assina com o CondoOS; subprocessadores pelos termos padrão de cada um |
 | 23 | Canal do titular (acesso, correção, exclusão) | ⏳ pendente | hoje por solicitação à administradora; usuários são desativados por `app_user.is_active` |
 | 24 | Relatório de impacto (RIPD) antes do uso em escala | ⏳ pendente | após o piloto |
-| 25 | Revisão da licença do executável embutido no Agent SDK | ⏳ pendente | D54 |
+| 25 | Revisão da licença do executável embutido no Agent SDK | ✅ exceção aceita | D107 |
 | 27 | E-mail do pedido enviado pelo CondoOS (D103) | ✅ | só com aprovação do síndico; endereço do destinatário mascarado depois do envio (fica o SHA-256); pedido guarda só o domínio; texto sem valores nem dados financeiros; "responder para" é o e-mail do síndico, com o consentimento dado na D103 |
 | 26 | E-mail de entrada com dados no Brasil e registro mínimo | ✅ | SES e bucket em São Paulo; `inbound_message` guarda só o domínio do remetente e contagens (sem assunto, corpo ou endereço completo); mensagens apagadas do bucket de entrada em 30 dias; endereço com parte aleatória que o síndico pode trocar (D101) |
 

@@ -29,7 +29,7 @@ Como usar:
 - Perguntar só quando a escolha for difícil de desfazer (modelo de dados, contrato de API). O resto: decidir e registrar em `docs/decisions.md`.
 - **Dados sempre fictícios.** CNPJs com dígito verificador válido, gerados ao acaso (`app.core.br.generate_cnpj`). E-mails em subdomínios de `example.com`. Testes que rodam contra a stack (E2E) não cadastram fornecedor com CNPJ aleatório: um CNPJ válido pode ser de empresa real e a consulta à BrasilAPI traria dados reais. Use os fornecedores do seed (já enriquecidos, sem consulta).
 - Segredos só por variável de ambiente (`.env.example`). Nunca commitar `.env`.
-- Licenças: só MIT, Apache-2.0, BSD ou equivalentes no produto. Nada de n8n, Dify, GPL, AGPL ou LGPL. Na dúvida, perguntar.
+- Licenças: só MIT, Apache-2.0, BSD ou equivalentes no produto. Nada de n8n, Dify, GPL, AGPL ou LGPL. Na dúvida, perguntar. Única exceção: o executável do Claude Code dentro do `claude-agent-sdk` (D107).
 - Idioma: código, nomes e commits em inglês; interface, relatórios e mensagens ao usuário em português do Brasil.
 - Linguagem dos achados: "indício", "divergência", "ponto de atenção". Nunca "fraude", "desvio" ou "irregularidade comprovada".
 - Prompts de LLM em `api/app/prompts/*.md`; toda chamada passa pelo cliente único que registra `llm_calls` (Marco 2).
@@ -179,4 +179,5 @@ make pilot         # aceite do Marco 6 (após reset + up) → docs/pilot/run.md
 - R04 com o modelo real: aprovada (`make rules-eval`, D98). A parte por IA da R07 ainda não tem caso plantado.
 - Sem chave de API, as explicações ficam no texto determinístico da regra (a reescrita por IA roda quando há chave).
 - **Chat ao vivo** (D98): aprovado, 32/33 (97%) e zero vazamento, depois de corrigir a soma de `search_expenses` e o verificador de números de trechos.
-- O executável do Claude Code embutido no `claude-agent-sdk` segue termos comerciais da Anthropic (D54): revisar antes do piloto.
+- O executável do Claude Code embutido no `claude-agent-sdk` segue os termos comerciais da Anthropic: exceção à regra de licenças aceita pelo Marcio (D107), só para esse componente.
+- Antes de dados reais (D107): termo do piloto assinado pela síndica (minuta pronta, revisão jurídica pendente) e comunicado aos condôminos.
