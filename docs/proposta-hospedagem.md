@@ -1,6 +1,6 @@
 # Proposta: hospedagem do CondoOS para o piloto (AWS São Paulo)
 
-Data: 09/11/2026. **Aguardando decisão do Marcio.** Nada foi criado ainda. O Marcio achou as opções da AWS caras e pediu para considerar a Hostinger: ver a seção 7.
+Data: 09/11/2026. **Decidida em 09/11/2026 (D106): VPS KVM 4 da Hostinger** (seção 7), já contratada. O Marcio achou as opções da AWS caras. Passo a passo em `docs/deploy.md`, seção 9.
 
 ## 1. O que precisa rodar
 

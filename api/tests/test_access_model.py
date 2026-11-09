@@ -429,3 +429,25 @@ async def test_staff_assignment_table_is_isolated(admin_engine: AsyncEngine) -> 
     async with sessionmaker_for(admin_engine)() as s:
         rows = list(await s.scalars(select(CondoAssignment)))
     assert rows and all(r.condominium_id for r in rows)
+
+
+async def test_first_admin_on_an_empty_database(
+    mailer: MemoryMailer, admin_engine: AsyncEngine
+) -> None:
+    """Production starts with no one: the operator adds a person, grants the admin role and
+    the person signs in seeing no condominium until creating or being assigned one."""
+    from app.platform import PlatformError, add_person, grant_role
+
+    email = f"primeiro-admin-{uuid.uuid4().hex[:6]}@condoos.example.com"
+    async with sessionmaker_for(admin_engine)() as s, s.begin():
+        user = await add_person(s, email=email.upper(), name=" Primeira Admin ")
+        await grant_role(s, user=user, role=PlatformRole.CONDOOS_ADMIN, reason="Implantação")
+    async with sessionmaker_for(admin_engine)() as s:
+        with pytest.raises(PlatformError):
+            await add_person(s, email=email, name="De novo")
+        with pytest.raises(PlatformError):
+            await add_person(s, email="sem-arroba", name="X")
+    async with _client() as c:
+        await login(c, mailer, email)
+        me = (await c.get("/me")).json()
+        assert me["platform_roles"] == ["condoos_admin"] and me["condominiums"] == []

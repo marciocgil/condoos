@@ -1,5 +1,6 @@
 """Operator commands for CondoOS staff access (D77). Run with the owner database role.
 
+    python -m app.platform add-person  <email> "<nome>"
     python -m app.platform grant-role  <email> <condoos_admin|condoos_reviewer> "<motivo>"
     python -m app.platform revoke-role <email> <condoos_admin|condoos_reviewer>
     python -m app.platform assign      <email> <condoos_admin|condoos_reviewer> <slug> "<motivo>"
@@ -17,7 +18,15 @@ from sqlalchemy import select
 from app.db.enums import PlatformRole
 from app.db.models import CondoAssignment, Condominium
 from app.db.session import get_admin_engine, sessionmaker_for
-from app.platform import PlatformError, assign, grant_role, revoke_role, unassign, user_by_email
+from app.platform import (
+    PlatformError,
+    add_person,
+    assign,
+    grant_role,
+    revoke_role,
+    unassign,
+    user_by_email,
+)
 
 USAGE = __doc__ or ""
 
@@ -25,6 +34,10 @@ USAGE = __doc__ or ""
 async def run(argv: list[str]) -> str:
     if len(argv) < 3:
         raise PlatformError(USAGE)
+    if argv[0] == "add-person" and len(argv) == 3:
+        async with sessionmaker_for(get_admin_engine())() as session, session.begin():
+            await add_person(session, email=argv[1], name=argv[2])
+        return "Pessoa cadastrada."
     command, email, role_name, *rest = argv
     try:
         role = PlatformRole(role_name)

@@ -29,6 +29,24 @@ async def user_by_email(session: AsyncSession, email: str) -> AppUser:
     return user
 
 
+async def add_person(session: AsyncSession, *, email: str, name: str) -> AppUser:
+    """Register a person with no access at all, so a platform role can be granted to them
+    on an empty database (the first CondoOS admin in production)."""
+    normalized = normalize_email(email)
+    name = name.strip()
+    if "@" not in normalized or not name:
+        raise PlatformError("Informe um e-mail válido e o nome.")
+    if await session.scalar(select(AppUser.id).where(AppUser.email == normalized)):
+        raise PlatformError("Essa pessoa já está cadastrada.")
+    user = AppUser(id=uuid.uuid4(), name=name[:200], email=normalized)
+    session.add(user)
+    await session.flush()
+    await record_audit(
+        session, action="platform.person_added", object_type="app_user", object_id=user.id
+    )
+    return user
+
+
 async def active_grant(
     session: AsyncSession, user_id: uuid.UUID, role: PlatformRole
 ) -> PlatformRoleGrant | None:

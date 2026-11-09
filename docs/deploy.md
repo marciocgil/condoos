@@ -131,3 +131,102 @@ make chat-eval      # com ANTHROPIC_API_KEY: avaliação do chat (≥ 90%, zero 
 ```
 
 Checklist de privacidade: `docs/lgpd.md`.
+
+## 9. Piloto numa VPS da Hostinger (D106)
+
+Escolha do piloto (`docs/proposta-hospedagem.md`, seção 7): **VPS KVM 4 da Hostinger** (4 vCPU, 16 GB, Ubuntu 26.04 LTS, data center no Brasil) com tudo numa máquina (`docker-compose.prod.yml`: PostgreSQL, `api`, `worker`, `web` e **Caddy**, que tira o certificado HTTPS sozinho). Ficam na AWS São Paulo: e-mail (seção 7), **documentos** (bucket `condoos-documentos`) e o **backup diário cifrado** do banco (`backups/` no mesmo bucket). Servidor: `187.53.98.14`; endereço: `https://app.condoos.ia.br`.
+
+Arquivos: `docker-compose.prod.yml`, `deploy/Caddyfile`, `deploy/.env.production.example`, `deploy/setup-server.sh`, `deploy/backup.sh`, `deploy/restore.sh`. O `deploy/.env.production` (com as senhas) só existe no servidor e está no `.gitignore`.
+
+### 9.1 AWS: bucket dos documentos e usuário da aplicação
+
+1. **S3 → Criar bucket** em `sa-east-1`: nome `condoos-documentos`, *Bloquear todo o acesso público* ligado, **versionamento ativado**, criptografia padrão (SSE-S3).
+2. **Gerenciamento → Regra de ciclo de vida** `apagar-backups`: prefixo `backups/`, *Expirar versões atuais* em 30 dias e *Excluir permanentemente versões não atuais* em 1 dia.
+3. **IAM → Usuários → Criar** `condoos-app` (sem acesso ao console). Política em linha:
+   ```json
+   {
+     "Version": "2012-10-17",
+     "Statement": [
+       {"Effect": "Allow", "Action": "s3:ListBucket", "Resource": "arn:aws:s3:::condoos-documentos"},
+       {"Effect": "Allow", "Action": ["s3:GetObject", "s3:PutObject", "s3:DeleteObject"],
+        "Resource": "arn:aws:s3:::condoos-documentos/*"}
+     ]
+   }
+   ```
+   Crie a chave de acesso (*Aplicação executada fora da AWS*) e guarde-a no gerenciador de senhas. Ela entra em `S3_ACCESS_KEY_ID` e `S3_SECRET_ACCESS_KEY`. A entrada de e-mail continua com a chave do `condoos-worker`.
+
+### 9.2 DNS
+
+No registro.br, zona `condoos.ia.br`: registro **A** `app` → `187.53.98.14`. Confira com `dig +short app.condoos.ia.br` antes do passo 9.5 (o Caddy só tira o certificado com o nome apontando para o servidor).
+
+### 9.3 Preparar o servidor (uma vez)
+
+Do Mac, na pasta do projeto:
+
+```bash
+scp deploy/setup-server.sh root@187.53.98.14:
+ssh root@187.53.98.14 'bash setup-server.sh'
+```
+
+O script atualiza o sistema e liga as atualizações automáticas de segurança, abre no firewall só SSH, 80 e 443, instala o Docker (repositório oficial), cria o usuário `condoos` com a mesma chave SSH do root, desliga senha e login do root por SSH e cria 4 GB de swap. **Antes de fechar a sessão do root, teste em outra janela:** `ssh condoos@187.53.98.14`.
+
+### 9.4 Código e segredos
+
+```bash
+ssh condoos@187.53.98.14
+git clone https://github.com/marciocgil/condoos.git && cd condoos
+git checkout claude/exciting-gauss-d4lrhc
+cp deploy/.env.production.example deploy/.env.production && chmod 600 deploy/.env.production
+openssl rand -hex 24      # uma vez para cada senha
+nano deploy/.env.production
+```
+
+Preencha direto no servidor (nunca por chat ou e-mail). Guarde `BACKUP_PASSPHRASE` também no gerenciador de senhas: sem ela nenhum backup volta.
+
+### 9.5 Subir
+
+```bash
+docker compose -f docker-compose.prod.yml --env-file deploy/.env.production up -d --build
+docker compose -f docker-compose.prod.yml --env-file deploy/.env.production ps
+curl -s https://app.condoos.ia.br/api/health
+```
+
+A primeira montagem do `worker` (Docling) leva uns 15 minutos. A `api` aplica as migrações ao subir; o seed fica desligado.
+
+### 9.6 Primeiro acesso
+
+O banco nasce vazio. Cadastre a pessoa e dê o papel de Admin CondoOS (papel dono do banco):
+
+```bash
+C="docker compose -f docker-compose.prod.yml --env-file deploy/.env.production"
+$C exec api python -m app.platform add-person <seu-email> "<seu nome>"
+$C exec api python -m app.platform grant-role <seu-email> condoos_admin "Implantação do piloto"
+```
+
+Entre em `https://app.condoos.ia.br` com o link de acesso. O condomínio piloto é cadastrado pela Carteira ("Novo condomínio"), e o Admin fica atribuído a ele; ou por `app.onboarding` (seção 5). **Dados reais só depois dos itens da seção 5 de `docs/proposta-hospedagem.md`.**
+
+### 9.7 Backup e restauração
+
+```bash
+chmod +x deploy/backup.sh deploy/restore.sh
+deploy/backup.sh                          # primeiro backup, na mão
+crontab -e                                # acrescente a linha abaixo
+30 3 * * * /home/condoos/condoos/deploy/backup.sh >> /home/condoos/backup.log 2>&1
+```
+
+Restaurar (apaga o banco atual e volta o backup escolhido; pede para digitar RESTAURAR):
+
+```bash
+deploy/restore.sh condoos-AAAAMMDDTHHMMSSZ.sql.gz.enc
+```
+
+O teste de restauração é item obrigatório antes do piloto: faça um backup, cadastre algo, restaure e confira que o cadastro sumiu.
+
+### 9.8 Atualizar
+
+```bash
+cd ~/condoos && git pull
+docker compose -f docker-compose.prod.yml --env-file deploy/.env.production up -d --build
+```
+
+Faça um `deploy/backup.sh` antes de atualizar quando houver migração nova.
