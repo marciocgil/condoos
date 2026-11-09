@@ -58,7 +58,7 @@ Q-L01 assistida pelo Admin · Q-L02 síndico envia o link/texto · Q-L03 LF2 ant
 
 1. ~~Gates LG2, LG3 e LG4~~ **validados no docker (D96).**
 2. ~~Sobras da LF4~~ **entregues e validadas no docker (D100):** pedidos no desktop da equipe, "com você × com outros" no Hoje, limite por endereço na rota pública; `make e2e` 33 passaram, nenhuma falha.
-3. **LF5 (captura recorrente e canais):** e-mail de entrada entregue (D101) com bucket simulado; quando houver domínio, seguir `docs/deploy.md` seção 7. LB-052 e LB-055 entregues (D102). LB-053 entregue (D103): o CondoOS envia o e-mail do pedido com aprovação do síndico; envio real depende do domínio. Sobra da LF5 só o LB-054 (WhatsApp, contrato ⛓) e LB-054 (WhatsApp, contrato ⛓). Próxima fase pelo backlog: LF6. WhatsApp segue só especificado (⛓).
+3. **LF5 (captura recorrente e canais):** e-mail de entrada entregue (D101) com bucket simulado; quando houver domínio, seguir `docs/deploy.md` seção 7. LB-052 e LB-055 entregues (D102). LB-053 entregue (D103). Domínio `condoos.ia.br` configurado na AWS São Paulo (D104, D105): entrada real **funcionando** (primeiro e-mail recebido em 09/11/2026); envio real aguarda a liberação de produção do SES e um usuário com e-mail de verdade. Sobra da LF5 só o LB-054 (WhatsApp, contrato ⛓) e LB-054 (WhatsApp, contrato ⛓). Próxima fase pelo backlog: LF6. WhatsApp segue só especificado (⛓).
 
 ## Ritual de cada incremento
 
