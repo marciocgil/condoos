@@ -93,7 +93,14 @@ export default async function CarteiraPage() {
         <KpiCard
           label="Achados abertos"
           value={p.open_findings}
-          context={`${p.serious} ${p.serious === 1 ? "grave" : "graves"}`}
+          context={
+            <>
+              {`${p.serious} ${p.serious === 1 ? "grave" : "graves"} · `}
+              <Link href="/admin/achados" className="underline hover:text-fg">
+                ver achados
+              </Link>
+            </>
+          }
           tone={p.serious > 0 ? "attention" : "normal"}
           icon={<AlertTriangle size={18} />}
         />

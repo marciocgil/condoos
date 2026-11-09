@@ -76,3 +76,20 @@ test.describe("gerente", () => {
     );
   });
 });
+
+test("gerente abre a lista de achados no desktop e analisa um deles", async ({ page }) => {
+  test.skip(test.info().project.name !== "admin-desktop", "fluxo do desktop");
+  await loginAs(page, "diego.gerente@atlantida.example.com");
+  await page.getByRole("link", { name: "ver achados" }).click();
+  await expect(page.getByRole("heading", { name: "Achados", level: 1 })).toBeVisible();
+  const table = page.getByRole("table", { name: "Achados" });
+  await expect(table.getByRole("row").nth(1)).toBeVisible();
+  await page
+    .getByRole("navigation", { name: "Filtrar por condomínio" })
+    .getByRole("link", { name: /Acácias/ })
+    .click();
+  await expect(page).toHaveURL(/condominio=/);
+  await table.getByRole("row").nth(1).click();
+  await expect(page).toHaveURL(/\/admin\/achados\/[^/]+\/[^/]+$/);
+  await expect(page.getByText("Detalhe do achado")).toBeVisible();
+});

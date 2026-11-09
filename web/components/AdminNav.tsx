@@ -19,6 +19,7 @@ import {
   Settings,
   Store,
   Sun,
+  ShieldAlert,
   ShieldCheck,
 } from "lucide-react";
 import Link from "next/link";
@@ -32,6 +33,7 @@ const ITEMS = [
   { href: "/admin/hoje", label: "Hoje", icon: Sun },
   { href: "/admin/carteira", label: "Carteira", icon: LayoutGrid },
   { href: "/admin/fila", label: "Fila de exceções", icon: Inbox, counter: true },
+  { href: "/admin/achados", label: "Achados", icon: ShieldAlert },
   { href: "/admin/validacao", label: "Validação", icon: GitCompare },
   { href: "/admin/assuntos", label: "Assuntos", icon: FolderKanban },
   { href: "/admin/pedidos", label: "Pedidos", icon: Send },

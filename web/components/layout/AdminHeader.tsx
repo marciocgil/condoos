@@ -9,7 +9,7 @@ import { LogoutButton } from "@/components/LogoutButton";
 const TITLES: [string, string][] = [
   ["/admin/carteira", "Carteira"],
   ["/admin/fila", "Fila de exceções"],
-  ["/admin/achados", "Fila de exceções"],
+  ["/admin/achados", "Achados"],
   ["/admin/enviar", "Fila de exceções"],
   ["/admin/fornecedores", "Fornecedores"],
   ["/admin/contratos", "Contratos"],
@@ -19,7 +19,7 @@ const TITLES: [string, string][] = [
 const SUB: [string, string][] = [
   ["/admin/fila/documento", "Corrigir extração"],
   ["/admin/fila/casamento", "Resolver casamento"],
-  ["/admin/achados", "Validar achado"],
+  ["/admin/achados/", "Detalhe do achado"],
   ["/admin/enviar", "Enviar documentos"],
 ];
 
@@ -28,10 +28,7 @@ export function AdminHeader({ companyName, userName }: { companyName: string; us
   const pathname = usePathname();
   const section = TITLES.find(([p]) => pathname.startsWith(p));
   const sub = SUB.find(([p]) => pathname.startsWith(p));
-  const sectionHref =
-    section?.[0] === "/admin/achados" || section?.[0] === "/admin/enviar"
-      ? "/admin/fila"
-      : section?.[0];
+  const sectionHref = section?.[0] === "/admin/enviar" ? "/admin/fila" : section?.[0];
   return (
     <header className="sticky top-0 z-10 flex h-16 items-center justify-between border-b border-line bg-bg/95 px-8 backdrop-blur">
       <nav
