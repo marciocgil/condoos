@@ -294,7 +294,7 @@ DOSSIER_FOOTER = (
 
 
 def compliance_dossier_pdf(d: dict[str, Any], generated_at: datetime) -> bytes:
-    """One compliance obligation (D109, CAP-08.06): situation, who decided it applies and why,
+    """One compliance obligation (D113, CAP-08.06): situation, who decided it applies and why,
     the documents and dates registered (and how each date was obtained) and the history."""
     buffer = io.BytesIO()
     title = f"Dossiê — {d['name']}"

@@ -250,7 +250,7 @@ class Builder:
         return out
 
     async def compliance_alerts(self) -> list[dict[str, Any]]:
-        """Documents of applicable obligations that expired or expire within 30 days (D108).
+        """Documents of applicable obligations that expired or expire within 30 days (D112).
         A missing document is not listed here: it shows on the compliance screen."""
         from app.compliance import rows_for
 

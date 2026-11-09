@@ -268,7 +268,7 @@ async def condominium_agenda(
 async def _compliance_events(
     session: AsyncSession, condominium_id: uuid.UUID, start: date, end: date, today: date
 ) -> list[Event]:
-    """Validity of documents registered for compliance obligations (D108): the expiry day
+    """Validity of documents registered for compliance obligations (D112): the expiry day
     and the day to start renewing (the obligation's lead time). Only applicable ones."""
     from app.compliance import rows_for
     from app.compliance.status import UNCONFIRMED

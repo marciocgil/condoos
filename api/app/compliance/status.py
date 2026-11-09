@@ -1,4 +1,4 @@
-"""The situation of an obligation, computed on every read and never stored (D108).
+"""The situation of an obligation, computed on every read and never stored (D112).
 
 Words are chosen with care: a missing record is "nenhum documento registrado no CondoOS",
 never "não cumprida"; nothing here says "irregular", "em conformidade" or "conforme".

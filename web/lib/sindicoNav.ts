@@ -1,4 +1,4 @@
-/** The síndico's phone menu by purpose (D111, docs/proposta-menu.md): four tabs, each with
+/** The síndico's phone menu by purpose (D115, docs/proposta-menu.md): four tabs, each with
  * its sections. URLs did not change; only how they are grouped. */
 export type Section = { slug: string; label: string };
 export type Tab = { key: string; label: string; sections: Section[] };

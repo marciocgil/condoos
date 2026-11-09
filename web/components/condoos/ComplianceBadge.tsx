@@ -26,7 +26,7 @@ const LOOK: Record<ComplianceCode, { tone: BadgeTone; icon: ReactNode }> = {
   arquivada: { tone: "neutral", icon: <Archive size={12} /> },
 };
 
-/** Situation of a compliance obligation (D108): always text and icon, never colour alone. */
+/** Situation of a compliance obligation (D112): always text and icon, never colour alone. */
 export function ComplianceBadge({ situation }: { situation: ComplianceSituation }) {
   const look = LOOK[situation.code];
   return (

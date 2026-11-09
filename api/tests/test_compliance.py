@@ -1,4 +1,4 @@
-"""Compliance and expiry dates (D108, FR-057): the catalogue only suggests, a person decides
+"""Compliance and expiry dates (D112, FR-057): the catalogue only suggests, a person decides
 whether an obligation applies, the situation is computed on read with careful words, the
 model reads a document's dates "a confirmar" (never invented), and the alerts reach the
 agenda, the briefing and the chat. Nothing leaves the system."""
@@ -316,7 +316,7 @@ async def test_document_dates_are_read_and_confirmed_by_a_person(
         assert n is not None
 
 
-# --------------------------------------------------------------------------- D109
+# --------------------------------------------------------------------------- D113
 
 
 async def test_building_profile_only_suggests(

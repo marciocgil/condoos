@@ -89,7 +89,7 @@ Data: 07/11/2026 (FR-046 revisto após D74). Fonte dos requisitos: Especificaç�
 | FR-054 | P1 | WP-18 | inexistente | Portal do fornecedor | nao_iniciado |
 | FR-055 | P1 | WP-21 | inexistente | RFQ | nao_iniciado |
 | FR-056 | P1 | WP-21 | inexistente | Comparador de propostas | nao_iniciado |
-| FR-057 | P1 | WP-16 | real (primeiro corte, D108) | Obrigações com aplicabilidade validada por pessoa, catálogo de candidatas, documento e validade (IA lê, pessoa confirma), situação calculada, avisos na Agenda e no Hoje, chat; falta perfil da edificação e dossiê | pronto_para_validar |
+| FR-057 | P1 | WP-16 | real (primeiro corte, D112) | Obrigações com aplicabilidade validada por pessoa, catálogo de candidatas, documento e validade (IA lê, pessoa confirma), situação calculada, avisos na Agenda e no Hoje, chat; falta perfil da edificação e dossiê | pronto_para_validar |
 | FR-058 | P1 | WP-21/10 | parcial (D83) | Aprovação com escopo, valor e versão congelados (hash), validade e alçada | Contratação em si continua proibida pelo sistema; aprovação pelo conselho | em_desenvolvimento |
 | FR-059 | P2 | WP-23 | parcial (ata indexada e ligada a aprovação) | Deliberação → tarefas | adiado |
 | FR-060 | P2 | WP-23 | inexistente | Obras e medição | adiado |

@@ -378,7 +378,7 @@ function Settings({ condominiumId, ob }: { condominiumId: string; ob: Compliance
   );
 }
 
-/** One compliance obligation (D108): its situation, whether it applies (a person decides),
+/** One compliance obligation (D112): its situation, whether it applies (a person decides),
  * the documents and dates registered (the model's reading waits for a person) and the history.
  * Nothing here is sent outside the system. */
 export function ComplianceDetailView({

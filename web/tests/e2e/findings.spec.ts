@@ -7,7 +7,7 @@ const GERENTE = "diego.gerente@atlantida.example.com";
 
 /** Opens, one by one, the October findings until one offers the wanted action. */
 async function openFindingWith(page: Page, action: string): Promise<string> {
-  await page.getByRole("link", { name: "Finanças" }).click(); // tab opens on Achados (D111)
+  await page.getByRole("link", { name: "Finanças" }).click(); // tab opens on Achados (D115)
   await expect(page).toHaveURL(/\/achados/);
   await page.goto(page.url().split("?")[0] + "?mes=2026-10");
   const hrefs = await page

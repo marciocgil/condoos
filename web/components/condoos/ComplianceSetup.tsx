@@ -9,7 +9,7 @@ import { Card } from "@/components/ui/Card";
 import { controlClass, Field } from "@/components/ui/Field";
 import { send } from "@/lib/client";
 
-/** Turning on the catalogue of common obligations and adding one by hand (D108). Both start
+/** Turning on the catalogue of common obligations and adding one by hand (D112). Both start
  * "a validar": nothing raises an alert before a person confirms it applies. */
 export function ComplianceSetup({
   condominiumId,

@@ -1,4 +1,4 @@
-"""Candidate obligations common in Brazilian condominiums (D108).
+"""Candidate obligations common in Brazilian condominiums (D112).
 
 Candidates only: whether one applies, and how often, depends on the city, the state, the
 building and its equipment. Nothing here cites a norm or states that an obligation applies;
@@ -17,7 +17,7 @@ class CatalogItem:
     name: str
     category: C
     months: int | None
-    # Building profile fields that make it probable (D109); empty: the profile says nothing.
+    # Building profile fields that make it probable (D113); empty: the profile says nothing.
     needs: tuple[str, ...] = ()
     needs_label: str = ""
 

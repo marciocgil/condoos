@@ -31,7 +31,7 @@ export function CaseForm({
   initialTitle,
 }: {
   condos: { id: string; name: string }[];
-  /** Prefill from another screen (e.g. renewing a compliance document, D108). */
+  /** Prefill from another screen (e.g. renewing a compliance document, D112). */
   initialTitle?: string;
   finding?: { id: string; title: string; condominiumId: string };
   opportunity?: { id: string; title: string; condominiumId: string };

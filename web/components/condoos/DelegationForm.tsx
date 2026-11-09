@@ -28,7 +28,7 @@ export function DelegationForm({
   initial,
 }: {
   condominiumId: string;
-  /** Prefill from another screen (e.g. a compliance obligation, D108). */
+  /** Prefill from another screen (e.g. a compliance obligation, D112). */
   initial?: { name?: string; role?: string; item?: string };
   /** Where the new request opens (base path + "/<id>"); defaults to the síndico's screen. */
   detailBase?: string;

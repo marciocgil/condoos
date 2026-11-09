@@ -437,7 +437,7 @@ class InboundMessageStatus(StrEnum):
 
 
 class ComplianceCategory(StrEnum):
-    """Area of a compliance obligation (D108)."""
+    """Area of a compliance obligation (D112)."""
 
     SEGURANCA_INCENDIO = "seguranca_incendio"
     SEGURO = "seguro"
@@ -452,7 +452,7 @@ class ComplianceCategory(StrEnum):
 
 
 class ComplianceApplicability(StrEnum):
-    """Whether an obligation applies, always decided by a person (D108; Plano D-10)."""
+    """Whether an obligation applies, always decided by a person (D112; Plano D-10)."""
 
     A_VALIDAR = "a_validar"
     APLICAVEL = "aplicavel"
@@ -460,7 +460,7 @@ class ComplianceApplicability(StrEnum):
 
 
 class EvidenceSource(StrEnum):
-    """Where the dates of a piece of evidence came from (D108)."""
+    """Where the dates of a piece of evidence came from (D112)."""
 
     PESSOA = "pessoa"  # typed or confirmed by a person
     IA = "ia"  # suggested by the model, to be confirmed
@@ -478,7 +478,7 @@ class ComplianceEventKind(StrEnum):
 
 
 class ReminderStatus(StrEnum):
-    """A weekly compliance e-mail (D109): accepted by the mail server, never "delivered"."""
+    """A weekly compliance e-mail (D113): accepted by the mail server, never "delivered"."""
 
     ENVIADO = "enviado"
     FALHOU = "falhou"

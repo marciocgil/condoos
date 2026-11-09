@@ -1,6 +1,6 @@
 # Proposta: conformidade e vencimentos (FR-057, WP-16, primeiro corte)
 
-Data: 09/11/2026. **Aprovada pelo Marcio em 09/11/2026 e implementada (D108).** Respostas: 1 sim, 2 sim, 3 sim, 4 já com a IA sugerindo a data "a confirmar", 5 sim.
+Data: 09/11/2026. **Aprovada pelo Marcio em 09/11/2026 e implementada (D112).** Respostas: 1 sim, 2 sim, 3 sim, 4 já com a IA sugerindo a data "a confirmar", 5 sim.
 
 Base: Especificação Mestra CAP-08 (conformidade, segurança e legal), FR-057 (P1: "vigência/aplicabilidade validada e lembretes"), Plano Diretor WP-16 (depende de WP-05 documentos e WP-07 assuntos/tarefas, ambos prontos) e Plano D-10 ("obrigações aplicáveis por condomínio: cadastro validado manualmente").
 
@@ -55,7 +55,7 @@ Palavras proibidas na tela e no chat: "irregular", "em conformidade", "conforme"
 
 **3.7 Nada sai do sistema.** Os avisos ficam só dentro do app (Hoje e Agenda), como o briefing (D82). Lembrete por e-mail seria um segundo envio externo e pede decisão nova.
 
-## 4. Modelo (migração 0024)
+## 4. Modelo (migração 0025)
 
 | Tabela | Campos principais | Regras |
 |---|---|---|
@@ -67,7 +67,7 @@ A volta da migração apaga as três tabelas (nenhum dado existente é alterado)
 
 ## 5. Fora deste corte
 
-**Atualização (09/11/2026, D109):** perfil da edificação (só sugere), dossiê em PDF e resumo semanal por e-mail ao síndico foram aprovados e entregues. A leitura da validade pela IA entrou já no primeiro corte (D108).
+**Atualização (09/11/2026, D113):** perfil da edificação (só sugere), dossiê em PDF e resumo semanal por e-mail ao síndico foram aprovados e entregues. A leitura da validade pela IA entrou já no primeiro corte (D112).
 
 
 - Leitura automática da validade pela IA na apólice e no laudo (segundo corte, sempre "a confirmar").
@@ -80,7 +80,7 @@ Situação calculada nas 5 condições e na troca de evidência; catálogo entra
 
 ## 7. Decisões que preciso
 
-1. **Aprovar o primeiro corte e a migração 0024** como descritos (seções 3 e 4).
+1. **Aprovar o primeiro corte e a migração 0025** como descritos (seções 3 e 4).
 2. **Catálogo com periodicidade sugerida** marcada "confirme com o responsável técnico" (recomendo), ou sem nenhuma periodicidade até alguém informar?
 3. **Quem valida a aplicabilidade:** síndico e gerente da administradora (recomendo), ou só o síndico?
 4. **Validade digitada pela pessoa** neste corte, com a leitura pela IA no segundo (recomendo), ou já com a IA sugerindo a data "a confirmar"?

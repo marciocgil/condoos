@@ -11,7 +11,7 @@ import { send } from "@/lib/client";
 import { formatDateTime } from "@/lib/format";
 import type { ComplianceList } from "@/lib/types";
 
-/** The weekly compliance e-mail (D109): off until the síndico turns it on; only to the
+/** The weekly compliance e-mail (D113): off until the síndico turns it on; only to the
  * condominium's síndico, only when something expired or expires within 30 days. */
 export function ComplianceReminderCard({
   condominiumId,

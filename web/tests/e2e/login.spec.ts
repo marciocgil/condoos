@@ -10,7 +10,7 @@ test("síndica entra pelo link mágico e vê só o próprio condomínio", async 
     "Condomínio Residencial Jardim das Acácias",
   );
   await expect(page.getByTestId("amount-at-risk")).toBeVisible();
-  await page.getByRole("link", { name: "Documentos", exact: true }).click(); // tab: Contratos (D111)
+  await page.getByRole("link", { name: "Documentos", exact: true }).click(); // tab: Contratos (D115)
   await expect(page.getByText("Vigilare Serviços de Portaria Ltda").first()).toBeVisible();
 });
 

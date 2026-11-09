@@ -44,7 +44,7 @@ Mapeia cada requisito de privacidade (seção 12 da especificação e boas prát
 | 24 | Relatório de impacto (RIPD) antes do uso em escala | ⏳ pendente | após o piloto |
 | 25 | Revisão da licença do executável embutido no Agent SDK | ✅ exceção aceita | D107 |
 | 27 | E-mail do pedido enviado pelo CondoOS (D103) | ✅ | só com aprovação do síndico; endereço do destinatário mascarado depois do envio (fica o SHA-256); pedido guarda só o domínio; texto sem valores nem dados financeiros; "responder para" é o e-mail do síndico, com o consentimento dado na D103 |
-| 28 | Resumo semanal de vencimentos por e-mail (D109) | ✅ | só para o síndico do próprio condomínio, desligado até ele ligar; só nome da obrigação, data e link (sem valores nem dados de terceiros); registro do envio só com ids, semana e contagem; pausa no kill switch |
+| 28 | Resumo semanal de vencimentos por e-mail (D113) | ✅ | só para o síndico do próprio condomínio, desligado até ele ligar; só nome da obrigação, data e link (sem valores nem dados de terceiros); registro do envio só com ids, semana e contagem; pausa no kill switch |
 | 26 | E-mail de entrada com dados no Brasil e registro mínimo | ✅ | SES e bucket em São Paulo; `inbound_message` guarda só o domínio do remetente e contagens (sem assunto, corpo ou endereço completo); mensagens apagadas do bucket de entrada em 30 dias; endereço com parte aleatória que o síndico pode trocar (D101) |
 
 ## Dados enviados à IA (Anthropic)

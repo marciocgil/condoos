@@ -59,7 +59,7 @@ test("gerente vê a conformidade de um condomínio no desktop", async ({ page })
   await expect(page.getByText(/Vence em \d+ dias/)).toBeVisible();
   await expect(page.getByText(/Decidido por Ana/)).toBeVisible();
   await expect(page.getByRole("button", { name: "Registrar decisão" })).toBeVisible();
-  // D109: the dossier of the obligation, as a PDF.
+  // D113: the dossier of the obligation, as a PDF.
   const dossier = page.getByRole("link", { name: "Baixar dossiê (PDF)" });
   const r = await page.request.get((await dossier.getAttribute("href"))!);
   expect(r.headers()["content-type"]).toBe("application/pdf");

@@ -540,7 +540,7 @@ class ChatTools:
         }
 
     async def list_compliance(self, args: dict[str, Any]) -> dict[str, Any]:
-        """Compliance obligations and the validity of their documents (D108). Never says
+        """Compliance obligations and the validity of their documents (D112). Never says
         whether the condominium is compliant: only what is registered."""
         from app.compliance import rows_for
         from app.core.time import local_today

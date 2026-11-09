@@ -1,4 +1,4 @@
-"""Building profile (D109): what the building has. It only SUGGESTS which catalogue
+"""Building profile (D113): what the building has. It only SUGGESTS which catalogue
 obligations probably apply or not; a person still validates each one (Plano D-10)."""
 
 from dataclasses import dataclass

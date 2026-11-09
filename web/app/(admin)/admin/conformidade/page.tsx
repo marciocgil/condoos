@@ -5,7 +5,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { apiGet } from "@/lib/api";
 import type { ComplianceList as ComplianceListData, Portfolio } from "@/lib/types";
 
-/** Compliance and expiry dates on the desktop (D108), one condominium at a time. */
+/** Compliance and expiry dates on the desktop (D112), one condominium at a time. */
 export default async function ConformidadeAdminPage({
   searchParams,
 }: {

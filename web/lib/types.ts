@@ -1021,7 +1021,7 @@ export interface MonthCoverage {
   }[];
 }
 
-// ---------------------------------------------------------------- compliance (D108)
+// ---------------------------------------------------------------- compliance (D112)
 
 export type ComplianceCode =
   | "vencido"

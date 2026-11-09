@@ -1,4 +1,4 @@
-"""Compliance obligations of the fictitious seed (D108): Jardim das Acácias has the catalogue
+"""Compliance obligations of the fictitious seed (D112): Jardim das Acácias has the catalogue
 on, three obligations validated by the síndica and the rest still "a validar". Dates are
 relative to today so the demo always shows one document expiring soon."""
 
@@ -21,7 +21,7 @@ async def seed_compliance(session: AsyncSession, today: date | None = None) -> N
     sindica = await session.scalar(select(AppUser).where(AppUser.email == SINDICA))
     if condo is None or sindica is None:
         return
-    # D109: what the building has (fictitious), so the catalogue shows suggestions.
+    # D113: what the building has (fictitious), so the catalogue shows suggestions.
     condo.building_profile = {
         "elevadores": 4,
         "reservatorios": True,

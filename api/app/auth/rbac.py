@@ -39,11 +39,11 @@ class Permission(StrEnum):
     MANAGE_LAUNCH = "manage_launch"
     # Delegated document requests (D95): revoke a link, close a request.
     MANAGE_DELEGATION = "manage_delegation"
-    # Compliance (D108). MANAGE: turn the catalogue on, create obligations, link documents
+    # Compliance (D112). MANAGE: turn the catalogue on, create obligations, link documents
     # and dates. VALIDATE: decide whether an obligation applies and how often (a person).
     MANAGE_COMPLIANCE = "manage_compliance"
     VALIDATE_COMPLIANCE = "validate_compliance"
-    # Turn the weekly compliance e-mail on or off (D109): the síndico only.
+    # Turn the weekly compliance e-mail on or off (D113): the síndico only.
     CONFIGURE_COMPLIANCE_EMAIL = "configure_compliance_email"
 
 

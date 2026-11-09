@@ -31,7 +31,7 @@ import { useEffect, useState } from "react";
 import { Logo } from "@/components/layout/Logo";
 import { cx } from "@/components/ui/cx";
 
-/** Who is looking: decides which items show (D111: each role sees what it uses). */
+/** Who is looking: decides which items show (D115: each role sees what it uses). */
 export type NavAccess = {
   permissions: string[]; // union of the user's permissions over its condominiums
   platform: boolean; // CondoOS staff (D77)
@@ -51,7 +51,7 @@ const can =
   (a: NavAccess) =>
     perms.some((p) => a.permissions.includes(p));
 
-/** Menu by purpose (D111, docs/proposta-menu.md): what to look at every day first, then the
+/** Menu by purpose (D115, docs/proposta-menu.md): what to look at every day first, then the
  * groups in order of use. Labels say what each item is for. */
 const GROUPS: Group[] = [
   {

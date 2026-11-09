@@ -77,7 +77,7 @@ async def _schedule_daily(maker: Any) -> None:
             dedupe_key=f"retention:{date.today().isoformat()}",
         )
         # Hourly: the weekly compliance e-mail goes out on Monday from 8h in each
-        # condominium's time zone (D109); the handler decides, at most once a week.
+        # condominium's time zone (D113); the handler decides, at most once a week.
         await enqueue(
             session,
             REMINDER_JOB,

@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 import { cx } from "@/components/ui/cx";
 import { locate } from "@/lib/sindicoNav";
 
-/** Sections of the current tab on the síndico's phone (D111), shown on the list screens of
+/** Sections of the current tab on the síndico's phone (D115), shown on the list screens of
  * tabs with more than one section; detail screens keep their own "back" link. */
 export function SectionNav({ condominiumId }: { condominiumId: string }) {
   const pathname = usePathname();

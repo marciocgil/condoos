@@ -2,7 +2,7 @@ import { ComplianceList } from "@/components/condoos/ComplianceList";
 import { apiGet } from "@/lib/api";
 import type { ComplianceList as ComplianceListData } from "@/lib/types";
 
-/** Compliance and expiry dates on the síndico's phone (D108), a section of the Rotina tab (D111). */
+/** Compliance and expiry dates on the síndico's phone (D112), a section of the Rotina tab (D115). */
 export default async function ConformidadePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const data = await apiGet<ComplianceListData>(`/condominiums/${id}/compliance`);

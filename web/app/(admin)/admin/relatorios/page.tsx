@@ -10,7 +10,7 @@ import { apiGet } from "@/lib/api";
 import { competenceParam, formatMonthTitle } from "@/lib/format";
 import type { ComplianceList, MonthlyReport, Portfolio } from "@/lib/types";
 
-/** Reports in one place (D111): monthly reports, the decision trail and the compliance
+/** Reports in one place (D115): monthly reports, the decision trail and the compliance
  * dossiers of one condominium, for the board and the assembly. */
 export default async function RelatoriosAdminPage({
   searchParams,

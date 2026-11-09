@@ -1,4 +1,4 @@
-"""Weekly compliance e-mail to the síndico (D109), the second thing the system sends out.
+"""Weekly compliance e-mail to the síndico (D113), the second thing the system sends out.
 
 Rules: off until the síndico turns it on; only to the condominium's own síndicos (active
 membership); only when a document of an applicable obligation expired or expires within 30

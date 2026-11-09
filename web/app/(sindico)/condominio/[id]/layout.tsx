@@ -11,7 +11,7 @@ import { apiGet } from "@/lib/api";
 import type { Condominium } from "@/lib/types";
 
 /** Mobile shell of the síndico (reference width 390 px): four tabs by purpose and the sections
- * of the current tab (D111). */
+ * of the current tab (D115). */
 export default async function SindicoLayout({
   children,
   params,

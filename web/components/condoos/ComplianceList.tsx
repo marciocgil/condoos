@@ -44,7 +44,7 @@ const SUMMARY: [keyof ComplianceListData["counts"], string, string][] = [
   ["a_validar", "a validar", "a validar"],
 ];
 
-/** Compliance obligations of one condominium (D108), most urgent first. Shows only what is
+/** Compliance obligations of one condominium (D112), most urgent first. Shows only what is
  * registered in the CondoOS: whether an obligation applies is a person's decision. */
 export function ComplianceList({
   condominiumId,

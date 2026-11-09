@@ -14,7 +14,7 @@ const ICON: Record<string, LucideIcon> = {
   documentos: FileSignature,
 };
 
-/** Four tabs by purpose (D111): each opens its first section; the others are inside. */
+/** Four tabs by purpose (D115): each opens its first section; the others are inside. */
 export function BottomTabs({ condominiumId }: { condominiumId: string }) {
   const pathname = usePathname();
   const current = locate(pathname)?.tab.key;

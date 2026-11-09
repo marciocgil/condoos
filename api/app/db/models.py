@@ -146,11 +146,11 @@ class Condominium(IdTimestampMixin, Base):
     inbound_token: Mapped[str] = mapped_column(
         String(16), unique=True, default=lambda: new_inbound_token()
     )
-    # What the building has (D109): only suggests which compliance obligations apply.
+    # What the building has (D113): only suggests which compliance obligations apply.
     building_profile: Mapped[dict[str, Any]] = mapped_column(
         Json, default=dict, server_default=sql_text("'{}'")
     )
-    # Weekly compliance e-mail to the síndico (D109): off until the síndico turns it on.
+    # Weekly compliance e-mail to the síndico (D113): off until the síndico turns it on.
     compliance_email_enabled: Mapped[bool] = mapped_column(
         Boolean, default=False, server_default="false"
     )
@@ -1219,7 +1219,7 @@ class InboundMessage(IdTimestampMixin, Base):
 
 
 class ComplianceObligation(IdTimestampMixin, Base):
-    """Something the condominium must keep valid (AVCB, insurance, inspections...), D108.
+    """Something the condominium must keep valid (AVCB, insurance, inspections...), D112.
 
     Applicability and periodicity are decided by a person; the catalogue only suggests.
     The situation (in force, expiring, expired...) is computed on read, never stored."""
@@ -1290,7 +1290,7 @@ class ComplianceEvent(IdTimestampMixin, Base):
 
 
 class ComplianceReminder(IdTimestampMixin, Base):
-    """One weekly compliance e-mail to one síndico (D109). Append only; ids, week and counts
+    """One weekly compliance e-mail to one síndico (D113). Append only; ids, week and counts
     only (no address, no content)."""
 
     __tablename__ = "compliance_reminder"

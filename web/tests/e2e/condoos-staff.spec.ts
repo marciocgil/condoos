@@ -17,7 +17,7 @@ test.describe("equipe CondoOS (D77)", () => {
     await expect(table).toContainText("Mirante do Vale");
     await expect(table).not.toContainText("Jardim das Acácias");
     await expect(page.getByRole("link", { name: "Novo condomínio" })).toHaveCount(0);
-    // D111: the menu hides what the role does not use; the page still refuses.
+    // D115: the menu hides what the role does not use; the page still refuses.
     await expect(page.getByRole("link", { name: "Dados do condomínio" })).toHaveCount(0);
     await page.goto("/admin/configuracoes");
     await expect(page.getByText("Sem permissão")).toBeVisible();

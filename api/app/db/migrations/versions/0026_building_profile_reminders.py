@@ -1,4 +1,4 @@
-"""Building profile and the weekly compliance e-mail (D109).
+"""Building profile and the weekly compliance e-mail (D113).
 
 - ``condominium.building_profile`` (JSON): what the building has (elevators, piped gas...).
   It only suggests which obligations probably apply; a person still validates each one.
@@ -9,8 +9,8 @@
 
 Approved by Marcio on 09/11/2026. Additive. Downgrade drops the table and both columns.
 
-Revision ID: 0025
-Revises: 0024
+Revision ID: 0026
+Revises: 0025
 """
 
 from collections.abc import Sequence
@@ -19,8 +19,8 @@ import sqlalchemy as sa
 from alembic import op
 from sqlalchemy.dialects import postgresql
 
-revision: str = "0025"
-down_revision: str | None = "0024"
+revision: str = "0026"
+down_revision: str | None = "0025"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 

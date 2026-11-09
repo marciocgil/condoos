@@ -1,4 +1,4 @@
-"""Compliance and expiry dates of a condominium (D108, FR-057).
+"""Compliance and expiry dates of a condominium (D112, FR-057).
 
 Seeing: everyone with VIEW. Turning the catalogue on, creating obligations and linking
 documents: MANAGE_COMPLIANCE. Deciding whether an obligation applies: VALIDATE_COMPLIANCE
@@ -412,7 +412,7 @@ async def archive_obligation(
     return {"ok": True}
 
 
-# --------------------------------------------------------------------------- D109
+# --------------------------------------------------------------------------- D113
 
 
 class ProfileIn(BaseModel):
@@ -450,7 +450,7 @@ class RemindersIn(BaseModel):
 
 @router.put("/condominiums/{condominium_id}/compliance/reminders")
 async def set_reminders(body: RemindersIn, access: CanEmail, db: DbSession) -> dict[str, bool]:
-    """The síndico turns the weekly compliance e-mail on or off (D109)."""
+    """The síndico turns the weekly compliance e-mail on or off (D113)."""
     condo = await db.get(Condominium, access.condominium_id)
     assert condo is not None
     if condo.compliance_email_enabled != body.enabled:

@@ -1,4 +1,4 @@
-"""Compliance and expiry dates (D108, FR-057, WP-16 first cut).
+"""Compliance and expiry dates (D112, FR-057, WP-16 first cut).
 
 - An obligation applies only when a person says so (``validate``); the catalogue only
   suggests candidates (``catalog.py``).

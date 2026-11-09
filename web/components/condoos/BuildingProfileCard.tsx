@@ -11,7 +11,7 @@ import type { ComplianceList } from "@/lib/types";
 
 type Values = Record<string, boolean | number>;
 
-/** What the building has (D109). It only suggests which obligations probably apply; each one
+/** What the building has (D113). It only suggests which obligations probably apply; each one
  * is still validated by a person. Blank means "não informado". */
 export function BuildingProfileCard({
   condominiumId,
