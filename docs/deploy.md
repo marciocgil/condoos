@@ -243,3 +243,5 @@ Feito em 09/11/2026: leitura (Docling e IA) dos 3 tipos, e-mail de entrada e cha
 3. No site: Carteira → Novo condomínio com dados fictícios e o **CNPJ 49.788.750/0001-69** (o do condomínio do corpus; com outro CNPJ, os documentos vão todos para a fila por "CNPJ do tomador não é o do condomínio", o que também é um resultado válido); envie `api/tests/fixtures/corpus/01_nfse.pdf`, `20_contrato.pdf` e `26_foto_nfse.jpg`; espere "Lido"; pergunte algo no chat; mande um e-mail com um desses anexos para o endereço de entrada mostrado em Ajustes.
 4. Restaure o backup do passo 1 (`deploy/restore.sh <nome>`): o banco volta ao estado anterior e os serviços sobem de novo com a consulta de CNPJ ligada.
 5. No console do S3, apague a pasta `cond/<id do condomínio de teste>/` do bucket `condoos-documentos` (arquivos sem registro no banco).
+
+Para o percurso completo (cadastro, acesso da síndica, pedido à administradora, envio pelo link, fila de exceções e resultados), siga `docs/pilot/teste-ponta-a-ponta.md`, que usa a mesma preparação e a mesma limpeza.
