@@ -16,14 +16,16 @@ Ensaiado do começo ao fim na stack local em 09/11/2026 (seção 9). As capturas
 
 ## 1. Quem faz o quê
 
-São quatro papéis. Uma pessoa só consegue fazer todos, usando navegadores ou janelas anônimas diferentes para cada um.
+São quatro papéis. Uma pessoa só consegue fazer todos, mas **cada papel precisa de uma sessão própria**: um navegador diferente, ou um perfil diferente do Chrome.
 
 | Papel | Onde | Como entra |
 |---|---|---|
-| **Admin CondoOS** (você) | Computador, `https://app.condoos.ia.br` | Link de acesso no seu e-mail |
-| **Revisora CondoOS** | Computador, outra janela anônima | Link de acesso num segundo e-mail seu |
-| **Síndica** | Celular, ou janela anônima com largura de celular | Link de acesso num terceiro e-mail seu |
-| **Administradora** | Qualquer navegador | **Sem conta**: só o link do pedido |
+| **Admin CondoOS** (você) | Chrome, janela normal | Link de acesso no seu e-mail |
+| **Revisora CondoOS** | Chrome, uma única janela anônima | Link de acesso num segundo e-mail seu |
+| **Síndica** | Celular, ou outro navegador (Edge, Safari, Firefox) | Link de acesso num terceiro e-mail seu |
+| **Administradora** | Sem login; de preferência outro navegador | **Sem conta**: só o link do pedido |
+
+**Atenção:** todas as janelas anônimas do mesmo navegador dividem uma só sessão. Duas janelas anônimas no Chrome fazem a segunda entrar logada como a primeira, e "Sair" numa derruba as duas. Use no máximo uma janela anônima por navegador, ou perfis separados do Chrome, um por papel.
 
 **E-mails em produção:** use endereços reais seus. O Gmail entrega `seu-email+sindica@gmail.com`, `seu-email+revisora@gmail.com` e `seu-email+administradora@gmail.com` na sua própria caixa, e cada um vale como uma pessoa diferente no CondoOS. Não use `@example.com` em produção: a Amazon devolve a mensagem e o link nunca chega (D105).
 
