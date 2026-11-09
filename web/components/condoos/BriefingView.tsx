@@ -6,6 +6,7 @@ import {
   Database,
   Gavel,
   Hammer,
+  Info,
   PiggyBank,
 } from "lucide-react";
 import Link from "next/link";
@@ -56,6 +57,9 @@ export function BriefingView({
   const sections = compact
     ? b.sections.filter((s) => s.count > 0 && s.key !== "dados")
     : b.sections;
+  // A source that never received anything is "starting", not "late" (LB-083, D108).
+  const starting = b.partial_sources.filter((p) => p.not_started);
+  const late = b.partial_sources.filter((p) => !p.not_started);
   return (
     <section aria-labelledby={`briefing-${b.id}`} className="space-y-4">
       <div className="flex flex-wrap items-start justify-between gap-2">
@@ -75,17 +79,35 @@ export function BriefingView({
           read={b.read_at !== null}
         />
       </div>
-      {b.partial_sources.length > 0 && (
+      {late.length > 0 && (
         <div
           role="note"
           className="rounded-[var(--radius-card)] border border-warning/60 bg-bg-2 p-3 text-[13px]"
         >
-          <p className="font-medium">Dados parciais</p>
+          <p className="flex items-center gap-1.5 font-medium">
+            <AlertTriangle size={14} aria-hidden className="text-warning" /> Dados parciais
+          </p>
           <ul className="mt-1 list-disc pl-5">
-            {b.partial_sources.map((p) => (
+            {late.map((p) => (
               <li key={p.source}>
                 {p.label}: {p.reason}
               </li>
+            ))}
+          </ul>
+        </div>
+      )}
+      {starting.length > 0 && (
+        <div
+          role="note"
+          data-testid="briefing-starting"
+          className="rounded-[var(--radius-card)] border border-line bg-bg-2 p-3 text-[13px]"
+        >
+          <p className="flex items-center gap-1.5 font-medium">
+            <Info size={14} aria-hidden className="text-info" /> Começando
+          </p>
+          <ul className="mt-1 list-disc pl-5 text-fg-2">
+            {starting.map((p) => (
+              <li key={p.source}>{p.reason}</li>
             ))}
           </ul>
         </div>

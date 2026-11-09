@@ -74,6 +74,7 @@ Política mínima e kill switch entregues com a VS-05 (D83); o produto continua 
 
 ## 6. Histórico desta página
 
+- 09/11/2026 — Experiência do síndico no piloto entregue (D108, LB-080..LB-086), sem migração: guia em passos com progresso calculado dos dados, documentos em conferência visíveis, "Seu mês" no Hoje depois do LM3, Hoje sem mensagens que se contradizem, severidade em texto, "Pergunte" só quando o chat responde e próximo ponto de atenção depois de decidir. Verificação local (stack sem Docker: PostgreSQL local, API e worker num processo, armazenamento em memória, substituto do Mailpit, build de produção do web): 378 testes do backend, lint backend e frontend, E2E 36 passaram e 1 falhou (`correction.spec.ts`, tela da gerente não alterada: o salvar não chega à API na leitura local sem Docling, a mesma falha já registrada para esta stack). FR-032 e FR-033 seguem `pronto_para_validar`, agora com a próxima ação do síndico. Capturas antes e depois em `docs/screens/piloto-d108/`. Falta `make e2e` no docker.
 - 09/11/2026 — Revisão de prontidão para o piloto (seção 1a): G0 com 5 de 6 pré-condições atendidas (falta o termo assinado); B4 resolvido; FR-031 medido; produção no ar (D106); rotação dos logs dos contêineres em produção.
 
 - 07/11/2026 — criação (prompt 01). Documentos vivos criados: `01-repo-audit.md`, `02-gap-matrix.md`, `03-decisions-register.md`, `product-roadmap.md`, `backlog.md`, `traceability.md`, `pilot-protocol.md`, esta página.

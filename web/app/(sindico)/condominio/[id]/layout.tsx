@@ -18,7 +18,10 @@ export default async function SindicoLayout({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const condo = await apiGet<Condominium>(`/condominiums/${id}`);
+  const [condo, chat] = await Promise.all([
+    apiGet<Condominium>(`/condominiums/${id}`),
+    apiGet<{ available: boolean }>(`/condominiums/${id}/chat/status`),
+  ]);
   return (
     <div className="mx-auto min-h-dvh max-w-md pb-36">
       <header className="flex items-center justify-between px-4 pt-5 pb-2" data-condo={condo.slug}>
@@ -34,9 +37,12 @@ export default async function SindicoLayout({
         </span>
       </header>
       <main className="space-y-5 px-4 pt-3">{children}</main>
-      <Suspense fallback={null}>
-        <AskButton condominiumId={id} />
-      </Suspense>
+      {/* Only when the chat can answer (LB-085, D108). */}
+      {chat.available && (
+        <Suspense fallback={null}>
+          <AskButton condominiumId={id} />
+        </Suspense>
+      )}
       <BottomTabs condominiumId={id} />
     </div>
   );

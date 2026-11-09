@@ -99,9 +99,9 @@ Data: 07/11/2026. IDs **LB-xxx** (sem colidir com CB-xxx do `docs/backlog.md`). 
 - **LB-050** Provedor de e-mail de entrada real (IMAP ou serviço), com mock · M · ✅ (D101: SES em São Paulo → S3, bucket simulado nos testes; falta o domínio). **LB-051** Saúde do canal: último documento, última leitura, falhas · M · ✅ (D101). **LB-052** Documento esperado com verificação de outros canais antes de acusar ausência (F03) · M · ✅ (D102). **LB-053** Envio de e-mail de pedido como tipo de ação L3 aprovado (se Q-L02) com recibo de envio ≠ entrega · G · ✅ (D103). **LB-054** WhatsApp oficial — **só especificação** até contrato ⛓. **LB-055** Cobertura por competência na Agenda · P · ✅ (D102).
 - **Gate LG5:** fatura não recebida, importação duplicada, e-mail desconectado, mensagem não entregue — sem falso sucesso.
 
-## Experiência do piloto (P0, proposta de 09/11/2026, aguardando o Marcio)
+## Experiência do piloto (P0) · ✅ entregue (D108)
 
-Proposta em `11-proposta-experiencia-piloto.md`. Sem migração; API só acrescenta campos.
+Proposta em `11-proposta-experiencia-piloto.md`, aprovada com Q-L07..Q-L10 nas recomendações. Sem migração; API só acrescenta campos. Todos os itens abaixo entregues (D108).
 
 - **LB-080** Guia em passos ("Passo X de N", tela com contexto, "Continuar o guia") · M. **LB-081** "Em conferência" visível no Hoje e em Contratos · P. **LB-082** Roteiro do mês no Hoje depois de LM3 · M. **LB-083** Hoje sem mensagens que se contradizem (mês fechado explícito, "ainda não começou" × "atrasado", plurais, "Hoje" no link de volta) · P. **LB-084** Severidade com texto na lista e explicada no detalhe · P. **LB-085** "Pergunte ao CondoOS" só quando o chat responde · P. **LB-086** Texto de cada decisão e "Próximo ponto de atenção" · P.
 - **Aceite:** nos roteiros da síndica nova (Bosque dos Ipês) e da síndica em operação (Acácias), o síndico não precisa sair do caminho indicado pela tela e nenhuma tela contradiz outra; E2E e capturas antes e depois.

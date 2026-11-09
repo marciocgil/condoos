@@ -4,40 +4,59 @@ import path from "node:path";
 import { expect, test } from "@playwright/test";
 
 import { loginAs } from "./auth";
+import { fictitiousCnpj } from "./files";
 
-// Launch F01 (D89): the síndica chooses a goal, sends a contract and sees what was read,
-// with the source of each field and the limits of the reading.
 const CONTRACT = path.resolve(__dirname, "../../../api/tests/fixtures/corpus/20_contrato.pdf");
 
-test("síndica escolhe o objetivo, envia um contrato e vê a primeira leitura", async ({
+// Launch F01 (D89) with the guided steps (LB-080, LB-081, D108): a new condominium's
+// síndica chooses a goal, follows "Passo 1 de N" to the upload screen that says what was
+// asked, sends a contract, sees the reading and goes back to the guide.
+test("síndica nova segue o guia passo a passo e volta a ele depois do envio", async ({
   page,
 }, info) => {
   test.skip(info.project.name !== "sindico-mobile", "fluxo do celular");
-  test.setTimeout(150_000);
-  await loginAs(page, "ana.sindica@acacias.example.com");
-  const resumo = page.url();
-  const id = resumo.match(/condominio\/([^/]+)/)?.[1];
-  // Start from no goal and a visible card, whatever earlier runs left.
-  await page.request.put(`/api/condominiums/${id}/launch/dismissed`, {
-    data: { dismissed: false },
+  test.setTimeout(180_000);
+  const tag = Date.now();
+  const sindica = `sindica.guia-${tag}@novo.example.com`;
+  await loginAs(page, "fabio.admin@condoos.example.com");
+  const created = await page.request.post("/api/portfolio/condominiums", {
+    data: {
+      condominium: {
+        name: `Condomínio Guia ${tag} (fictício)`,
+        slug: `guia-${tag}`,
+        cnpj: fictitiousCnpj(tag),
+        units: 24,
+        address: "Rua Fictícia do Guia, 10 — Cidade Modelo/SP",
+        approval_limits: null,
+      },
+      board: [
+        { name: "Síndica do Guia", position: "sindico", term_start: "2026-01-01", email: sindica },
+      ],
+    },
   });
-  await page.request.put(`/api/condominiums/${id}/launch/goal`, { data: { goal: null } });
-  await page.reload();
+  expect(created.status()).toBe(201);
 
+  await loginAs(page, sindica);
+  const id = page.url().match(/condominio\/([^/]+)/)?.[1];
   const card = page.getByTestId("journey-card");
   await expect(card.getByRole("heading", { name: "Implantação do seu assessor" })).toBeVisible();
   await card.getByRole("button", { name: "Economizar dinheiro" }).click();
   await expect(card.getByRole("list", { name: "Objetivo inicial" })).toBeHidden();
+  await expect(card.getByTestId("journey-progress")).toHaveText("Passo 1 de 5");
   await card.getByText("Marcos e o que cada função precisa").click();
   await expect(card.getByRole("list", { name: "Marcos" }).getByRole("listitem")).toHaveCount(5);
-  await expect(card.getByRole("list", { name: "Prontidão por função" })).toContainText(
-    "Leitura de contratos",
-  );
 
-  const unique = Buffer.concat([readFileSync(CONTRACT), Buffer.from(`\n% e2e ${Date.now()}\n`)]);
-  await page.goto(`/condominio/${id}/enviar`);
+  // The step leads to the upload screen, which says what was asked.
+  await card.getByRole("link", { name: "Envie um contrato de serviço contínuo" }).click();
+  await expect(page).toHaveURL(/\/enviar\?passo=enviar_contrato/);
+  await expect(page.getByTestId("upload-step")).toContainText(
+    "Envie um contrato de serviço contínuo",
+  );
+  await expect(page.getByRole("link", { name: "Hoje" }).first()).toBeVisible();
+
+  const unique = Buffer.concat([readFileSync(CONTRACT), Buffer.from(`\n% e2e ${tag}\n`)]);
   await page.getByLabel("Escolher arquivos").setInputFiles({
-    name: `contrato-e2e-${Date.now()}.pdf`,
+    name: `contrato-e2e-${tag}.pdf`,
     mimeType: "application/pdf",
     buffer: unique,
   });
@@ -45,10 +64,56 @@ test("síndica escolhe o objetivo, envia um contrato e vê a primeira leitura", 
   await expect(reading).not.toContainText("Lendo", { timeout: 120_000 });
   await expect(reading).toContainText("O que esta leitura não cobre");
   await expect(reading).toContainText("não uma auditoria");
-  // Every field says what it is: read, to confirm, or not found.
   await expect(reading.getByTestId("field-valor_mensal")).toContainText(
     /Lido no documento|A confirmar|Não encontrado/,
   );
+
+  // Back to the guide: the contract is either with the CondoOS team or already counted.
+  await page.getByTestId("continue-guide").click();
+  await expect(page).toHaveURL(new RegExp(`/condominio/${id}/resumo`));
+  const inReview = card.getByTestId("journey-in-review");
+  await expect(inReview.or(card.getByText("Passo 2 de 5")).first()).toBeVisible();
+  if (await inReview.isVisible()) {
+    await expect(inReview).toContainText(/em conferência|em leitura/);
+    await page.goto(`/condominio/${id}/contratos`);
+    await expect(page.getByTestId("contracts-in-review")).toContainText("em conferência");
+  }
+  // A new condominium is starting, not late.
+  await page.goto(`/condominio/${id}/resumo`);
+  const headline = page.getByText(/^(Bom dia|Boa tarde|Boa noite)\. Em /);
+  await expect(headline).toContainText("nada pendente com você hoje.");
+  await expect(headline).not.toContainText(/\(ões\)|\(s\)/);
+  await expect(page.getByTestId("briefing-starting")).toContainText(
+    "Ainda não recebemos documentos",
+  );
+});
+
+// LB-082, LB-083 (D108): a condominium in operation sees its month first, the implementation
+// in one line, and the audit block says which month it shows.
+test("síndica em operação vê o mês, a implantação resumida e o mês do resumo", async ({
+  page,
+}, info) => {
+  test.skip(info.project.name !== "sindico-mobile", "fluxo do celular");
+  await loginAs(page, "ana.sindica@acacias.example.com");
+  const id = page.url().match(/condominio\/([^/]+)/)?.[1];
+  await page.request.put(`/api/condominiums/${id}/launch/dismissed`, {
+    data: { dismissed: false },
+  });
+  await page.reload();
+  const month = page.getByTestId("month-routine");
+  await expect(month.getByRole("heading", { name: /^Seu mês: / })).toBeVisible();
+  const card = page.getByTestId("journey-card");
+  await expect(card).toContainText(/Implantação: \d de 5 marcos/);
+  await expect(card.getByRole("list", { name: "Objetivo inicial" })).toHaveCount(0);
+  await expect(page.getByTestId("audit-month")).toHaveText(
+    /^(Último mês fechado|Mês em aberto \(prévia\)): /,
+  );
+  const decide = month.getByRole("link", { name: "Decidir o primeiro" });
+  if (await decide.isVisible()) {
+    await decide.click();
+    await expect(page.getByRole("heading", { name: "Por que foi apontado" })).toBeVisible();
+    await expect(page.getByTestId("decision-effects")).toContainText("Ignorar: o ponto sai");
+  }
 });
 
 // LF2-b (D90): the CondoOS team follows implementations across the portfolio.

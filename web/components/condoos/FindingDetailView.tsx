@@ -29,6 +29,8 @@ export function FindingDetailView({
   opportunities = [],
   opportunityPath,
   canGenerateOpportunity = false,
+  nextHref,
+  homeHref,
 }: {
   finding: FindingDetail;
   condominiumId: string;
@@ -43,6 +45,9 @@ export function FindingDetailView({
   opportunities?: CaseRef[];
   opportunityPath?: string;
   canGenerateOpportunity?: boolean;
+  /** Síndico only: the next point waiting for a decision and Hoje (LB-086). */
+  nextHref?: string | null;
+  homeHref?: string;
 }) {
   const supplierLine = f.supplier
     ? `${f.supplier.name} · CNPJ ${f.supplier.registration_status === "ATIVA" ? "ativo" : (f.supplier.registration_status ?? "sem consulta").toLowerCase()}`
@@ -93,6 +98,11 @@ export function FindingDetailView({
             {formatBRL(f.amount_at_risk)}
           </p>
           <p className="text-[13px] text-fg-2">valor em risco · {formatMonth(f.competence)}</p>
+          {/* Severity and amount measure different things (LB-084, D108). */}
+          <p className="mt-1 text-[12px] text-muted" data-testid="severity-note">
+            A severidade vem do tipo de divergência apontada pela regra; o valor em risco mostra
+            quanto dinheiro está em jogo. Um valor alto pode ter severidade baixa.
+          </p>
         </div>
       </div>
 
@@ -122,7 +132,13 @@ export function FindingDetailView({
         />
       )}
 
-      <DecisionBar condominiumId={condominiumId} findingId={f.id} actions={f.allowed_actions} />
+      <DecisionBar
+        condominiumId={condominiumId}
+        findingId={f.id}
+        actions={f.allowed_actions}
+        nextHref={nextHref}
+        homeHref={homeHref}
+      />
 
       {f.validated_by_management && (
         <p className="inline-flex items-center gap-2 text-[13px] text-fg-2">

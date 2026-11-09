@@ -5,6 +5,7 @@ import { useState, type ChangeEvent } from "react";
 
 import { BatchProgress } from "@/components/condoos/BatchProgress";
 import { FirstValueCard } from "@/components/condoos/FirstValueCard";
+import { Button } from "@/components/ui/Button";
 import type { UploadResult } from "@/lib/types";
 
 // The first-value card follows at most this many new documents of one upload (LB-007).
@@ -132,6 +133,17 @@ export function UploadForm({ condominiumId }: { condominiumId: string }) {
             duplicate={r.duplicate}
           />
         ))}
+      {results.some((r) => r.document_id && !r.error) && (
+        // One way back to the guide after any upload (LB-080, D108). A full load, so Hoje
+        // shows what was just sent (in review, next step) and never a cached copy.
+        <Button
+          variant="primary"
+          data-testid="continue-guide"
+          onClick={() => window.location.assign(`/condominio/${condominiumId}/resumo`)}
+        >
+          Continuar o guia
+        </Button>
+      )}
     </div>
   );
 }

@@ -13,6 +13,7 @@
 | LF4 Colaborativo | **validado** — LG4 no docker em 08/11/2026 (D96); sobras entregues e validadas no docker (D100) | `08-lf4-proposta-delegacao.md` |
 | LF5 | **LB-050/051 entregues com bucket simulado e validados no docker (D101, `make e2e` 34 passaram)**; falta domínio para o SES real; LB-052 e LB-055 entregues (D102); LB-053 entregue (D103); LB-054 (WhatsApp) segue só especificado | `10-lb053-proposta-envio-pedido.md` | Proposta do LB-053: o CondoOS envia o e-mail do pedido (exceção a Q-L02 e D83, um só tipo, com aprovação) — aprovada e implementada (D103) |
 | `09-lf5-proposta-email-entrada.md` |
+| Experiência do piloto | **entregue** (D108): guia em passos, em conferência, Seu mês, Hoje coerente, severidade em texto, Pergunte só quando responde, próximo ponto de atenção | `11-proposta-experiencia-piloto.md` |
 | LF6–LF8 | nao_iniciado | `05-backlog.md` |
 
 **LF2-a entregue (D89):** LB-001 (`launch_state`, migração 0018), LB-002 (marcos por fatos), LB-003 (próximos passos), LB-004 (rotas), LB-005 (cartão de jornada no Hoje), LB-006/007 (cartão de primeiro valor no envio), LB-008 ("o que já fiz por você"), LB-010 (prontidão C1–C3), LB-021 (SEC-02), LB-090 parcial (eventos `launch.*`). Verificação: 322 testes do backend, lint backend e frontend, migração ida e volta, E2E `launch.spec.ts` passando numa stack local sem Docker (API e worker num processo, armazenamento em memória, `next dev`, substituto do Mailpit). Na suíte E2E inteira nessa stack, só `correction.spec.ts` falhou, e falha igual sem as mudanças desta fatia (efeito da stack local); **rodar `make e2e` na stack do docker** para confirmar.
@@ -42,7 +43,7 @@ Marcos do Launch **LM1–LM5** · fases **LF0–LF8** · gates **LG0–LG8** · 
 | `07-lf3-proposta-conflitos.md` | Proposta da LF3-b: conflitos de dados, Central de Validação, migração 0020 |
 | `08-lf4-proposta-delegacao.md` | Proposta da LF4: pedido delegado com link de envio, migração 0021, triagem de arquivos |
 | `09-lf5-proposta-email-entrada.md` | Proposta da LF5: e-mail de entrada real (SES São Paulo → S3), endereço com parte aleatória, saúde do canal, migração 0022 — aprovada e implementada (D101) |
-| `11-proposta-experiencia-piloto.md` | Proposta da fatia de experiência do síndico no piloto (LB-080..LB-086), antes da LF6, sem migração — **aguardando o Marcio** (Q-L07..Q-L10) |
+| `11-proposta-experiencia-piloto.md` | Fatia de experiência do síndico no piloto (LB-080..LB-086), antes da LF6, sem migração — aprovada e implementada (D108) |
 
 ## Perguntas para o Marcio — respondidas em 07/11/2026 (D89)
 
@@ -59,7 +60,7 @@ Q-L01 assistida pelo Admin · Q-L02 síndico envia o link/texto · Q-L03 LF2 ant
 
 1. ~~Gates LG2, LG3 e LG4~~ **validados no docker (D96).**
 2. ~~Sobras da LF4~~ **entregues e validadas no docker (D100):** pedidos no desktop da equipe, "com você × com outros" no Hoje, limite por endereço na rota pública; `make e2e` 33 passaram, nenhuma falha.
-3. **LF5 (captura recorrente e canais):** e-mail de entrada entregue (D101) com bucket simulado; quando houver domínio, seguir `docs/deploy.md` seção 7. LB-052 e LB-055 entregues (D102). LB-053 entregue (D103). Domínio `condoos.ia.br` configurado na AWS São Paulo (D104, D105): entrada real **funcionando** (primeiro e-mail recebido em 09/11/2026); envio real aguarda a liberação de produção do SES e um usuário com e-mail de verdade. Sobra da LF5 só o LB-054 (WhatsApp, contrato ⛓) e LB-054 (WhatsApp, contrato ⛓). Próxima fase pelo backlog: LF6. **Antes dela, proposta da experiência do piloto** (`11-proposta-experiencia-piloto.md`, 09/11/2026), aguardando decisão. WhatsApp segue só especificado (⛓).
+3. **LF5 (captura recorrente e canais):** e-mail de entrada entregue (D101) com bucket simulado; quando houver domínio, seguir `docs/deploy.md` seção 7. LB-052 e LB-055 entregues (D102). LB-053 entregue (D103). Domínio `condoos.ia.br` configurado na AWS São Paulo (D104, D105): entrada real **funcionando** (primeiro e-mail recebido em 09/11/2026); envio real aguarda a liberação de produção do SES e um usuário com e-mail de verdade. Sobra da LF5 só o LB-054 (WhatsApp, contrato ⛓) e LB-054 (WhatsApp, contrato ⛓). Próxima fase pelo backlog: LF6. **Antes dela, a experiência do piloto** (`11-proposta-experiencia-piloto.md`) foi aprovada e entregue em 09/11/2026 (D108). Próximo: LF6. WhatsApp segue só especificado (⛓).
 
 ## Ritual de cada incremento
 

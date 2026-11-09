@@ -143,6 +143,7 @@ export interface Summary {
   top: Finding[];
   expenses: number;
   expenses_total: string;
+  later_waiting?: { competence: string; waiting: number; amount_at_risk: string }[];
 }
 
 export interface TrailItem {
@@ -639,7 +640,7 @@ export interface Briefing {
   read_at: string | null;
   headline: string;
   sections: { key: string; title: string; count: number; items: BriefingItem[] }[];
-  partial_sources: { source: string; label: string; reason: string }[];
+  partial_sources: { source: string; label: string; reason: string; not_started?: boolean }[];
 }
 
 // --------------------------------------------------------------------------- actions (D83)
@@ -788,6 +789,31 @@ export interface Launch {
   readiness: CapabilityReadiness[];
   next_steps: LaunchStep[];
   done_for_you: { key: string; count: number; label: string }[];
+  progress: { done: number; total: number };
+  in_review: {
+    total: number;
+    by_type: Record<string, number>;
+    items: {
+      id: string;
+      doc_type: string;
+      doc_type_label: string;
+      filename: string;
+      state: "lendo" | "em_conferencia";
+      since: string;
+    }[];
+  };
+}
+
+// The síndico's month on "Hoje" (LB-082, D108).
+export interface LaunchMonth {
+  active: boolean;
+  month: string;
+  items: {
+    key: string;
+    title: string;
+    detail: string;
+    actions: { label: string; href: string; primary: boolean }[];
+  }[];
 }
 
 export interface FirstValueField {

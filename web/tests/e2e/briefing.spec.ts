@@ -8,7 +8,8 @@ test("síndica abre o Hoje, segue um item até a fonte e atualiza o briefing", a
   await loginAs(page, "ana.sindica@acacias.example.com");
   await expect(page.getByRole("link", { name: "Hoje" })).toHaveAttribute("aria-current", "page");
   await expect(page.getByRole("heading", { name: "Hoje", exact: true })).toBeVisible();
-  await expect(page.getByText(/decisão\(ões\) aguardam você/)).toBeVisible();
+  // Plain sentences, no "(ões)" (LB-083, D108).
+  await expect(page.getByText(/\d+ decis(ão aguarda|ões aguardam) você/)).toBeVisible();
   // The month's audit summary is still on the same screen.
   await expect(page.getByRole("heading", { name: "Auditoria do mês" })).toBeVisible();
 

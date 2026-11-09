@@ -1,6 +1,6 @@
 # Launch — proposta: experiência do síndico no piloto (LB-080..LB-086)
 
-Data: 09/11/2026. **Proposta, aguardando o Marcio.** Nada foi implementado.
+Data: 09/11/2026. **Aprovada pelo Marcio em 09/11/2026 com as recomendações (Q-L07..Q-L10) e implementada (D108).**
 
 ## 1. Por que esta fatia, antes da LF6
 

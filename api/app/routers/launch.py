@@ -18,6 +18,7 @@ from app.auth.rbac import CondoAccess, Permission
 from app.core.time import local_today
 from app.db.models import Condominium, Document
 from app.db.session import DbSession
+from app.launch.month import month_routine
 from app.launch.state import (
     first_value_seen,
     overview,
@@ -58,6 +59,13 @@ async def get_launch(condominium_id: uuid.UUID, access: CanView, db: DbSession) 
     out = await overview(db, condo, local_today(condo.timezone))
     out["can_manage"] = Permission.MANAGE_LAUNCH in access.permissions
     return out
+
+
+@router.get("/condominiums/{condominium_id}/launch/month")
+async def get_month(condominium_id: uuid.UUID, access: CanView, db: DbSession) -> dict[str, Any]:
+    """The síndico's month on "Hoje" (LB-082, D108); active only after LM3."""
+    condo = await _condo(db, access)
+    return await month_routine(db, condo.id, access, local_today(condo.timezone))
 
 
 @router.put("/condominiums/{condominium_id}/launch/goal")

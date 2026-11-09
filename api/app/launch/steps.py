@@ -150,3 +150,35 @@ def next_steps(
             continue
     keys = [k for k in ORDER.get(goal, ORDER[None]) if k in missing and k not in hidden]
     return [{**CATALOGUE[k].as_dict(), "primary": i == 0} for i, k in enumerate(keys[:MAX_STEPS])]
+
+
+def met(readiness: list[Readiness], open_cases: int) -> set[str]:
+    """Steps whose purpose is already achieved, from the data. Not the complement of
+    ``unmet``: a step that does not apply yet (invoices before any contract) is not done."""
+    by_key = {r.key: r for r in readiness}
+    c2 = by_key["C2"]
+    c3 = by_key["C3"].facts
+    c8 = by_key.get("C8")
+    out: set[str] = set()
+    if by_key["C1"].facts.get("documentos_lidos", 0) > 0:
+        out.add("enviar_convencao")
+    if c2.state != "nao_configurado":
+        out.add("enviar_contrato")
+        if c3.get("mes") and c3.get("contratos_com_cobranca", 0) >= c3.get("contratos_vigentes", 0):
+            out.add("enviar_faturas")
+    if c3.get("mes") and c3.get("movimentos_bancarios", 0) > 0:
+        out.add("enviar_extrato")
+    if open_cases > 0:
+        out.add("criar_assunto")
+    if c8 is not None and c8.state == "supervisionada":
+        out.add("pedir_documentos")  # every expected document arrived
+    return out
+
+
+def progress(goal: str | None, readiness: list[Readiness], open_cases: int) -> dict[str, int]:
+    """Where the síndico is on the chosen goal (LB-080, D108): steps of the goal's order
+    already achieved, out of all of them. Derived from the data on every read, like the steps
+    themselves; a step put off is still pending. Never a permission."""
+    order = ORDER.get(goal, ORDER[None])
+    done = met(readiness, open_cases)
+    return {"done": sum(1 for k in order if k in done), "total": len(order)}
