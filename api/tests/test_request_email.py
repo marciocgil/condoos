@@ -132,6 +132,7 @@ async def test_sindico_approves_the_exact_email_and_the_condoos_sends_it(
     await login(client, mailer, SINDICA_ACACIAS)
     detail = (await client.get(f"{base}/{req['id']}")).json()
     assert detail["shared_at"] is not None and detail["email"]["pending"] is None
+    assert detail["shared_by"] == "email"
     assert detail["email"]["history"][0]["status"] == "executada"
     assert detail["email"]["history"][0]["to"].startswith("c***@")
     assert "email_enviado" in await _kinds(admin_engine, req["id"])

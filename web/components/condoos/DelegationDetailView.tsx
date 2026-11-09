@@ -149,7 +149,7 @@ export function DelegationDetailView({
             <>
               <p className="text-sm text-fg-2">
                 {request.shared_at
-                  ? `Você marcou como enviado em ${formatDateTime(request.shared_at)}. Gerar de novo invalida o link anterior.`
+                  ? `${request.shared_by === "email" ? "O CondoOS enviou por e-mail" : "Você marcou como enviado"} em ${formatDateTime(request.shared_at)}. Gerar de novo invalida o link anterior.`
                   : "Gero um link só para envio de arquivos, válido por 7 dias, e um texto pronto."}
               </p>
               <Button

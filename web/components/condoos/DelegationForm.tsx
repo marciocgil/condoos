@@ -177,7 +177,8 @@ export function DelegationForm({
           Preparar pedido
         </Button>
         <p className="text-[12px] text-muted">
-          Não pedimos telefone nem e-mail: você envia o link pelo seu próprio canal.
+          Não guardamos telefone nem e-mail: você envia o link pelo seu canal ou, na próxima tela,
+          pede ao CondoOS para enviar por e-mail com a sua aprovação.
         </p>
       </div>
     </Card>

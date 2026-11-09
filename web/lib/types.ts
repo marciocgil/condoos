@@ -903,6 +903,7 @@ export interface DelegationDetail extends DelegationSummary {
     extraction_status: string;
   }[];
   can: { authorize: boolean; issue_link: boolean; attend: boolean; finish: boolean };
+  shared_by: "email" | "sindico" | null;
   email: RequestEmail;
 }
 

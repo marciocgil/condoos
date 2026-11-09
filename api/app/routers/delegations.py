@@ -20,7 +20,7 @@ from app.auth.rbac import CondoAccess, Permission
 from app.config import get_settings
 from app.core.ratelimit import WindowLimiter, client_ip
 from app.core.time import local_today
-from app.db.enums import OPEN_ACTION, ActionStatus, ExtractionStatus
+from app.db.enums import OPEN_ACTION, ActionStatus, DelegationEventKind, ExtractionStatus
 from app.db.models import (
     ActionDecision,
     Condominium,
@@ -123,10 +123,22 @@ def _summary(req: DelegationRequest) -> dict[str, Any]:
 
 
 async def _detail(db: DbSession, access: CondoAccess, req: DelegationRequest) -> dict[str, Any]:
-    events = await db.scalars(
-        select(DelegationEvent)
-        .where(DelegationEvent.request_id == req.id)
-        .order_by(DelegationEvent.created_at)
+    events = list(
+        await db.scalars(
+            select(DelegationEvent)
+            .where(DelegationEvent.request_id == req.id)
+            .order_by(DelegationEvent.created_at)
+        )
+    )
+    # Who shared the link last: the síndico's own statement or the CondoOS e-mail (D103).
+    shared_by = next(
+        (
+            "email" if e.kind == DelegationEventKind.EMAIL_ENVIADO.value else "sindico"
+            for e in reversed(events)
+            if e.kind
+            in (DelegationEventKind.COMPARTILHADO.value, DelegationEventKind.EMAIL_ENVIADO.value)
+        ),
+        None,
     )
     docs = await db.scalars(
         select(Document)
@@ -139,6 +151,7 @@ async def _detail(db: DbSession, access: CondoAccess, req: DelegationRequest) ->
         "email": await _email_block(db, access, req, open_),
         **_summary(req),
         "scope": req.scope,
+        "shared_by": shared_by,
         "items": req.items,
         "events": [
             {"kind": e.kind, "by_person": e.user_id is not None, "at": e.created_at.isoformat()}
