@@ -44,6 +44,10 @@ class SupplierRecord:
     registration_status: str | None = None
     registration_status_date: date | None = None
     partners: list[dict[str, str]] = field(default_factory=list)
+    # Used to check a condominium's own CNPJ before registering it (D119); not stored.
+    legal_nature_code: int | None = None
+    legal_nature: str | None = None
+    address: dict[str, str] | None = None
 
 
 class SupplierDataProvider(Protocol):
@@ -98,7 +102,37 @@ def parse_brasilapi(payload: dict[str, Any]) -> SupplierRecord:
             for p in payload.get("qsa") or []
             if p.get("nome_socio")
         ],
+        legal_nature_code=_int(payload.get("codigo_natureza_juridica")),
+        legal_nature=(payload.get("natureza_juridica") or "").strip() or None,
+        address=_address(payload),
     )
+
+
+def _int(value: Any) -> int | None:
+    try:
+        return int(str(value))
+    except (TypeError, ValueError):
+        return None
+
+
+def _address(payload: dict[str, Any]) -> dict[str, str] | None:
+    street = " ".join(
+        str(payload.get(k) or "").strip()
+        for k in ("descricao_tipo_de_logradouro", "logradouro")
+        if payload.get(k)
+    ).strip()
+    if not street and not payload.get("municipio"):
+        return None
+    parts = {
+        "street": street,
+        "number": str(payload.get("numero") or "").strip(),
+        "complement": str(payload.get("complemento") or "").strip(),
+        "district": str(payload.get("bairro") or "").strip(),
+        "city": str(payload.get("municipio") or "").strip(),
+        "state": str(payload.get("uf") or "").strip(),
+        "zip": only_digits(str(payload.get("cep") or "")),
+    }
+    return {k: v for k, v in parts.items() if v}
 
 
 class BrasilApiProvider:

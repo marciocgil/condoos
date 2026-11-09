@@ -19,6 +19,7 @@ from app.auth.service import normalize_email
 from app.core.audit import record_audit
 from app.core.br import is_valid_cnpj, only_digits
 from app.core.jobs import enqueue
+from app.core.ratelimit import WindowLimiter
 from app.core.time import is_valid_timezone, utcnow
 from app.data_issues import detect as detect_data_issues
 from app.db.enums import AdjustmentIndex, BoardPosition, PlatformRole, Role
@@ -422,6 +423,77 @@ async def update_contract(
 class NewCondominiumIn(BaseModel):
     condominium: CondoIn
     board: list[BoardIn] = Field(min_length=1)
+
+
+# Condominium CNPJ at the Receita (D119): legal nature code 308-5, "Condomínio Edilício".
+CONDOMINIUM_NATURE = 3085
+_cnpj_limiter = WindowLimiter(limit=30, window_seconds=600)
+
+
+class CnpjLookupOut(BaseModel):
+    cnpj: str
+    available: bool  # False: the Receita could not be reached now (saving still works)
+    found: bool = False
+    legal_name: str | None = None
+    trade_name: str | None = None
+    status: str | None = None  # ATIVA, BAIXADA, INAPTA, SUSPENSA, NULA
+    status_date: date | None = None
+    legal_nature: str | None = None
+    is_condominium: bool | None = None
+    address: dict[str, str] | None = None
+
+
+@router.get("/portfolio/cnpj/{cnpj}", response_model=CnpjLookupOut)
+async def lookup_condominium_cnpj(
+    cnpj: str, principal: CurrentPrincipal, db: DbSession
+) -> CnpjLookupOut:
+    """The Receita's record of a condominium's CNPJ, shown before registering it (D119).
+    Only for who can register a condominium; nothing is stored or logged but the result."""
+    from app.enrichment.suppliers import SupplierLookupUnavailable, get_provider
+
+    is_manager = await db.scalar(
+        select(Membership.id).where(
+            Membership.user_id == principal.user.id,
+            Membership.management_company_id.is_not(None),
+            Membership.role == Role.GERENTE.value,
+            *active_membership(),
+        )
+    )
+    is_admin = await active_grant(db, principal.user.id, PlatformRole.CONDOOS_ADMIN) is not None
+    if is_manager is None and not is_admin:
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN,
+            "Só o gerente da administradora ou o administrador CondoOS cadastra condomínios.",
+        )
+    digits = only_digits(cnpj)
+    if not is_valid_cnpj(digits):
+        raise _unprocessable("CNPJ inválido: confira os números.")
+    if not _cnpj_limiter.hit(str(principal.user.id), utcnow().timestamp()):
+        raise HTTPException(
+            status.HTTP_429_TOO_MANY_REQUESTS, "Muitas consultas seguidas. Tente em alguns minutos."
+        )
+    try:
+        record = await get_provider().lookup(digits)
+    except SupplierLookupUnavailable:
+        return CnpjLookupOut(cnpj=digits, available=False)
+    if record is None:
+        return CnpjLookupOut(cnpj=digits, available=True, found=False)
+    return CnpjLookupOut(
+        cnpj=digits,
+        available=True,
+        found=True,
+        legal_name=record.legal_name or None,
+        trade_name=record.trade_name,
+        status=record.registration_status,
+        status_date=record.registration_status_date,
+        legal_nature=record.legal_nature,
+        is_condominium=(
+            record.legal_nature_code == CONDOMINIUM_NATURE
+            if record.legal_nature_code is not None
+            else None
+        ),
+        address=record.address,
+    )
 
 
 @router.post("/portfolio/condominiums", status_code=status.HTTP_201_CREATED)

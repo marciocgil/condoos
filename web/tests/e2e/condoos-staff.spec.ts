@@ -37,3 +37,40 @@ test.describe("equipe CondoOS (D77)", () => {
     await expect(page.getByText("equipe CondoOS").first()).toBeVisible();
   });
 });
+
+// D119: the CNPJ of a new condominium is checked at the Receita before saving. The answer is
+// simulated here: a valid random CNPJ may belong to a real company.
+test("admin vê a razão social e a situação do CNPJ antes de cadastrar", async ({ page }) => {
+  test.skip(test.info().project.name !== "admin-desktop", "fluxo do desktop");
+  await page.route("**/api/portfolio/cnpj/*", (route) =>
+    route.fulfill({
+      json: {
+        cnpj: "12345678000195",
+        available: true,
+        found: true,
+        legal_name: "CONDOMINIO EDIFICIO FICTICIO",
+        trade_name: null,
+        status: "BAIXADA",
+        status_date: "2020-01-15",
+        legal_nature: "Condomínio Edilício",
+        is_condominium: true,
+        address: { street: "RUA DAS FLORES", number: "100", city: "SAO PAULO", state: "SP" },
+      },
+    }),
+  );
+  await loginAs(page, ADMIN);
+  await page.getByRole("link", { name: "Novo condomínio" }).click();
+  await page.getByLabel("CNPJ").fill("12.345.678/0001-95");
+  const card = page.getByRole("region", { name: "Dados na Receita Federal" });
+  await expect(card.getByTestId("registry-name")).toHaveText("CONDOMINIO EDIFICIO FICTICIO");
+  await expect(card).toContainText("Situação: baixada desde 15/01/2020");
+  await expect(card).toContainText("não mostra este CNPJ como ativo");
+  await card.getByRole("button", { name: "Usar como nome" }).click();
+  await expect(page.getByRole("textbox", { name: "Nome", exact: true })).toHaveValue(
+    "CONDOMINIO EDIFICIO FICTICIO",
+  );
+  await card.getByRole("button", { name: "Usar o endereço" }).click();
+  await expect(page.getByRole("textbox", { name: "Endereço", exact: true })).toHaveValue(
+    "RUA DAS FLORES, 100 - SAO PAULO/SP",
+  );
+});

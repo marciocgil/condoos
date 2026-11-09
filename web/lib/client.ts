@@ -40,7 +40,7 @@ function message(detail: Detail | { message?: string }, fallback: string): strin
 }
 
 export async function send<T = unknown>(
-  method: "POST" | "PUT" | "PATCH" | "DELETE",
+  method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE",
   path: string,
   body?: unknown,
 ): Promise<{ ok: true; data: T } | { ok: false; error: string }> {

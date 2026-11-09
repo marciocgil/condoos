@@ -8,6 +8,8 @@ import { Card, CardTitle } from "@/components/ui/Card";
 import { controlClass, Field } from "@/components/ui/Field";
 import { send } from "@/lib/client";
 
+import { CnpjCheck } from "./CnpjCheck";
+
 function slugify(name: string): string {
   return name
     .normalize("NFD")
@@ -113,6 +115,13 @@ export function NewCondoForm() {
               />
             </Field>
           </div>
+          <CnpjCheck
+            cnpj={c.cnpj}
+            onUseName={(name) =>
+              setC((prev) => ({ ...prev, name, slug: slugTouched ? prev.slug : slugify(name) }))
+            }
+            onUseAddress={(address) => setC((prev) => ({ ...prev, address }))}
+          />
           <Field id="n-address" label="Endereço" required>
             <input
               id="n-address"

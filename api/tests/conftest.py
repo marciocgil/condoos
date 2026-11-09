@@ -38,6 +38,8 @@ os.environ.update(
         "WEB_BASE_URL": "http://web.test",
         "STORAGE_BACKEND": "memory",
         "LLM_MODE": "replay",
+        # Never call the Receita: a valid random CNPJ may belong to a real company (D119).
+        "SUPPLIER_PROVIDER": "offline",
         "EMBEDDINGS_ENABLED": "false",
         "DOCUMENT_CONVERTER": "pdfium",
         "LLM_CASSETTE_DIR": str(Path(__file__).resolve().parent / "fixtures" / "llm"),
