@@ -66,7 +66,7 @@ Isto não é hospedagem, mas o piloto real depende disto (`docs/lgpd.md` e `CLAU
 - autorização do condomínio piloto para tratar os dados;
 - contrato de operador com a administradora e com os subprocessadores (AWS, Anthropic), item 22 da LGPD;
 - revisão da licença do executável do Claude Code embutido no chat (D54);
-- teste de restauração do backup do banco.
+- ~~teste de restauração do backup do banco~~ feito em 09/11/2026 no servidor de produção (D106).
 
 ## 6. Decisões que preciso
 
