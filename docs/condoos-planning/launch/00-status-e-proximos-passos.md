@@ -14,6 +14,7 @@
 | LF5 | **LB-050/051 entregues com bucket simulado e validados no docker (D101, `make e2e` 34 passaram)**; falta domínio para o SES real; LB-052 e LB-055 entregues (D102); LB-053 entregue (D103); LB-054 (WhatsApp) segue só especificado | `10-lb053-proposta-envio-pedido.md` | Proposta do LB-053: o CondoOS envia o e-mail do pedido (exceção a Q-L02 e D83, um só tipo, com aprovação) — aprovada e implementada (D103) |
 | `09-lf5-proposta-email-entrada.md` |
 | Experiência do piloto | **entregue** (D108): guia em passos, em conferência, Seu mês, Hoje coerente, severidade em texto, Pergunte só quando responde, próximo ponto de atenção | `11-proposta-experiencia-piloto.md` |
+| `12-lf6b-proposta-monitores.md` | Proposta da LF6-b: monitores diários, alertas internos (migração 0024) e Centro de Evolução — **aguardando o Marcio** (Q-L11..Q-L14) |
 | LF6 | **LF6-a entregue** (D109): troca de síndico, histórico das capacidades, rollback; gate LG6 coberto por testes. LF6-b (monitores com alertas internos e Centro de Evolução) em proposta | `05-backlog.md` |
 | LF7–LF8 | nao_iniciado | `05-backlog.md` |
 
