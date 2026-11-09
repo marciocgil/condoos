@@ -19,6 +19,7 @@ import {
   Settings,
   Store,
   Sun,
+  ShieldCheck,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
@@ -34,6 +35,7 @@ const ITEMS = [
   { href: "/admin/validacao", label: "Validação", icon: GitCompare },
   { href: "/admin/assuntos", label: "Assuntos", icon: FolderKanban },
   { href: "/admin/pedidos", label: "Pedidos", icon: Send },
+  { href: "/admin/conformidade", label: "Conformidade", icon: ShieldCheck },
   { href: "/admin/oportunidades", label: "Oportunidades", icon: PiggyBank },
   { href: "/admin/aprovacoes", label: "Aprovações", icon: CheckSquare },
   { href: "/admin/pendencias", label: "Pendências", icon: ClipboardList },

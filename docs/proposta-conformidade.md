@@ -1,6 +1,6 @@
 # Proposta: conformidade e vencimentos (FR-057, WP-16, primeiro corte)
 
-Data: 09/11/2026. **Aguardando decisão do Marcio.** Nada foi escrito no código ainda.
+Data: 09/11/2026. **Aprovada pelo Marcio em 09/11/2026 e implementada (D108).** Respostas: 1 sim, 2 sim, 3 sim, 4 já com a IA sugerindo a data "a confirmar", 5 sim.
 
 Base: Especificação Mestra CAP-08 (conformidade, segurança e legal), FR-057 (P1: "vigência/aplicabilidade validada e lembretes"), Plano Diretor WP-16 (depende de WP-05 documentos e WP-07 assuntos/tarefas, ambos prontos) e Plano D-10 ("obrigações aplicáveis por condomínio: cadastro validado manualmente").
 

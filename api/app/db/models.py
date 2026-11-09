@@ -49,6 +49,9 @@ from app.db.enums import (
     CaseStatus,
     ChatRole,
     CompetenceStatus,
+    ComplianceApplicability,
+    ComplianceCategory,
+    ComplianceEventKind,
     DataIssueEventKind,
     DataIssueKind,
     DataIssueStatus,
@@ -58,6 +61,7 @@ from app.db.enums import (
     DelegationStatus,
     DocumentOrigin,
     DocumentType,
+    EvidenceSource,
     ExtractionStatus,
     FindingStatus,
     InboundMessageStatus,
@@ -1205,6 +1209,77 @@ class InboundMessage(IdTimestampMixin, Base):
     reasons: Mapped[list[str]] = mapped_column(Json, default=list)
 
 
+class ComplianceObligation(IdTimestampMixin, Base):
+    """Something the condominium must keep valid (AVCB, insurance, inspections...), D108.
+
+    Applicability and periodicity are decided by a person; the catalogue only suggests.
+    The situation (in force, expiring, expired...) is computed on read, never stored."""
+
+    __tablename__ = "compliance_obligation"
+    __table_args__ = (
+        _enum_check("category", ComplianceCategory),
+        _enum_check("applicability", ComplianceApplicability),
+        UniqueConstraint("condominium_id", "catalog_key", name="uq_compliance_obligation_catalog"),
+    )
+
+    condominium_id: Mapped[uuid.UUID] = _uuid_fk("condominium.id")
+    catalog_key: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    name: Mapped[str] = mapped_column(String(200))
+    category: Mapped[str] = mapped_column(String(30))
+    suggested_months: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    periodicity_months: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    lead_days: Mapped[int] = mapped_column(Integer, default=60)
+    supplier_id: Mapped[uuid.UUID | None] = _uuid_fk(
+        "supplier.id", nullable=True, ondelete="SET NULL"
+    )
+    responsible: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    applicability: Mapped[str] = mapped_column(
+        String(20), default=ComplianceApplicability.A_VALIDAR.value
+    )
+    validated_by: Mapped[uuid.UUID | None] = _uuid_fk(
+        "app_user.id", nullable=True, ondelete="SET NULL"
+    )
+    validated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    validation_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    archived_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_by: Mapped[uuid.UUID | None] = _uuid_fk(
+        "app_user.id", nullable=True, ondelete="SET NULL"
+    )
+
+
+class ComplianceEvidence(IdTimestampMixin, Base):
+    """A document and/or dates proving an obligation (append only; the latest row wins)."""
+
+    __tablename__ = "compliance_evidence"
+    __table_args__ = (_enum_check("source", EvidenceSource),)
+
+    condominium_id: Mapped[uuid.UUID] = _uuid_fk("condominium.id")
+    obligation_id: Mapped[uuid.UUID] = _uuid_fk("compliance_obligation.id")
+    document_id: Mapped[uuid.UUID | None] = _uuid_fk(
+        "document.id", nullable=True, ondelete="SET NULL"
+    )
+    issued_on: Mapped[date | None] = mapped_column(Date, nullable=True)
+    valid_until: Mapped[date | None] = mapped_column(Date, nullable=True)
+    source: Mapped[str] = mapped_column(String(10))
+    confirmed: Mapped[bool] = mapped_column(Boolean, default=False)
+    quote: Mapped[str | None] = mapped_column(Text, nullable=True)
+    note: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    user_id: Mapped[uuid.UUID | None] = _uuid_fk("app_user.id", nullable=True, ondelete="SET NULL")
+
+
+class ComplianceEvent(IdTimestampMixin, Base):
+    """History of an obligation (append only). Ids and codes only."""
+
+    __tablename__ = "compliance_event"
+    __table_args__ = (_enum_check("kind", ComplianceEventKind),)
+
+    condominium_id: Mapped[uuid.UUID] = _uuid_fk("condominium.id")
+    obligation_id: Mapped[uuid.UUID] = _uuid_fk("compliance_obligation.id")
+    kind: Mapped[str] = mapped_column(String(20))
+    user_id: Mapped[uuid.UUID | None] = _uuid_fk("app_user.id", nullable=True, ondelete="SET NULL")
+    payload: Mapped[dict[str, Any]] = mapped_column(Json, default=dict)
+
+
 # Tables protected by Row-Level Security, with the column holding the tenant id.
 RLS_TABLES: dict[str, str] = {
     "condominium": "id",
@@ -1247,6 +1322,9 @@ RLS_TABLES: dict[str, str] = {
     "delegation_link": "condominium_id",
     "delegation_event": "condominium_id",
     "inbound_message": "condominium_id",
+    "compliance_obligation": "condominium_id",
+    "compliance_evidence": "condominium_id",
+    "compliance_event": "condominium_id",
 }
 
 # Tables the application role may only read and insert into (never update or delete).
@@ -1262,4 +1340,6 @@ APPEND_ONLY_TABLES: tuple[str, ...] = (
     "data_issue_event",
     "delegation_event",
     "inbound_message",
+    "compliance_evidence",
+    "compliance_event",
 )

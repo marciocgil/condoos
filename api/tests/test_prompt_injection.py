@@ -55,6 +55,7 @@ São Paulo, 10 de março de 2025.
         "explain_finding",
         "rule_scope",
         "rule_cnae",
+        "compliance_validity",
     ],
 )
 def test_every_prompt_with_document_content_treats_it_as_data(name: str) -> None:

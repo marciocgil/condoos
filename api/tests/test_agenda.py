@@ -120,6 +120,7 @@ async def test_agenda_access(
         "nf_prevista",
         "reajuste",
         "fim_contrato",
+        "validade",  # compliance documents of the seed (D108), dates relative to today
     }
     only = await client.get(
         f"/condominiums/{acacias}/agenda?start=2026-10-01&end=2026-10-31&kind=vencimento"

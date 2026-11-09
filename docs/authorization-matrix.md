@@ -36,6 +36,8 @@ Legenda: ✅ tem · ◐ condicionado (ver nota) · — não tem. Colunas: Sín =
 | `approve_in_condo` **(novo)** | Aprovar decisão do condomínio dentro da alçada (ex.: avançar com oportunidade) | ✅⁴ | — | — | — | — | — | — |
 | `configure_policy` **(novo)** | Política de revisão, autorizações operacionais e pausa de automações (kill switch, D83) do condomínio | ✅⁵ | — | — | — | — | ✅ | — |
 | `manage_platform` **(novo)** | Onboarding, atribuições de reviewer, integrações, suporte | — | — | — | — | — | ✅ | — |
+| `manage_compliance` (D108) | Ativar a lista de obrigações, cadastrar obrigação, registrar documento e datas, confirmar datas lidas pela IA, arquivar | ✅ | — | — | ✅ | ✅ | ✅ | — |
+| `validate_compliance` (D108) | Decidir se uma obrigação se aplica e a periodicidade, com motivo | ✅ | — | — | ✅ | — | — | — |
 
 Notas:
 1. Só quando `condominium.management_company_reviews = true` e a regra da política lista `gerente` como revisor (padrão para os condomínios atuais, D74). Sem isso, o gerente não valida.

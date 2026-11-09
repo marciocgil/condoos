@@ -25,18 +25,18 @@ Pré-condições do gate G0 (`docs/pilot-protocol.md` §1):
 
 Antes do primeiro documento real: teste de fumaça em produção (leitura com Docling e IA, chat, e-mail de entrada) com dados fictícios e restauração do backup depois; monitor externo de `/health`; Marcio fora da leitura da entrada de e-mail do docker local (um só leitor por bucket). O piloto começa em **shadow mode (V2)**: competências passadas, sem contato externo.
 
-Planejado e não construído, nenhum item bloqueia o V2: LF6 (saúde contínua, LB-060..065), LF7 (instrumentos do piloto, LB-070..073), VS-06 (Operate controlado; depende de G4 e de dados reais), P0 parciais (FR-002, 005, 014, 026, 033) e P1 sem início (FR-009, 010, 029, 030, 035–038, 047, 049, 051–057). P2/P3 adiados.
+Planejado e não construído, nenhum item bloqueia o V2: LF6 (saúde contínua, LB-060..065), LF7 (instrumentos do piloto, LB-070..073), VS-06 (Operate controlado; depende de G4 e de dados reais), P0 parciais (FR-002, 005, 014, 026, 033) e P1 sem início (FR-009, 010, 029, 030, 035–038, 047, 049, 051–056; FR-057 entregue em primeiro corte, D108). P2/P3 adiados.
 
 ## 2. Estado por requisito (resumo)
 
 | Estado | FRs |
 |---|---|
 | validado | — |
-| pronto_para_validar | 016 (D93, D94), 001, 003, 004, 006, 007, 011, 012, 013, 015, 020, 021, 022, 023, 024, 025, 027, 032, 034, 041, 042, 043, 044, 045, 046, 048, 050 |
+| pronto_para_validar | 057 (D108, primeiro corte), 016 (D93, D94), 001, 003, 004, 006, 007, 011, 012, 013, 015, 020, 021, 022, 023, 024, 025, 027, 032, 034, 041, 042, 043, 044, 045, 046, 048, 050 |
 | em_desenvolvimento | 058 (aprovação com escopo congelado; a contratação em si segue fora do sistema) |
 | em_analise | 002, 005, 008, 014, 017, 018, 019, 026, 028, 033 |
 | bloqueado | — (031 medido ao vivo em 08/11/2026: 97%, zero vazamento, D98; passa a pronto_para_validar) |
-| nao_iniciado | 009, 010, 029, 030, 035, 036, 037, 038, 047, 049, 051–057 |
+| nao_iniciado | 009, 010, 029, 030, 035, 036, 037, 038, 047, 049, 051–056 |
 | adiado (P2/P3) | 039, 040, 059–065 |
 
 Detalhe e evidências: `docs/02-gap-matrix.md` e `docs/traceability.md`.
@@ -73,6 +73,8 @@ Política mínima e kill switch entregues com a VS-05 (D83); o produto continua 
 **Escopo excluído:** envio externo além do link mágico e do e-mail do pedido de documentos aprovado pelo síndico (D103); WhatsApp; interfaces de zelador, fornecedor e morador (papéis só reservados); MFA; P2/P3; dados reais.
 
 ## 6. Histórico desta página
+
+- 09/11/2026 — FR-057 conformidade e vencimentos, primeiro corte (D108, migração 0024 aprovada): obrigações com aplicabilidade decidida por pessoa, catálogo de 14 candidatas, documento e validade com leitura pela IA confirmada por pessoa, situação calculada, avisos na Agenda, no Hoje e no chat. Verificação local: 378 testes do backend, lint, migração ida e volta, E2E `compliance.spec.ts` e os fluxos de agenda, pedidos, assuntos e Hoje.
 
 - 09/11/2026 — Revisão de prontidão para o piloto (seção 1a): G0 com 5 de 6 pré-condições atendidas (falta o termo assinado); B4 resolvido; FR-031 medido; produção no ar (D106); rotação dos logs dos contêineres em produção.
 

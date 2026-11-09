@@ -5,8 +5,15 @@ import { DelegationForm } from "@/components/condoos/DelegationForm";
 import { apiGet } from "@/lib/api";
 import type { DelegationItem } from "@/lib/types";
 
-export default async function NovoPedidoPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function NovoPedidoPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ item?: string; para?: string; papel?: string }>;
+}) {
   const { id } = await params;
+  const { item, para, papel } = await searchParams;
   const suggestions = await apiGet<DelegationItem[]>(`/condominiums/${id}/delegations/suggestions`);
   return (
     <>
@@ -21,6 +28,7 @@ export default async function NovoPedidoPage({ params }: { params: Promise<{ id:
         condominiumId={id}
         suggestions={suggestions}
         defaultDue={new Date(Date.now() + 7 * 86_400_000).toISOString().slice(0, 10)}
+        initial={{ item, name: para, role: papel }}
       />
     </>
   );

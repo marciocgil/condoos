@@ -10,6 +10,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.actions import DISPATCH_JOB, dispatch_job
 from app.chat.search import INDEX_JOB, index_job
+from app.compliance import READ_JOB as COMPLIANCE_READ_JOB
+from app.compliance import read_validity_job
 from app.config import get_settings
 from app.core.jobs import Handler, run_one
 from app.core.retention import RETENTION_JOB, purge_job
@@ -47,6 +49,7 @@ HANDLERS: dict[str, Handler] = {
     INDEX_JOB: index_job,
     RETENTION_JOB: purge_job,
     DISPATCH_JOB: dispatch_job,
+    COMPLIANCE_READ_JOB: read_validity_job,
 }
 
 

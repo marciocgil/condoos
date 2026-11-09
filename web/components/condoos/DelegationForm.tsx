@@ -25,20 +25,27 @@ export function DelegationForm({
   suggestions,
   defaultDue,
   detailBase,
+  initial,
 }: {
   condominiumId: string;
+  /** Prefill from another screen (e.g. a compliance obligation, D108). */
+  initial?: { name?: string; role?: string; item?: string };
   /** Where the new request opens (base path + "/<id>"); defaults to the síndico's screen. */
   detailBase?: string;
   suggestions: DelegationItem[];
   defaultDue: string; // YYYY-MM-DD, computed on the server (same value when hydrating)
 }) {
   const router = useRouter();
-  const [name, setName] = useState("");
-  const [role, setRole] = useState("administradora");
-  const [chosen, setChosen] = useState<Set<string>>(
-    new Set(suggestions.filter((s) => s.kind === "nota_fiscal").map((s) => s.key)),
+  const [name, setName] = useState(initial?.name ?? "");
+  const [role, setRole] = useState(
+    ROLES.some((r) => r.value === initial?.role) ? initial!.role! : "administradora",
   );
-  const [custom, setCustom] = useState<string[]>([]);
+  const [chosen, setChosen] = useState<Set<string>>(
+    initial?.item
+      ? new Set()
+      : new Set(suggestions.filter((s) => s.kind === "nota_fiscal").map((s) => s.key)),
+  );
+  const [custom, setCustom] = useState<string[]>(initial?.item ? [initial.item] : []);
   const [draft, setDraft] = useState("");
   const [due, setDue] = useState(defaultDue);
   const [scope, setScope] = useState("");

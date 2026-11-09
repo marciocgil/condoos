@@ -28,8 +28,11 @@ export function CaseForm({
   finding,
   opportunity,
   detailPath,
+  initialTitle,
 }: {
   condos: { id: string; name: string }[];
+  /** Prefill from another screen (e.g. renewing a compliance document, D108). */
+  initialTitle?: string;
   finding?: { id: string; title: string; condominiumId: string };
   opportunity?: { id: string; title: string; condominiumId: string };
   /** e.g. "/condominio/{condo}/assuntos/{case}" (a string: functions cannot cross to the client). */
@@ -45,7 +48,7 @@ export function CaseForm({
       : null;
   const [condo, setCondo] = useState(source?.condominiumId ?? condos[0]?.id ?? "");
   const [form, setForm] = useState({
-    title: source ? `Tratar: ${source.title}`.slice(0, 200) : "",
+    title: source ? `Tratar: ${source.title}`.slice(0, 200) : (initialTitle ?? "").slice(0, 200),
     description: "",
     category: opportunity ? "contrato" : finding ? "financeiro" : "manutencao",
     severity: "media",

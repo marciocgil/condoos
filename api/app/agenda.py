@@ -36,7 +36,7 @@ from app.enrichment.indices import load_index_table
 from app.pending import GRACE_DAYS, arrivals, billing_expected, month_end
 from app.rules.contracts import anniversaries, contract_value_at, terms_at
 
-KINDS = ("vencimento", "nf_prevista", "reajuste", "aviso_previo", "fim_contrato")
+KINDS = ("vencimento", "nf_prevista", "reajuste", "aviso_previo", "fim_contrato", "validade")
 ADJUSTING = {
     AdjustmentIndex.IPCA.value,
     AdjustmentIndex.IGPM.value,
@@ -57,6 +57,7 @@ class Event:
     amount: Decimal | None = None
     contract_id: uuid.UUID | None = None
     expense_id: uuid.UUID | None = None
+    obligation_id: uuid.UUID | None = None
 
     def as_dict(self) -> dict[str, Any]:
         d = asdict(self)
@@ -64,6 +65,7 @@ class Event:
         d["amount"] = None if self.amount is None else f"{self.amount:.2f}"
         d["contract_id"] = str(self.contract_id) if self.contract_id else None
         d["expense_id"] = str(self.expense_id) if self.expense_id else None
+        d["obligation_id"] = str(self.obligation_id) if self.obligation_id else None
         return d
 
 
@@ -256,6 +258,54 @@ async def condominium_agenda(
                 )
             )
 
+    events.extend(await _compliance_events(session, condominium_id, start, end, today))
+
     order = {k: i for i, k in enumerate(KINDS)}
     events.sort(key=lambda ev: (ev.date, order[ev.kind], ev.title))
     return events
+
+
+async def _compliance_events(
+    session: AsyncSession, condominium_id: uuid.UUID, start: date, end: date, today: date
+) -> list[Event]:
+    """Validity of documents registered for compliance obligations (D108): the expiry day
+    and the day to start renewing (the obligation's lead time). Only applicable ones."""
+    from app.compliance import rows_for
+    from app.compliance.status import UNCONFIRMED
+
+    out: list[Event] = []
+    for row in await rows_for(session, condominium_id, today):
+        until = row.situation.valid_until
+        if until is None or row.situation.code not in ("em_dia", "vence_em_breve", "vencido"):
+            continue
+        ob = row.obligation
+        note = (
+            UNCONFIRMED.get(row.evidence.source, "")
+            if row.evidence and not row.evidence.confirmed
+            else ""
+        )
+        detail = "Validade do documento registrado" + (f" ({note})" if note else "")
+        if start <= until <= end:
+            out.append(
+                Event(
+                    date=until,
+                    kind="validade",
+                    title=f"Vence · {ob.name}",
+                    detail=detail,
+                    status="vencido" if until < today else "vence",
+                    obligation_id=ob.id,
+                )
+            )
+        warn = until - timedelta(days=ob.lead_days)
+        if start <= warn <= end and warn < until:
+            out.append(
+                Event(
+                    date=warn,
+                    kind="validade",
+                    title=f"Começar a renovação · {ob.name}",
+                    detail=f"{ob.lead_days} dias antes do vencimento",
+                    status="renovar",
+                    obligation_id=ob.id,
+                )
+            )
+    return out

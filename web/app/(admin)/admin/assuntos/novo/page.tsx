@@ -6,9 +6,9 @@ import type { FindingDetail, Me } from "@/lib/types";
 export default async function NovoAssuntoAdminPage({
   searchParams,
 }: {
-  searchParams: Promise<{ condominio?: string; achado?: string }>;
+  searchParams: Promise<{ condominio?: string; achado?: string; titulo?: string }>;
 }) {
-  const { condominio, achado } = await searchParams;
+  const { condominio, achado, titulo } = await searchParams;
   const me = await apiGet<Me>("/me");
   let condos = me.condominiums.filter((c) => c.permissions.includes("manage_cases"));
   if (condominio) condos = condos.filter((c) => c.id === condominio);
@@ -30,6 +30,7 @@ export default async function NovoAssuntoAdminPage({
             : undefined
         }
         detailPath="/admin/assuntos/{condo}/{case}"
+        initialTitle={titulo}
       />
     </div>
   );

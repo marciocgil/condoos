@@ -8,6 +8,8 @@ import {
   FileQuestion,
   FileSearch,
   Search,
+  ShieldAlert,
+  ShieldCheck,
   TrendingUp,
 } from "lucide-react";
 import Link from "next/link";
@@ -23,6 +25,7 @@ export const KIND_LABEL: Record<AgendaKind, string> = {
   reajuste: "Reajustes",
   aviso_previo: "Aviso prévio",
   fim_contrato: "Fim de contrato",
+  validade: "Validade de documentos",
 };
 
 type Look = { label: string; tone: BadgeTone; icon: ReactNode };
@@ -84,6 +87,21 @@ export function agendaStatus(e: AgendaEvent): Look {
       tone: "danger",
       icon: <CalendarX size={12} />,
     },
+    "validade:vence": {
+      label: "Documento vence",
+      tone: "warning",
+      icon: <ShieldCheck size={12} />,
+    },
+    "validade:vencido": {
+      label: "Documento vencido",
+      tone: "danger",
+      icon: <ShieldAlert size={12} />,
+    },
+    "validade:renovar": {
+      label: "Começar a renovação",
+      tone: "info",
+      icon: <BellRing size={12} />,
+    },
   };
   return map[key] ?? { label: e.status, tone: "neutral", icon: <Clock size={12} /> };
 }
@@ -93,7 +111,8 @@ export function isLate(e: AgendaEvent): boolean {
   return (
     (e.kind === "vencimento" && e.status === "vencido") ||
     (e.kind === "nf_prevista" && e.status === "nao_chegou") ||
-    (e.kind === "fim_contrato" && e.status === "vencido")
+    (e.kind === "fim_contrato" && e.status === "vencido") ||
+    (e.kind === "validade" && e.status === "vencido")
   );
 }
 

@@ -94,6 +94,9 @@ def _brl(value: Decimal | str) -> str:
     return f"R$ {whole.replace(',', '.')},{cents}"
 
 
+COMPLIANCE_SOON_DAYS = 30
+
+
 def _item(
     kind: str,
     title: str,
@@ -243,6 +246,31 @@ class Builder:
                         tone="warning",
                     )
                 )
+        out.extend(await self.compliance_alerts())
+        return out
+
+    async def compliance_alerts(self) -> list[dict[str, Any]]:
+        """Documents of applicable obligations that expired or expire within 30 days (D108).
+        A missing document is not listed here: it shows on the compliance screen."""
+        from app.compliance import rows_for
+
+        out: list[dict[str, Any]] = []
+        for row in await rows_for(self.s, self.cid, self.today):
+            sit = row.situation
+            soon = sit.code == "vence_em_breve" and (sit.days_left or 0) <= COMPLIANCE_SOON_DAYS
+            if sit.code != "vencido" and not soon:
+                continue
+            detail = sit.text + (f" · {sit.to_confirm}" if sit.to_confirm else "")
+            out.append(
+                _item(
+                    "compliance",
+                    row.obligation.name,
+                    detail,
+                    ref=("compliance", row.obligation.id),
+                    when=sit.valid_until,
+                    tone="danger" if sit.code == "vencido" else "warning",
+                )
+            )
         return out
 
     async def decisions(self) -> list[dict[str, Any]]:

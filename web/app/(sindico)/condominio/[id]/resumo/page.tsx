@@ -73,6 +73,7 @@ export default async function ResumoPage({
           opportunity: `/condominio/${id}/oportunidades/{id}`,
           action: `/condominio/${id}/aprovacoes/{id}`,
           agenda: `/condominio/${id}/agenda`,
+          compliance: `/condominio/${id}/conformidade/{id}`,
         }}
       />
       <DelegationBoard condominiumId={id} board={board} />

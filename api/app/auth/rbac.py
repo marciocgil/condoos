@@ -39,6 +39,10 @@ class Permission(StrEnum):
     MANAGE_LAUNCH = "manage_launch"
     # Delegated document requests (D95): revoke a link, close a request.
     MANAGE_DELEGATION = "manage_delegation"
+    # Compliance (D108). MANAGE: turn the catalogue on, create obligations, link documents
+    # and dates. VALIDATE: decide whether an obligation applies and how often (a person).
+    MANAGE_COMPLIANCE = "manage_compliance"
+    VALIDATE_COMPLIANCE = "validate_compliance"
 
 
 P = Permission
@@ -58,6 +62,7 @@ _MANAGEMENT_COMPANY = frozenset(
         P.RECORD_APPROVAL,
         P.EXPORT,
         P.UPDATE_TASK,
+        P.MANAGE_COMPLIANCE,
     }
 )
 
@@ -75,6 +80,8 @@ ROLE_PERMISSIONS: dict[Role, frozenset[Permission]] = {
             P.UPDATE_TASK,
             P.MANAGE_LAUNCH,
             P.MANAGE_DELEGATION,
+            P.MANAGE_COMPLIANCE,
+            P.VALIDATE_COMPLIANCE,
         }
     ),
     Role.SUBSINDICO: frozenset({P.VIEW, P.COMMENT_FINDING, P.EXPORT}),
@@ -90,6 +97,7 @@ ROLE_PERMISSIONS: dict[Role, frozenset[Permission]] = {
         P.CONFIGURE,
         P.CLOSE_COMPETENCE,
         P.DECIDE_FINDING,
+        P.VALIDATE_COMPLIANCE,
     },
     # Reserved roles (D77): accepted in memberships, no permission until activated.
     Role.ZELADOR: frozenset(),
@@ -110,6 +118,7 @@ ROLE_PERMISSIONS: dict[Role, frozenset[Permission]] = {
             P.UPDATE_TASK,
             P.MANAGE_LAUNCH,
             P.MANAGE_DELEGATION,
+            P.MANAGE_COMPLIANCE,
         }
     ),
     Role.CONDOOS_REVIEWER: frozenset(

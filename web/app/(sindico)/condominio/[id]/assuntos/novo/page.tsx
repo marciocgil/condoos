@@ -7,10 +7,10 @@ export default async function NovoAssuntoPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ achado?: string; oportunidade?: string }>;
+  searchParams: Promise<{ achado?: string; oportunidade?: string; titulo?: string }>;
 }) {
   const { id } = await params;
-  const { achado, oportunidade } = await searchParams;
+  const { achado, oportunidade, titulo } = await searchParams;
   const [condo, finding, opp] = await Promise.all([
     apiGet<Condominium>(`/condominiums/${id}`),
     achado
@@ -26,6 +26,7 @@ export default async function NovoAssuntoPage({
       finding={finding ? { id: finding.id, title: finding.title, condominiumId: id } : undefined}
       opportunity={opp ? { id: opp.id, title: opp.title, condominiumId: id } : undefined}
       detailPath="/condominio/{condo}/assuntos/{case}"
+      initialTitle={titulo}
     />
   );
 }

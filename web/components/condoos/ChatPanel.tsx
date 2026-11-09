@@ -1,7 +1,7 @@
 "use client";
 
 import { ArrowUp, Banknote, FileSignature, FileText, Loader2, Receipt, Store } from "lucide-react";
-import { BarChart3, ShieldAlert, type LucideIcon } from "lucide-react";
+import { BarChart3, ShieldAlert, ShieldCheck, type LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { type FormEvent, type ReactNode, useEffect, useRef, useState } from "react";
 
@@ -27,6 +27,7 @@ const ICON: Record<ChatCitation["kind"], LucideIcon> = {
   movimento: Banknote,
   fornecedor: Store,
   resumo: BarChart3,
+  obrigacao: ShieldCheck,
 };
 
 /** Where a citation opens: the screen that shows the record, or the original file. */
@@ -46,6 +47,10 @@ function citationHref(c: ChatCitation, condoId: string, variant: Variant): strin
       return variant === "sindico" ? `${sindico}/historico` : null;
     case "fornecedor":
       return variant === "admin" ? "/admin/fornecedores" : null;
+    case "obrigacao":
+      return variant === "sindico"
+        ? `${sindico}/conformidade/${c.id}`
+        : `/admin/conformidade/${condoId}/${c.id}`;
     case "resumo":
       return variant === "sindico" && /^\d{4}-\d{2}$/.test(c.id)
         ? `${sindico}/resumo?competencia=${c.id}`

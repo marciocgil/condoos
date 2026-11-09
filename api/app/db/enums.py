@@ -434,3 +434,44 @@ class InboundMessageStatus(StrEnum):
     PROCESSADA = "processada"  # at least one document created or already received
     RECUSADA = "recusada"  # unknown address, no attachment, or every attachment refused
     FALHOU = "falhou"  # processing raised; the message goes to rejected/
+
+
+class ComplianceCategory(StrEnum):
+    """Area of a compliance obligation (D108)."""
+
+    SEGURANCA_INCENDIO = "seguranca_incendio"
+    SEGURO = "seguro"
+    ELEVADORES = "elevadores"
+    AGUA = "agua"
+    SAUDE = "saude"
+    GAS = "gas"
+    ELETRICA = "eletrica"
+    ESTRUTURA = "estrutura"
+    EQUIPAMENTOS = "equipamentos"
+    OUTROS = "outros"
+
+
+class ComplianceApplicability(StrEnum):
+    """Whether an obligation applies, always decided by a person (D108; Plano D-10)."""
+
+    A_VALIDAR = "a_validar"
+    APLICAVEL = "aplicavel"
+    NAO_APLICAVEL = "nao_aplicavel"
+
+
+class EvidenceSource(StrEnum):
+    """Where the dates of a piece of evidence came from (D108)."""
+
+    PESSOA = "pessoa"  # typed or confirmed by a person
+    IA = "ia"  # suggested by the model, to be confirmed
+    TEXTO = "texto"  # found by a pattern in the document's text, to be confirmed
+    LENDO = "lendo"  # document linked, the reading is queued
+
+
+class ComplianceEventKind(StrEnum):
+    CRIADA = "criada"
+    VALIDADA = "validada"
+    ALTERADA = "alterada"
+    EVIDENCIA = "evidencia"
+    ARQUIVADA = "arquivada"
+    REATIVADA = "reativada"

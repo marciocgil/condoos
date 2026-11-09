@@ -11,9 +11,9 @@ import type { DelegationItem, Portfolio } from "@/lib/types";
 export default async function NovoPedidoAdminPage({
   searchParams,
 }: {
-  searchParams: Promise<{ condominio?: string }>;
+  searchParams: Promise<{ condominio?: string; item?: string; para?: string; papel?: string }>;
 }) {
-  const { condominio } = await searchParams;
+  const { condominio, item, para, papel } = await searchParams;
   const portfolio = await apiGet<Portfolio>("/portfolio");
   const condo = portfolio.condominiums.find((c) => c.id === condominio);
   if (!condo) notFound();
@@ -36,6 +36,7 @@ export default async function NovoPedidoAdminPage({
         condominiumId={condo.id}
         suggestions={suggestions}
         defaultDue={new Date(Date.now() + 7 * 86_400_000).toISOString().slice(0, 10)}
+        initial={{ item, name: para, role: papel }}
         detailBase={`/admin/pedidos/${condo.id}`}
       />
     </div>

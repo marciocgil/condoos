@@ -310,7 +310,15 @@ export interface UploadResult {
 
 export interface ChatCitation {
   ref: string;
-  kind: "achado" | "despesa" | "contrato" | "documento" | "movimento" | "fornecedor" | "resumo";
+  kind:
+    | "achado"
+    | "despesa"
+    | "contrato"
+    | "documento"
+    | "movimento"
+    | "fornecedor"
+    | "resumo"
+    | "obrigacao";
   id: string;
   label: string;
 }
@@ -431,7 +439,7 @@ export interface DocumentItem {
 }
 
 export type AgendaKind =
-  "vencimento" | "nf_prevista" | "reajuste" | "aviso_previo" | "fim_contrato";
+  "vencimento" | "nf_prevista" | "reajuste" | "aviso_previo" | "fim_contrato" | "validade";
 
 export interface AgendaEvent {
   date: string;
@@ -443,6 +451,7 @@ export interface AgendaEvent {
   amount: string | null;
   contract_id: string | null;
   expense_id: string | null;
+  obligation_id?: string | null;
   condominium_id?: string;
   condominium?: string;
 }
@@ -1010,4 +1019,82 @@ export interface MonthCoverage {
     invoice_number: string | null;
     arrived: { origin: string; status: string }[];
   }[];
+}
+
+// ---------------------------------------------------------------- compliance (D108)
+
+export type ComplianceCode =
+  | "vencido"
+  | "vence_em_breve"
+  | "sem_documento"
+  | "sem_validade"
+  | "lendo"
+  | "a_validar"
+  | "em_dia"
+  | "nao_aplicavel"
+  | "arquivada";
+
+export interface ComplianceSituation {
+  code: ComplianceCode;
+  label: string;
+  text: string;
+  valid_until: string | null;
+  computed: boolean;
+  days_left: number | null;
+  to_confirm: string | null;
+  alert: boolean;
+}
+
+export interface ComplianceObligationSummary {
+  id: string;
+  name: string;
+  category: string;
+  category_label: string;
+  from_catalog: boolean;
+  applicability: "a_validar" | "aplicavel" | "nao_aplicavel";
+  periodicity_months: number | null;
+  suggested_months: number | null;
+  lead_days: number;
+  responsible: string | null;
+  situation: ComplianceSituation;
+  has_document: boolean;
+}
+
+export interface ComplianceList {
+  today: string;
+  can_manage: boolean;
+  can_validate: boolean;
+  catalog_missing: number;
+  counts: Partial<Record<ComplianceCode, number>>;
+  labels: Record<ComplianceCode, string>;
+  categories: { value: string; label: string }[];
+  obligations: ComplianceObligationSummary[];
+  archived: ComplianceObligationSummary[];
+}
+
+export interface ComplianceEvidenceRow {
+  id: string;
+  created_at: string;
+  source: "pessoa" | "ia" | "texto" | "lendo";
+  confirmed: boolean;
+  issued_on: string | null;
+  valid_until: string | null;
+  quote: string | null;
+  note: string | null;
+  document: { id: string; filename: string; doc_type: string } | null;
+}
+
+export interface ComplianceDetail extends ComplianceObligationSummary {
+  archived: boolean;
+  validated_by: string | null;
+  validated_at: string | null;
+  validation_reason: string | null;
+  supplier: { id: string; name: string } | null;
+  can_manage: boolean;
+  can_validate: boolean;
+  pending_confirmation: string | null;
+  evidence: ComplianceEvidenceRow[];
+  events: { kind: string; at: string; by: string | null; payload: Record<string, unknown> }[];
+  documents: { id: string; filename: string; doc_type: string; created_at: string }[];
+  suppliers: { id: string; name: string }[];
 }

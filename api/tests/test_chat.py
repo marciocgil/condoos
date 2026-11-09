@@ -42,6 +42,7 @@ READ_ONLY_TOOLS = {
     "compare_periods",
     "search_documents",
     "get_screen_context",
+    "list_compliance",  # D108: reads what is registered, decides nothing
 }
 MONTH = date(2026, 4, 1)  # a month no other test adds findings to
 

@@ -51,7 +51,9 @@ MAX_ROWS = 30
 @dataclass(frozen=True)
 class Citation:
     ref: str
-    kind: str  # achado | despesa | contrato | documento | movimento | fornecedor | resumo
+    kind: (
+        str  # achado | despesa | contrato | documento | movimento | fornecedor | resumo | obrigacao
+    )
     id: str
     label: str
 
@@ -537,6 +539,43 @@ class ChatTools:
             ]
         }
 
+    async def list_compliance(self, args: dict[str, Any]) -> dict[str, Any]:
+        """Compliance obligations and the validity of their documents (D108). Never says
+        whether the condominium is compliant: only what is registered."""
+        from app.compliance import rows_for
+        from app.core.time import local_today
+
+        condo = await self.session.get(Condominium, self.condo)
+        today = local_today(condo.timezone if condo else None)
+        wanted = str(args.get("text") or "").strip().lower()
+        rows = await rows_for(self.session, self.condo, today)
+        out = []
+        for row in rows:
+            ob, sit = row.obligation, row.situation
+            if wanted and wanted not in ob.name.lower():
+                continue
+            out.append(
+                {
+                    "ref": self._cite("obrigacao", ob.id, ob.name),
+                    "obrigacao": ob.name,
+                    "situacao": sit.label,
+                    "descricao": sit.text,
+                    "validade": sit.valid_until.strftime("%d/%m/%Y") if sit.valid_until else None,
+                    "dias_para_vencer": sit.days_left,
+                    "data_a_confirmar": sit.to_confirm,
+                    "periodicidade_meses": ob.periodicity_months,
+                    "antecedencia_aviso_dias": ob.lead_days,
+                }
+            )
+        return {
+            "hoje": today.strftime("%d/%m/%Y"),
+            "obrigacoes": out,
+            "aviso": (
+                "Mostra só o que está registrado no CondoOS. Não diz se o condomínio cumpre a "
+                "lei: isso cabe ao responsável técnico ou jurídico."
+            ),
+        }
+
     async def get_screen_context(self, _: dict[str, Any]) -> dict[str, Any]:
         condo = await self.session.get(Condominium, self.condo)
         out: dict[str, Any] = {
@@ -649,6 +688,14 @@ class ChatTools:
                 "balancetes, laudos e planos de manutenção do condomínio.",
                 obj({"query": text}, ["query"]),
                 self.search_documents,
+            ),
+            ToolSpec(
+                "list_compliance",
+                "Obrigações de conformidade (AVCB, seguro, extintores, elevadores, caixa "
+                "d'água...) e a validade dos documentos registrados: vencidos, a vencer, sem "
+                "documento. Filtro opcional pelo nome.",
+                obj({"text": text}),
+                self.list_compliance,
             ),
             ToolSpec(
                 "get_screen_context",

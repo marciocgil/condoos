@@ -21,6 +21,8 @@ function iso(d: Date): string {
 }
 
 function eventHref(e: AgendaEvent): string | null {
+  if (e.obligation_id && e.condominium_id)
+    return `/admin/conformidade/${e.condominium_id}/${e.obligation_id}`;
   return e.contract_id && e.condominium_id
     ? `/admin/contratos/${e.condominium_id}/${e.contract_id}`
     : null;

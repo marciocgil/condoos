@@ -192,6 +192,13 @@ async def acacias_portaria_fine(tools: ChatTools) -> list[str]:
     return await portaria_fine(tools)
 
 
+async def insurance_validity(tools: ChatTools) -> list[str]:
+    out = await tools.run("list_compliance", {"text": "seguro"})
+    [row] = out["obrigacoes"]
+    assert row["validade"], "o seed deveria ter a validade do seguro"
+    return [row["validade"]]
+
+
 # --------------------------------------------------------------------------- the set
 
 CASES: list[Case] = [
@@ -201,6 +208,12 @@ CASES: list[Case] = [
         "fato",
         "Quanto pagamos hoje por mês de portaria, pelo contrato?",
         expect=portaria_current,
+    ),
+    Case(
+        "conformidade-seguro",
+        "fato",
+        "Quando vence o seguro do condomínio?",
+        expect=insurance_validity,
     ),
     Case("contrato-indice", "fato", "Qual índice reajusta o contrato de limpeza?", any_of=["IPCA"]),
     Case(

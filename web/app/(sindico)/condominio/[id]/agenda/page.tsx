@@ -31,7 +31,12 @@ export default async function AgendaSindicoPage({ params }: { params: Promise<{ 
   const late = agenda.events.filter(isLate);
   const upcoming = agenda.events.filter((e) => e.date >= today && !isLate(e));
   const contractHref = `/condominio/${id}/contratos`;
-  const href = (e: AgendaEvent) => (e.contract_id ? contractHref : `/condominio/${id}/historico`);
+  const href = (e: AgendaEvent) =>
+    e.obligation_id
+      ? `/condominio/${id}/conformidade/${e.obligation_id}`
+      : e.contract_id
+        ? contractHref
+        : `/condominio/${id}/historico`;
 
   return (
     <>

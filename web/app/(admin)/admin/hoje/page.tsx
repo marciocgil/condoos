@@ -40,6 +40,7 @@ export default async function HojePage({
                 action: `/admin/aprovacoes/${b.condominium_id}/{id}`,
                 agenda: `/admin/agenda?condominio=${b.condominium_id}`,
                 queue: `/admin/fila?condominio=${b.condominium_id}`,
+                compliance: `/admin/conformidade/${b.condominium_id}/{id}`,
               }}
             />
           ))}
