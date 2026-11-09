@@ -230,3 +230,16 @@ docker compose -f docker-compose.prod.yml --env-file deploy/.env.production up -
 ```
 
 Faça um `deploy/backup.sh` antes de atualizar quando houver migração nova.
+
+### 9.9 Teste de fumaça com dados fictícios (antes do primeiro dado real)
+
+Confere em produção a leitura de documentos (Docling e IA), o chat e o e-mail de entrada, e depois apaga tudo pela restauração.
+
+1. `deploy/backup.sh` e anote o nome do arquivo.
+2. Suba com a consulta de CNPJ desligada (os documentos do corpus têm CNPJ inventado, que pode existir de verdade):
+   ```bash
+   SUPPLIER_PROVIDER=offline docker compose -f docker-compose.prod.yml --env-file deploy/.env.production up -d api worker
+   ```
+3. No site: Carteira → Novo condomínio (dados fictícios); envie `api/tests/fixtures/corpus/01_nfse.pdf`, `20_contrato.pdf` e `26_foto_nfse.jpg`; espere "Lido"; pergunte algo no chat; mande um e-mail com um desses anexos para o endereço de entrada mostrado em Ajustes.
+4. Restaure o backup do passo 1 (`deploy/restore.sh <nome>`): o banco volta ao estado anterior e os serviços sobem de novo com a consulta de CNPJ ligada.
+5. No console do S3, apague a pasta `cond/<id do condomínio de teste>/` do bucket `condoos-documentos` (arquivos sem registro no banco).

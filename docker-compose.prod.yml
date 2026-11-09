@@ -30,6 +30,8 @@ x-api-env: &api-env
   S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY:?}
   INGEST_EMAIL_DOMAIN: ${INGEST_EMAIL_DOMAIN:?}
   ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+  # "offline" only for a smoke test with fictitious documents (no CNPJ lookups): deploy.md 9.9
+  SUPPLIER_PROVIDER: ${SUPPLIER_PROVIDER:-brasilapi}
   CLAUDE_MODEL_EXTRACTION: ${CLAUDE_MODEL_EXTRACTION:-claude-sonnet-5-5}
   CLAUDE_MODEL_REASONING: ${CLAUDE_MODEL_REASONING:-claude-opus-5-5}
   CLAUDE_MODEL_FAST: ${CLAUDE_MODEL_FAST:-claude-haiku-5-5}
