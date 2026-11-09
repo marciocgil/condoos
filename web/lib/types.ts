@@ -1045,8 +1045,14 @@ export interface ComplianceSituation {
   alert: boolean;
 }
 
+export interface ComplianceHint {
+  code: "provavel" | "provavel_nao";
+  text: string;
+}
+
 export interface ComplianceObligationSummary {
   id: string;
+  hint: ComplianceHint | null;
   name: string;
   category: string;
   category_label: string;
@@ -1070,6 +1076,11 @@ export interface ComplianceList {
   categories: { value: string; label: string }[];
   obligations: ComplianceObligationSummary[];
   archived: ComplianceObligationSummary[];
+  profile: {
+    fields: { key: string; label: string; kind: "bool" | "int" }[];
+    values: Record<string, boolean | number>;
+  };
+  reminders: { enabled: boolean; can_change: boolean; last_sent_at: string | null };
 }
 
 export interface ComplianceEvidenceRow {
@@ -1092,6 +1103,7 @@ export interface ComplianceDetail extends ComplianceObligationSummary {
   supplier: { id: string; name: string } | null;
   can_manage: boolean;
   can_validate: boolean;
+  can_export: boolean;
   pending_confirmation: string | null;
   evidence: ComplianceEvidenceRow[];
   events: { kind: string; at: string; by: string | null; payload: Record<string, unknown> }[];

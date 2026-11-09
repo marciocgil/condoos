@@ -60,4 +60,32 @@ test("gerente vê a conformidade de um condomínio no desktop", async ({ page })
   await expect(page.getByText(/Vence em \d+ dias/)).toBeVisible();
   await expect(page.getByText(/Decidido por Ana/)).toBeVisible();
   await expect(page.getByRole("button", { name: "Registrar decisão" })).toBeVisible();
+  // D109: the dossier of the obligation, as a PDF.
+  const dossier = page.getByRole("link", { name: "Baixar dossiê (PDF)" });
+  const r = await page.request.get((await dossier.getAttribute("href"))!);
+  expect(r.headers()["content-type"]).toBe("application/pdf");
+});
+
+test("síndica preenche o perfil do prédio e liga o resumo semanal", async ({ page }) => {
+  test.skip(test.info().project.name !== "sindico-mobile", "fluxo do celular");
+  await loginAs(page, "ana.sindica@acacias.example.com");
+  const id = page.url().match(/condominio\/([^/]+)/)?.[1];
+  await page.goto(`/condominio/${id}/conformidade`);
+
+  const profile = page.getByRole("region", { name: "Perfil do prédio" });
+  await profile.getByText("Perfil do prédio").click();
+  await profile.getByLabel("Gás encanado").selectOption("nao");
+  await profile.getByRole("button", { name: "Salvar perfil" }).click();
+  await expect(
+    page.getByText(/Sugestão: O perfil do prédio indica que não há gás encanado/),
+  ).toBeVisible();
+  await profile.getByLabel("Gás encanado").selectOption("");
+  await profile.getByRole("button", { name: "Salvar perfil" }).click();
+  await expect(profile.getByText("Perfil salvo.")).toBeVisible();
+
+  const email = page.getByRole("region", { name: "Resumo semanal por e-mail" });
+  await email.getByRole("button", { name: "Ligar o resumo semanal" }).click();
+  await expect(email.getByText("Ligado")).toBeVisible();
+  await email.getByRole("button", { name: "Desligar o resumo" }).click();
+  await expect(email.getByText("Desligado")).toBeVisible();
 });

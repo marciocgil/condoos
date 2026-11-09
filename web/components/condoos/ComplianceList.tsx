@@ -7,7 +7,9 @@ import type {
   ComplianceObligationSummary,
 } from "@/lib/types";
 
+import { BuildingProfileCard } from "./BuildingProfileCard";
 import { ComplianceBadge } from "./ComplianceBadge";
+import { ComplianceReminderCard } from "./ComplianceReminderCard";
 import { ComplianceSetup } from "./ComplianceSetup";
 
 function Row({ ob, href }: { ob: ComplianceObligationSummary; href: string }) {
@@ -24,6 +26,7 @@ function Row({ ob, href }: { ob: ComplianceObligationSummary; href: string }) {
             {ob.category_label} · {s.text}
           </span>
           {s.to_confirm && <span className="block text-xs text-warning">{s.to_confirm}</span>}
+          {ob.hint && <span className="block text-xs text-info">Sugestão: {ob.hint.text}</span>}
         </span>
         <span className="flex shrink-0 items-center gap-1">
           <ComplianceBadge situation={s} />
@@ -68,6 +71,12 @@ export function ComplianceList({
           {summary.join(" · ")}
         </p>
       )}
+      <BuildingProfileCard
+        condominiumId={condominiumId}
+        profile={data.profile}
+        canManage={data.can_manage}
+      />
+      <ComplianceReminderCard condominiumId={condominiumId} reminders={data.reminders} />
       <ComplianceSetup
         condominiumId={condominiumId}
         canManage={data.can_manage}

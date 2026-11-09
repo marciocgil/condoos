@@ -95,7 +95,7 @@ def _local(dt: datetime) -> str:
     return dt.astimezone(TZ).strftime("%d/%m/%Y %H:%M")
 
 
-def _footer(title: str) -> Callable[[Any, Any], None]:
+def _footer(title: str, text: str = FOOTER) -> Callable[[Any, Any], None]:
     def draw(canvas: Any, doc: Any) -> None:
         canvas.saveState()
         width, _ = A4
@@ -103,7 +103,7 @@ def _footer(title: str) -> Callable[[Any, Any], None]:
         canvas.line(18 * mm, 16 * mm, width - 18 * mm, 16 * mm)
         canvas.setFont("Helvetica", 7.5)
         canvas.setFillColor(MUTED)
-        canvas.drawString(18 * mm, 11.5 * mm, FOOTER)
+        canvas.drawString(18 * mm, 11.5 * mm, text)
         canvas.drawRightString(width - 18 * mm, 7.5 * mm, f"{title} · página {doc.page}")
         canvas.setStrokeColor(ACCENT)
         canvas.setLineWidth(2)
@@ -283,5 +283,68 @@ def trail_pdf(condominium: str, items: list[dict[str, Any]], generated_at: datet
         story.append(Spacer(1, 6))
         story.append(Paragraph(f"{len(items)} decisão(ões) registrada(s).", SMALL))
     footer = _footer(f"{condominium} — trilha de decisões")
+    doc.build(story, onFirstPage=footer, onLaterPages=footer)
+    return buffer.getvalue()
+
+
+DOSSIER_FOOTER = (
+    "Dossiê gerado pelo CondoOS com apoio de IA. Mostra só o que está registrado; "
+    "não é laudo nem parecer técnico ou jurídico."
+)
+
+
+def compliance_dossier_pdf(d: dict[str, Any], generated_at: datetime) -> bytes:
+    """One compliance obligation (D109, CAP-08.06): situation, who decided it applies and why,
+    the documents and dates registered (and how each date was obtained) and the history."""
+    buffer = io.BytesIO()
+    title = f"Dossiê — {d['name']}"
+    doc = _doc(buffer, title)
+    s = d["situation"]
+    story: list[Any] = [
+        Paragraph(_esc(d["name"]), H1),
+        Paragraph(f"{_esc(d['condominium'])} · gerado em {_local(generated_at)}", SMALL),
+        Spacer(1, 8),
+        Paragraph(f"<b>Situação:</b> {_esc(s['label'])} — {_esc(s['text'])}", BODY),
+    ]
+    if s.get("to_confirm"):
+        story.append(Paragraph(f"Atenção: {_esc(s['to_confirm'])}.", BODY))
+    period = d["periodicity_months"]
+    rows: list[list[Any]] = [
+        ["Área", d["category_label"]],
+        ["Se aplica", d["applicability_label"]],
+        ["Decidido por", d["validated_by"] or "—"],
+        ["Quando", _local(d["validated_at"]) if d["validated_at"] else "—"],
+        ["Motivo (onde consta)", d["validation_reason"] or "—"],
+        ["Renovação", f"a cada {period} meses" if period else "não informada"],
+        ["Aviso", f"{d['lead_days']} dias antes do vencimento"],
+        ["Responsável", d["responsible"] or "—"],
+        [
+            "Base normativa",
+            "Não informada pelo CondoOS: confirmar com o responsável técnico ou jurídico.",
+        ],
+    ]
+    story += [Paragraph("Dados da obrigação", H2), _table(rows, [45 * mm, 129 * mm], header=False)]
+    story.append(Paragraph("Documentos e datas registrados", H2))
+    if d["evidence"]:
+        ev_rows: list[list[Any]] = [["Registrado em", "Emissão", "Validade", "Origem", "Documento"]]
+        for e in d["evidence"]:
+            ev_rows.append(
+                [
+                    _local(e["created_at"]),
+                    e["issued_on"] or "—",
+                    e["valid_until"] or "—",
+                    e["source_label"],
+                    e["document"] or "—",
+                ]
+            )
+        story.append(_table(ev_rows, [30 * mm, 22 * mm, 22 * mm, 46 * mm, 54 * mm]))
+    else:
+        story.append(Paragraph("Nenhum documento registrado no CondoOS.", BODY))
+    story.append(Paragraph("Histórico", H2))
+    hist: list[list[Any]] = [["Quando", "O quê", "Por"]]
+    for e in d["events"]:
+        hist.append([_local(e["at"]), e["label"], e["by"] or "sistema"])
+    story.append(_table(hist, [34 * mm, 90 * mm, 50 * mm]))
+    footer = _footer(title, DOSSIER_FOOTER)
     doc.build(story, onFirstPage=footer, onLaterPages=footer)
     return buffer.getvalue()

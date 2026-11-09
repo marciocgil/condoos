@@ -67,6 +67,9 @@ A volta da migração apaga as três tabelas (nenhum dado existente é alterado)
 
 ## 5. Fora deste corte
 
+**Atualização (09/11/2026, D109):** perfil da edificação (só sugere), dossiê em PDF e resumo semanal por e-mail ao síndico foram aprovados e entregues. A leitura da validade pela IA entrou já no primeiro corte (D108).
+
+
 - Leitura automática da validade pela IA na apólice e no laudo (segundo corte, sempre "a confirmar").
 - Perfil da edificação que sugere obrigações por características (CAP-08.01 completo).
 - Dossiê por obrigação em PDF (CAP-08.06), lembrete por e-mail ou WhatsApp, ordens de serviço (FR-051/052).

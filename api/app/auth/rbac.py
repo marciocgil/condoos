@@ -43,6 +43,8 @@ class Permission(StrEnum):
     # and dates. VALIDATE: decide whether an obligation applies and how often (a person).
     MANAGE_COMPLIANCE = "manage_compliance"
     VALIDATE_COMPLIANCE = "validate_compliance"
+    # Turn the weekly compliance e-mail on or off (D109): the síndico only.
+    CONFIGURE_COMPLIANCE_EMAIL = "configure_compliance_email"
 
 
 P = Permission
@@ -82,6 +84,7 @@ ROLE_PERMISSIONS: dict[Role, frozenset[Permission]] = {
             P.MANAGE_DELEGATION,
             P.MANAGE_COMPLIANCE,
             P.VALIDATE_COMPLIANCE,
+            P.CONFIGURE_COMPLIANCE_EMAIL,
         }
     ),
     Role.SUBSINDICO: frozenset({P.VIEW, P.COMMENT_FINDING, P.EXPORT}),

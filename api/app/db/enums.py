@@ -475,3 +475,10 @@ class ComplianceEventKind(StrEnum):
     EVIDENCIA = "evidencia"
     ARQUIVADA = "arquivada"
     REATIVADA = "reativada"
+
+
+class ReminderStatus(StrEnum):
+    """A weekly compliance e-mail (D109): accepted by the mail server, never "delivered"."""
+
+    ENVIADO = "enviado"
+    FALHOU = "falhou"

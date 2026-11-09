@@ -74,6 +74,8 @@ Política mínima e kill switch entregues com a VS-05 (D83); o produto continua 
 
 ## 6. Histórico desta página
 
+- 09/11/2026 — FR-057, segundo corte (D109, migração 0025 aprovada): perfil do prédio que só sugere, dossiê em PDF por obrigação e resumo semanal por e-mail ao síndico (segundo envio do sistema, aprovado pelo Marcio). Verificação local: 381 testes do backend, lint, migração ida e volta, E2E `compliance.spec.ts` e `launch.spec.ts`.
+
 - 09/11/2026 — FR-057 conformidade e vencimentos, primeiro corte (D108, migração 0024 aprovada): obrigações com aplicabilidade decidida por pessoa, catálogo de 14 candidatas, documento e validade com leitura pela IA confirmada por pessoa, situação calculada, avisos na Agenda, no Hoje e no chat. Verificação local: 378 testes do backend, lint, migração ida e volta, E2E `compliance.spec.ts` e os fluxos de agenda, pedidos, assuntos e Hoje.
 
 - 09/11/2026 — Revisão de prontidão para o piloto (seção 1a): G0 com 5 de 6 pré-condições atendidas (falta o termo assinado); B4 resolvido; FR-031 medido; produção no ar (D106); rotação dos logs dos contêineres em produção.

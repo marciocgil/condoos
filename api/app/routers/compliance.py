@@ -5,26 +5,30 @@ documents: MANAGE_COMPLIANCE. Deciding whether an obligation applies: VALIDATE_C
 (síndico and the management company's manager; a person, never the system).
 """
 
+import asyncio
 import uuid
 from datetime import date
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Response, status
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 
 from app import compliance as svc
 from app.auth.deps import require
 from app.auth.rbac import CondoAccess, Permission
+from app.compliance import profile as building
 from app.compliance.catalog import CATEGORY_LABEL
 from app.compliance.status import LABEL, situation
-from app.core.time import local_today
+from app.core.audit import record_audit
+from app.core.time import local_today, utcnow
 from app.db.enums import ComplianceCategory
 from app.db.models import (
     AppUser,
     ComplianceEvent,
     ComplianceEvidence,
     ComplianceObligation,
+    ComplianceReminder,
     Condominium,
     Contract,
     Document,
@@ -36,6 +40,8 @@ router = APIRouter(tags=["compliance"])
 CanView = Annotated[CondoAccess, Depends(require(Permission.VIEW))]
 CanManage = Annotated[CondoAccess, Depends(require(Permission.MANAGE_COMPLIANCE))]
 CanValidate = Annotated[CondoAccess, Depends(require(Permission.VALIDATE_COMPLIANCE))]
+CanExport = Annotated[CondoAccess, Depends(require(Permission.EXPORT))]
+CanEmail = Annotated[CondoAccess, Depends(require(Permission.CONFIGURE_COMPLIANCE_EMAIL))]
 NOT_FOUND = "Obrigação não encontrada."
 DOCUMENT_CHOICES = 80
 
@@ -83,9 +89,10 @@ def _evidence(ev: ComplianceEvidence, docs: dict[uuid.UUID, Document]) -> dict[s
     }
 
 
-def _summary(row: svc.Row) -> dict[str, Any]:
+def _summary(row: svc.Row, profile: dict[str, Any] | None = None) -> dict[str, Any]:
     ob = row.obligation
     return {
+        "hint": building.hint(ob, profile or {}),
         "id": str(ob.id),
         "name": ob.name,
         "category": ob.category,
@@ -104,6 +111,17 @@ def _summary(row: svc.Row) -> dict[str, Any]:
 @router.get("/condominiums/{condominium_id}/compliance")
 async def list_compliance(access: CanView, db: DbSession) -> dict[str, Any]:
     today = await _today(db, access)
+    condo = await db.get(Condominium, access.condominium_id)
+    assert condo is not None
+    last_sent = await db.scalar(
+        select(ComplianceReminder.created_at)
+        .where(
+            ComplianceReminder.condominium_id == condo.id,
+            ComplianceReminder.status == "enviado",
+        )
+        .order_by(ComplianceReminder.created_at.desc())
+        .limit(1)
+    )
     every = await svc.rows_for(db, access.condominium_id, today, include_archived=True)
     rows = [r for r in every if r.obligation.archived_at is None]
     counts: dict[str, int] = {}
@@ -120,8 +138,17 @@ async def list_compliance(access: CanView, db: DbSession) -> dict[str, Any]:
         "categories": [
             {"value": c.value, "label": CATEGORY_LABEL[c.value]} for c in ComplianceCategory
         ],
-        "obligations": [_summary(r) for r in rows],
+        "obligations": [_summary(r, condo.building_profile) for r in rows],
         "archived": [_summary(r) for r in every if r.obligation.archived_at is not None],
+        "profile": {
+            "fields": [{"key": f.key, "label": f.label, "kind": f.kind} for f in building.FIELDS],
+            "values": condo.building_profile or {},
+        },
+        "reminders": {
+            "enabled": condo.compliance_email_enabled,
+            "can_change": access.can(Permission.CONFIGURE_COMPLIANCE_EMAIL),
+            "last_sent_at": last_sent.isoformat() if last_sent else None,
+        },
     }
 
 
@@ -183,8 +210,13 @@ async def get_compliance(
         )
         suppliers = [{"id": str(i), "name": n} for i, n in rows]
     latest = history[0] if history else None
+    condo = await db.get(Condominium, ob.condominium_id)
     return {
-        **_summary(svc.Row(ob, latest, situation(ob, latest, today))),
+        **_summary(
+            svc.Row(ob, latest, situation(ob, latest, today)),
+            condo.building_profile if condo else None,
+        ),
+        "can_export": access.can(Permission.EXPORT),
         "archived": ob.archived_at is not None,
         "validated_by": names.get(ob.validated_by) if ob.validated_by else None,
         "validated_at": ob.validated_at.isoformat() if ob.validated_at else None,
@@ -378,3 +410,156 @@ async def archive_obligation(
     ob = await _obligation(db, access, obligation_id)
     await svc.set_archived(db, ob, access.user_id, body.archived)
     return {"ok": True}
+
+
+# --------------------------------------------------------------------------- D109
+
+
+class ProfileIn(BaseModel):
+    values: dict[str, Any]
+
+
+@router.put("/condominiums/{condominium_id}/compliance/profile")
+async def update_profile(body: ProfileIn, access: CanManage, db: DbSession) -> dict[str, Any]:
+    """What the building has. Only suggests; never validates an obligation."""
+    try:
+        values = building.clean(body.values)
+    except building.ProfileError as exc:
+        raise _bad(exc) from exc
+    condo = await db.get(Condominium, access.condominium_id)
+    assert condo is not None
+    before = dict(condo.building_profile or {})
+    changed = sorted(k for k in set(before) | set(values) if before.get(k) != values.get(k))
+    if changed:
+        condo.building_profile = values
+        await record_audit(
+            db,
+            action="condominium.building_profile_changed",
+            object_type="condominium",
+            object_id=condo.id,
+            actor_user_id=access.user_id,
+            condominium_id=condo.id,
+            details={"campos": changed},
+        )
+    return {"values": values, "changed": changed}
+
+
+class RemindersIn(BaseModel):
+    enabled: bool
+
+
+@router.put("/condominiums/{condominium_id}/compliance/reminders")
+async def set_reminders(body: RemindersIn, access: CanEmail, db: DbSession) -> dict[str, bool]:
+    """The síndico turns the weekly compliance e-mail on or off (D109)."""
+    condo = await db.get(Condominium, access.condominium_id)
+    assert condo is not None
+    if condo.compliance_email_enabled != body.enabled:
+        condo.compliance_email_enabled = body.enabled
+        await record_audit(
+            db,
+            action="compliance.email_enabled" if body.enabled else "compliance.email_disabled",
+            object_type="condominium",
+            object_id=condo.id,
+            actor_user_id=access.user_id,
+            condominium_id=condo.id,
+        )
+    return {"enabled": condo.compliance_email_enabled}
+
+
+SOURCE_LABEL = {
+    "pessoa": "informado por pessoa",
+    "ia": "lido pela IA, a confirmar",
+    "texto": "lido do texto, a confirmar",
+    "lendo": "leitura em andamento",
+}
+EVENT_LABEL = {
+    "criada": "Cadastrada",
+    "validada": "Aplicabilidade registrada",
+    "alterada": "Dados alterados",
+    "evidencia": "Documento ou datas registrados",
+    "arquivada": "Arquivada",
+    "reativada": "Reativada",
+}
+APPLICABILITY_LABEL = {
+    "a_validar": "A validar",
+    "aplicavel": "Se aplica (validado)",
+    "nao_aplicavel": "Não se aplica (validado)",
+}
+
+
+@router.get("/condominiums/{condominium_id}/compliance/{obligation_id}/dossier.pdf")
+async def dossier_pdf(obligation_id: uuid.UUID, access: CanExport, db: DbSession) -> Response:
+    """Dossier of one obligation (CAP-08.06) for the board, the insurer or an inspection."""
+    from app.reports.pdf import compliance_dossier_pdf
+
+    ob = await _obligation(db, access, obligation_id)
+    detail = await get_compliance(obligation_id, access, db)
+    condo = await db.get(Condominium, access.condominium_id)
+    assert condo is not None
+    history = list(
+        await db.scalars(
+            select(ComplianceEvidence)
+            .where(ComplianceEvidence.obligation_id == ob.id)
+            .order_by(ComplianceEvidence.created_at.desc())
+        )
+    )
+    doc_ids = {e.document_id for e in history if e.document_id}
+    docs = (
+        {d.id: d for d in await db.scalars(select(Document).where(Document.id.in_(doc_ids)))}
+        if doc_ids
+        else {}
+    )
+    events = list(
+        await db.scalars(
+            select(ComplianceEvent)
+            .where(ComplianceEvent.obligation_id == ob.id)
+            .order_by(ComplianceEvent.created_at)
+        )
+    )
+    names = await _names(db, {e.user_id for e in events})
+
+    def date_br(value: date | None) -> str | None:
+        return value.strftime("%d/%m/%Y") if value else None
+
+    data = {
+        **detail,
+        "condominium": condo.name,
+        "applicability_label": APPLICABILITY_LABEL[ob.applicability],
+        "validated_at": ob.validated_at,
+        "responsible": (detail["supplier"] or {}).get("name") or ob.responsible,
+        "evidence": [
+            {
+                "created_at": e.created_at,
+                "issued_on": date_br(e.issued_on),
+                "valid_until": date_br(e.valid_until),
+                "source_label": SOURCE_LABEL.get(e.source, e.source),
+                "document": (
+                    docs[e.document_id].original_filename if e.document_id in docs else None
+                ),
+            }
+            for e in history
+        ],
+        "events": [
+            {
+                "at": e.created_at,
+                "label": EVENT_LABEL.get(e.kind, e.kind),
+                "by": names.get(e.user_id) if e.user_id else None,
+            }
+            for e in events
+        ],
+    }
+    body = await asyncio.to_thread(compliance_dossier_pdf, data, utcnow())
+    await record_audit(
+        db,
+        action="compliance.dossier_exported",
+        object_type="compliance_obligation",
+        object_id=ob.id,
+        actor_user_id=access.user_id,
+        condominium_id=access.condominium_id,
+    )
+    filename = f"dossie-{condo.slug}-{ob.id.hex[:8]}.pdf"
+    return Response(
+        content=body,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )

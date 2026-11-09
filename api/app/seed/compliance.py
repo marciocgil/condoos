@@ -21,6 +21,13 @@ async def seed_compliance(session: AsyncSession, today: date | None = None) -> N
     sindica = await session.scalar(select(AppUser).where(AppUser.email == SINDICA))
     if condo is None or sindica is None:
         return
+    # D109: what the building has (fictitious), so the catalogue shows suggestions.
+    condo.building_profile = {
+        "elevadores": 4,
+        "reservatorios": True,
+        "gerador": True,
+        "piscina": False,
+    }
     await svc.activate_catalog(session, condo.id, sindica.id)
     by_key = {
         o.catalog_key: o

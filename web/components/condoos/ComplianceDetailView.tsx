@@ -1,6 +1,6 @@
 "use client";
 
-import { Archive, ExternalLink, FolderPlus, RotateCcw, Send } from "lucide-react";
+import { Archive, Download, ExternalLink, FolderPlus, RotateCcw, Send } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, type ReactNode } from "react";
@@ -165,6 +165,7 @@ function Validation({ condominiumId, ob }: { condominiumId: string; ob: Complian
         </p>
       ) : (
         <p className="text-[13px] text-fg-2">
+          {ob.hint && <span className="mb-1 block text-info">Sugestão: {ob.hint.text}</span>}
           Ainda não confirmado. Regras mudam por cidade, estado e equipamento: confirme com o
           responsável técnico ou a administradora.
         </p>
@@ -422,6 +423,15 @@ export function ComplianceDetailView({
           {who && <Line label="Responsável">{who}</Line>}
         </div>
       </div>
+
+      {ob.can_export && (
+        <a
+          href={`/api/condominiums/${condominiumId}/compliance/${ob.id}/dossier.pdf`}
+          className={buttonClass("secondary", "sm")}
+        >
+          <Download size={14} aria-hidden /> Baixar dossiê (PDF)
+        </a>
+      )}
 
       {ob.pending_confirmation && ob.can_manage && (
         <ConfirmDates key={ob.pending_confirmation} condominiumId={condominiumId} ob={ob} />

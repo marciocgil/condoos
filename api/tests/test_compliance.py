@@ -314,3 +314,134 @@ async def test_document_dates_are_read_and_confirmed_by_a_person(
             .limit(1)
         )
         assert n is not None
+
+
+# --------------------------------------------------------------------------- D109
+
+
+async def test_building_profile_only_suggests(
+    client: httpx.AsyncClient, mailer: MemoryMailer, admin_engine: AsyncEngine
+) -> None:
+    acacias = await condo_id(admin_engine, "jardim-das-acacias")
+    base = f"/condominiums/{acacias}/compliance"
+    await login(client, mailer, SINDICA_ACACIAS)
+    body = (await client.get(base)).json()
+    hints = {o["name"]: o["hint"] for o in body["obligations"]}
+    assert hints["Manutenção dos elevadores"]["code"] == "provavel"
+    assert hints["Tratamento e análise da água da piscina"]["code"] == "provavel_nao"
+    assert hints["Inspeção da rede de gás"] is None  # not in the profile: no suggestion
+    assert hints["Seguro obrigatório da edificação"] is None  # validated: no hint
+    by_name = {o["name"]: o for o in body["obligations"]}
+    assert by_name["Manutenção dos elevadores"]["applicability"] == "a_validar"  # unchanged
+
+    profile = body["profile"]["values"] | {"gas_encanado": False}
+    r = await client.put(f"{base}/profile", json={"values": profile})
+    assert r.status_code == 200 and r.json()["changed"] == ["gas_encanado"]
+    body = (await client.get(base)).json()
+    gas = next(o for o in body["obligations"] if o["name"] == "Inspeção da rede de gás")
+    assert gas["hint"]["code"] == "provavel_nao" and gas["applicability"] == "a_validar"
+    for bad in ({"elevadores": -1}, {"elevadores": "dois"}, {"piscina": 1}, {"heliponto": True}):
+        assert (await client.put(f"{base}/profile", json={"values": bad})).status_code == 422
+    await login(client, mailer, CONSELHEIRO_ACACIAS)
+    assert (await client.put(f"{base}/profile", json={"values": {}})).status_code == 403
+
+
+async def test_dossier_pdf(
+    client: httpx.AsyncClient, mailer: MemoryMailer, admin_engine: AsyncEngine
+) -> None:
+    from app.db.models import AuditLog
+
+    acacias = await condo_id(admin_engine, "jardim-das-acacias")
+    base = f"/condominiums/{acacias}/compliance"
+    await login(client, mailer, CONSELHEIRO_ACACIAS)  # the board can export
+    seguro = next(
+        o for o in (await client.get(base)).json()["obligations"] if o["name"].startswith("Seguro")
+    )
+    r = await client.get(f"{base}/{seguro['id']}/dossier.pdf")
+    assert r.status_code == 200 and r.headers["content-type"] == "application/pdf"
+    assert r.content.startswith(b"%PDF") and len(r.content) > 1500
+    async with sessionmaker_for(admin_engine)() as s:
+        logged = await s.scalar(
+            select(AuditLog.id).where(
+                AuditLog.action == "compliance.dossier_exported",
+                AuditLog.object_id == uuid.UUID(seguro["id"]),
+            )
+        )
+        assert logged is not None
+    await login(client, mailer, SINDICA_MIRANTE)
+    assert (await client.get(f"{base}/{seguro['id']}/dossier.pdf")).status_code == 404
+
+
+async def test_weekly_email_to_the_sindico(
+    client: httpx.AsyncClient,
+    mailer: MemoryMailer,
+    admin_engine: AsyncEngine,
+    worker_engine: AsyncEngine,
+) -> None:
+    from app.compliance.reminders import PAUSE_TYPE, send_reminders
+    from app.db.models import ComplianceReminder
+
+    acacias = await condo_id(admin_engine, "jardim-das-acacias")
+    base = f"/condominiums/{acacias}/compliance"
+    today = date.today()
+    monday = today - timedelta(days=today.weekday())
+    # Monday 9h in São Paulo = 12h UTC; Tuesday is not a sending day.
+    monday_9h = datetime(monday.year, monday.month, monday.day, 12, tzinfo=UTC)
+
+    async def run(at: datetime) -> int:
+        mailer.sent.clear()
+        async with sessionmaker_for(worker_engine)() as s, s.begin():
+            await send_reminders(s, at)
+        return len([m for m in mailer.sent if "Vencimentos da semana" in m.subject])
+
+    assert await run(monday_9h) == 0  # off until the síndico turns it on
+    from tests.helpers import GERENTE
+
+    await login(client, mailer, GERENTE)
+    assert (await client.put(f"{base}/reminders", json={"enabled": True})).status_code == 403
+    await login(client, mailer, SINDICA_ACACIAS)
+    assert (await client.put(f"{base}/reminders", json={"enabled": True})).json() == {
+        "enabled": True
+    }
+    # A document that expires within the week of the test.
+    oid = (
+        await client.post(
+            base, json={"name": "Laudo do SPDA da torre B (fictício)", "category": "eletrica"}
+        )
+    ).json()["id"]
+    await client.post(f"{base}/{oid}/validation", json={"applies": True, "reason": "Engenheiro"})
+    soon = (monday + timedelta(days=5)).isoformat()
+    assert (
+        await client.post(f"{base}/{oid}/evidence", json={"valid_until": soon})
+    ).status_code == 201
+
+    assert await run(monday_9h + timedelta(days=1)) == 0  # Tuesday
+    assert await run(monday_9h - timedelta(hours=5)) == 0  # Monday before 8h
+    assert await run(monday_9h) == 1
+    sent = next(m for m in mailer.sent if "Vencimentos da semana" in m.subject)
+    assert sent.to == SINDICA_ACACIAS
+    assert "Laudo do SPDA da torre B" in sent.body and "/conformidade" in sent.body
+    assert "R$" not in sent.body and "irregular" not in sent.body.lower()
+    assert await run(monday_9h + timedelta(hours=2)) == 0  # once a week
+
+    async with sessionmaker_for(admin_engine)() as s:
+        rows = list(
+            await s.scalars(
+                select(ComplianceReminder).where(ComplianceReminder.condominium_id == acacias)
+            )
+        )
+        assert [r.status for r in rows] == ["enviado"] and rows[0].items >= 1
+
+    # Paused by the kill switch: nothing next week.
+    r = await client.post(
+        f"/condominiums/{acacias}/automation-pauses",
+        json={"automation_type": PAUSE_TYPE, "reason": "Teste da pausa do lembrete"},
+    )
+    assert r.status_code == 201, r.text
+    assert await run(monday_9h + timedelta(days=7)) == 0
+    pause_id = next(p["id"] for p in r.json()["active"] if p["automation_type"] == PAUSE_TYPE)
+    await client.post(f"/condominiums/{acacias}/automation-pauses/{pause_id}/resume")
+    assert (await client.get(base)).json()["reminders"]["last_sent_at"] is not None
+    await client.put(f"{base}/reminders", json={"enabled": False})
+    assert await run(monday_9h + timedelta(days=7)) == 0
+    await client.post(f"{base}/{oid}/archive", json={"archived": True})  # keep the seed tidy

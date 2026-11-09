@@ -12,6 +12,7 @@ from app.actions import DISPATCH_JOB, dispatch_job
 from app.chat.search import INDEX_JOB, index_job
 from app.compliance import READ_JOB as COMPLIANCE_READ_JOB
 from app.compliance import read_validity_job
+from app.compliance.reminders import REMINDER_JOB, reminders_job
 from app.config import get_settings
 from app.core.jobs import Handler, run_one
 from app.core.retention import RETENTION_JOB, purge_job
@@ -50,6 +51,7 @@ HANDLERS: dict[str, Handler] = {
     RETENTION_JOB: purge_job,
     DISPATCH_JOB: dispatch_job,
     COMPLIANCE_READ_JOB: read_validity_job,
+    REMINDER_JOB: reminders_job,
 }
 
 
@@ -59,6 +61,7 @@ async def _schedule_daily(maker: Any) -> None:
     from datetime import date
 
     from app.core.jobs import enqueue
+    from app.core.time import utcnow
 
     async with maker() as session, session.begin():
         await enqueue(
@@ -72,6 +75,14 @@ async def _schedule_daily(maker: Any) -> None:
             RETENTION_JOB,
             {},
             dedupe_key=f"retention:{date.today().isoformat()}",
+        )
+        # Hourly: the weekly compliance e-mail goes out on Monday from 8h in each
+        # condominium's time zone (D109); the handler decides, at most once a week.
+        await enqueue(
+            session,
+            REMINDER_JOB,
+            {},
+            dedupe_key=f"{REMINDER_JOB}:{utcnow():%Y-%m-%dT%H}",
         )
 
 

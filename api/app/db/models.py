@@ -72,6 +72,7 @@ from app.db.enums import (
     OutboxStatus,
     PlatformRole,
     PolicyDecision,
+    ReminderStatus,
     ReviewRequirement,
     SavingsStage,
     Severity,
@@ -144,6 +145,14 @@ class Condominium(IdTimestampMixin, Base):
     # can change it; the old address stops working.
     inbound_token: Mapped[str] = mapped_column(
         String(16), unique=True, default=lambda: new_inbound_token()
+    )
+    # What the building has (D109): only suggests which compliance obligations apply.
+    building_profile: Mapped[dict[str, Any]] = mapped_column(
+        Json, default=dict, server_default=sql_text("'{}'")
+    )
+    # Weekly compliance e-mail to the síndico (D109): off until the síndico turns it on.
+    compliance_email_enabled: Mapped[bool] = mapped_column(
+        Boolean, default=False, server_default="false"
     )
 
 
@@ -1280,6 +1289,24 @@ class ComplianceEvent(IdTimestampMixin, Base):
     payload: Mapped[dict[str, Any]] = mapped_column(Json, default=dict)
 
 
+class ComplianceReminder(IdTimestampMixin, Base):
+    """One weekly compliance e-mail to one síndico (D109). Append only; ids, week and counts
+    only (no address, no content)."""
+
+    __tablename__ = "compliance_reminder"
+    __table_args__ = (
+        _enum_check("status", ReminderStatus),
+        UniqueConstraint("condominium_id", "user_id", "week", name="uq_compliance_reminder_week"),
+    )
+
+    condominium_id: Mapped[uuid.UUID] = _uuid_fk("condominium.id")
+    user_id: Mapped[uuid.UUID | None] = _uuid_fk("app_user.id", nullable=True, ondelete="SET NULL")
+    week: Mapped[date] = mapped_column(Date)
+    status: Mapped[str] = mapped_column(String(10))
+    items: Mapped[int] = mapped_column(Integer, default=0)
+    message_id: Mapped[str | None] = mapped_column(String(300), nullable=True)
+
+
 # Tables protected by Row-Level Security, with the column holding the tenant id.
 RLS_TABLES: dict[str, str] = {
     "condominium": "id",
@@ -1325,6 +1352,7 @@ RLS_TABLES: dict[str, str] = {
     "compliance_obligation": "condominium_id",
     "compliance_evidence": "condominium_id",
     "compliance_event": "condominium_id",
+    "compliance_reminder": "condominium_id",
 }
 
 # Tables the application role may only read and insert into (never update or delete).
@@ -1342,4 +1370,5 @@ APPEND_ONLY_TABLES: tuple[str, ...] = (
     "inbound_message",
     "compliance_evidence",
     "compliance_event",
+    "compliance_reminder",
 )

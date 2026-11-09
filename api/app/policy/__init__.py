@@ -34,6 +34,8 @@ PAUSABLE_JOBS: dict[str, str] = {
     "email.inbound": "Entrada de documentos por e-mail",
     # The only action that sends something out (D103): waits while paused.
     "pedido_documento.enviar_email": "Envio por e-mail dos pedidos de documentos",
+    # Not a job of one condominium: the weekly sender skips a paused condominium (D109).
+    "conformidade.lembrete_email": "Resumo semanal por e-mail dos vencimentos",
 }
 
 
