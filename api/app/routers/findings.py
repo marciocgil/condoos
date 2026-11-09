@@ -12,13 +12,13 @@ from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.sql import Select
 
 from app.auth.deps import require
 from app.auth.rbac import CondoAccess, Permission
 from app.core.br import format_cnpj
-from app.db.enums import NOT_AT_RISK, VISIBLE_TO_BOARD, DecisionAction
+from app.db.enums import NOT_AT_RISK, VISIBLE_TO_BOARD, DecisionAction, FindingStatus
 from app.db.models import (
     Approval,
     AppUser,
@@ -105,6 +105,12 @@ class FindingDetailOut(FindingOut):
     can_record_approval: bool = False
 
 
+class MonthWaitingOut(BaseModel):
+    competence: date
+    waiting: int
+    amount_at_risk: Decimal
+
+
 class SummaryOut(BaseModel):
     competence: date | None
     competence_status: str | None
@@ -114,6 +120,10 @@ class SummaryOut(BaseModel):
     top: list[FindingOut]
     expenses: int
     expenses_total: Decimal
+    # Months after the one shown with points still waiting for a decision (LB-083, D108):
+    # the summary shows the last closed month, and this keeps "R$ 0 this month" from reading
+    # as "nothing to do".
+    later_waiting: list[MonthWaitingOut] = []
 
 
 class DecisionIn(BaseModel):
@@ -281,7 +291,28 @@ async def month_summary(
             )
         )
     )
+    # Only "publicado", which every viewer of the summary may see (VISIBLE_TO_BOARD).
+    later = (
+        await db.execute(
+            select(
+                Finding.competence,
+                func.count(),
+                func.coalesce(func.sum(Finding.amount_at_risk), 0),
+            )
+            .where(
+                Finding.condominium_id == access.condominium_id,
+                Finding.competence > month,
+                Finding.status == FindingStatus.PUBLICADO.value,
+            )
+            .group_by(Finding.competence)
+            .order_by(Finding.competence)
+        )
+    ).all()
     return SummaryOut(
+        later_waiting=[
+            MonthWaitingOut(competence=c, waiting=n, amount_at_risk=Decimal(total))
+            for c, n, total in later
+        ],
         competence=month,
         competence_status=comp.status if comp else None,
         amount_at_risk=sum((f.amount_at_risk for f in open_), Decimal("0")),

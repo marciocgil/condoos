@@ -39,3 +39,26 @@ export function uniquePng(seed: number = Date.now()): Buffer {
     chunk("IEND", Buffer.alloc(0)),
   ]);
 }
+
+/** A valid fictitious CNPJ for a test condominium (check digits computed; ``seed`` makes it
+ * new on every run). Only for condominiums: their CNPJ is never looked up at BrasilAPI
+ * (only suppliers are), and suppliers in E2E come from the seed. */
+export function fictitiousCnpj(seed: number = Date.now()): string {
+  const base = String(seed % 100_000_000)
+    .padStart(8, "0")
+    .concat("0001")
+    .split("")
+    .map(Number);
+  const digit = (nums: number[]) => {
+    const weights =
+      nums.length === 12
+        ? [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]
+        : [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2];
+    const sum = nums.reduce((s, n, i) => s + n * (weights[i] ?? 0), 0);
+    const r = sum % 11;
+    return r < 2 ? 0 : 11 - r;
+  };
+  const d1 = digit(base);
+  const d2 = digit([...base, d1]);
+  return [...base, d1, d2].join("");
+}

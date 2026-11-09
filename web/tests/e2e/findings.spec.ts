@@ -30,12 +30,30 @@ test.describe("síndico", () => {
     await openFindingWith(page, "Confirmar");
     await expect(page.getByRole("heading", { name: "Por que foi apontado" })).toBeVisible();
     await expect(page.getByRole("list", { name: "Evidências" })).toBeVisible();
+    // LB-086 (D108): what each decision does is said before the click.
+    await expect(page.getByTestId("decision-effects")).toContainText("Confirmar: você concorda");
     await page.getByRole("button", { name: "Confirmar", exact: true }).click();
     await expect(page.getByRole("status")).toContainText("Decisão registrada: Confirmar");
+    // ...and after it, the way to the next point or back to Hoje.
+    await expect(page.getByRole("link", { name: "Voltar ao Hoje" })).toBeVisible();
+    await expect(
+      page
+        .getByRole("link", { name: "Próximo ponto de atenção" })
+        .or(page.getByText("Tudo decidido por enquanto."))
+        .first(),
+    ).toBeVisible();
     await expect(page.getByText("Confirmado", { exact: true })).toBeVisible();
     await expect(page.getByRole("list", { name: "Histórico de decisões" })).toContainText(
       "Ana Ribeiro Sampaio confirmou o achado",
     );
+  });
+
+  // LB-084 (D108): severity in words in the list, not only a colour.
+  test("lista de achados mostra a severidade em texto", async ({ page }) => {
+    await loginAs(page, SINDICA);
+    await page.getByRole("link", { name: "Finanças" }).click(); // tab opens on Achados (D115)
+    const first = page.locator('a[href*="/achados/"]').first();
+    await expect(first).toContainText(/Grave|Médio|Baixo/);
   });
 
   test("síndico contesta com comentário", async ({ page }) => {

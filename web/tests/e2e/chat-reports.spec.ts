@@ -16,7 +16,15 @@ test.describe("síndico — chat e relatórios", () => {
     await page.goto(page.url().split("?")[0] + "?mes=2026-10");
     await page.locator('a[href*="/achados/"]').first().click();
     await expect(page.getByRole("heading", { name: "Por que foi apontado" })).toBeVisible();
-    await page.getByRole("link", { name: "Pergunte ao CondoOS" }).click();
+    // LB-085 (D108): without a model the button is not shown and the page says so.
+    const ask = page.getByRole("link", { name: "Pergunte ao CondoOS" });
+    if (!(await ask.isVisible())) {
+      const id = page.url().match(/condominio\/([^/]+)/)?.[1];
+      await page.goto(`/condominio/${id}/pergunte`);
+      await expect(page.getByText("Indisponível no momento")).toBeVisible();
+      return;
+    }
+    await ask.click();
     await expect(page).toHaveURL(/\/pergunte\?tela=achado&achado=[0-9a-f-]{36}/);
     await expect(page.getByRole("heading", { name: "Pergunte ao CondoOS" })).toBeVisible();
     await expect(page.getByText("Respondendo sobre o achado que você estava vendo")).toBeVisible();

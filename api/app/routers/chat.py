@@ -13,6 +13,7 @@ from app.chat.agent import ChatUnavailable
 from app.chat.service import answer, history
 from app.chat.tools import ScreenContext
 from app.db.session import DbSession, set_tenant_scope
+from app.launch.readiness import chat_available
 
 router = APIRouter(prefix="/condominiums/{condominium_id}/chat", tags=["chat"])
 
@@ -46,6 +47,13 @@ def _screen(s: ScreenIn) -> ScreenContext:
     if s.competence:
         comp = date(int(s.competence[:4]), int(s.competence[5:7]), 1)
     return ScreenContext(screen=s.screen, finding_id=s.finding_id, competence=comp)
+
+
+@router.get("/status")
+async def chat_status(condominium_id: uuid.UUID, access: CanView) -> dict[str, bool]:
+    """Whether the chat can answer now (LB-085, D108): the "Pergunte" button only shows
+    when it does. Without a model (``replay``/``off``) every question would get a 503."""
+    return {"available": chat_available()}
 
 
 @router.get("")

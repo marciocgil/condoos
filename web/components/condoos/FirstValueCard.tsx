@@ -9,11 +9,9 @@ import {
   Sigma,
   XCircle,
 } from "lucide-react";
-import Link from "next/link";
 import { useEffect, useState } from "react";
 
 import { Badge, type BadgeTone } from "@/components/ui/Badge";
-import { buttonClass } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import type { FirstValue, FirstValueField } from "@/lib/types";
 
@@ -171,15 +169,9 @@ export function FirstValueCard({
       )}
 
       {card.next_step && (
-        <div className="mt-4">
-          <p className="text-sm">{card.next_step.why}</p>
-          <Link
-            href={`/condominio/${condominiumId}/resumo`}
-            className={`${buttonClass("secondary", "sm")} mt-2`}
-          >
-            Ver próximos passos
-          </Link>
-        </div>
+        <p className="mt-4 text-sm" data-testid="first-value-next">
+          {card.next_step.why}
+        </p>
       )}
     </Card>
   );

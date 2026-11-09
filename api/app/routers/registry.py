@@ -12,6 +12,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, EmailStr, Field, field_validator
 from sqlalchemy import select
 
+from app.actions import revalidate_approvals
 from app.auth.deps import CurrentPrincipal, active_membership, require
 from app.auth.rbac import CondoAccess, Permission
 from app.auth.service import normalize_email
@@ -31,6 +32,7 @@ from app.db.models import (
 )
 from app.db.session import DbSession, get_worker_engine, sessionmaker_for
 from app.enrichment.suppliers import get_or_create_supplier
+from app.launch.health import record_capability_changes
 from app.onboarding import BoardIn, CondoIn, OnboardingIn, onboard
 from app.platform import active_grant, assign
 from app.routers.schemas import ContractOut
@@ -255,6 +257,9 @@ async def add_member(
         db.add(membership)
     await db.flush()
     await _audit(db, access, "member.added", "membership", membership.id, details)
+    await record_capability_changes(
+        db, access.condominium_id, reason="acesso", actor_user_id=access.user_id
+    )
     return {"id": str(membership.id)}
 
 
@@ -276,7 +281,21 @@ async def remove_member(
     # Revoked, not deleted (D77): the row keeps who had which access and until when.
     membership.revoked_at = utcnow()
     await _audit(db, access, "member.removed", "membership", membership_id)
-    return {"message": "Acesso removido. As sessões abertas perdem o acesso na próxima ação."}
+    await db.flush()
+    message = "Acesso removido. As sessões abertas perdem o acesso na próxima ação."
+    if membership.role == Role.SINDICO.value:
+        # Troca de síndico (F06, LB-061, D109): approvals of the person who left go back to
+        # approval, and the capability history records what changed.
+        back = await revalidate_approvals(db, access.condominium_id, user_id=access.user_id)
+        await record_capability_changes(
+            db, access.condominium_id, reason="troca_sindico", actor_user_id=access.user_id
+        )
+        if back:
+            message += (
+                f" {back} {'ação aprovada por essa pessoa voltou' if back == 1 else 'ações aprovadas por essa pessoa voltaram'}"
+                " para aprovação."
+            )
+    return {"message": message}
 
 
 # --------------------------------------------------------------------------- contracts

@@ -143,6 +143,7 @@ export interface Summary {
   top: Finding[];
   expenses: number;
   expenses_total: string;
+  later_waiting?: { competence: string; waiting: number; amount_at_risk: string }[];
 }
 
 export interface TrailItem {
@@ -648,7 +649,7 @@ export interface Briefing {
   read_at: string | null;
   headline: string;
   sections: { key: string; title: string; count: number; items: BriefingItem[] }[];
-  partial_sources: { source: string; label: string; reason: string }[];
+  partial_sources: { source: string; label: string; reason: string; not_started?: boolean }[];
 }
 
 // --------------------------------------------------------------------------- actions (D83)
@@ -797,6 +798,61 @@ export interface Launch {
   readiness: CapabilityReadiness[];
   next_steps: LaunchStep[];
   done_for_you: { key: string; count: number; label: string }[];
+  progress: { done: number; total: number };
+  in_review: {
+    total: number;
+    by_type: Record<string, number>;
+    items: {
+      id: string;
+      doc_type: string;
+      doc_type_label: string;
+      filename: string;
+      state: "lendo" | "em_conferencia";
+      since: string;
+    }[];
+  };
+}
+
+// A change of capability state (LB-064, D109), newest first.
+export interface CapabilityChange {
+  at: string;
+  key: string;
+  title: string;
+  from: ReadinessState | null;
+  to: ReadinessState;
+  from_label: string | null;
+  to_label: string;
+  missing: string[];
+  reason: string;
+}
+
+// Health alerts from the daily monitors (D110) live in data_issue with these kinds.
+export const ALERT_KINDS = new Set([
+  "canal_parado",
+  "contrato_aditado",
+  "revisor_ausente",
+  "sindico_sem_acesso",
+  "acao_parada",
+]);
+
+// Centro de Evolução (LB-063, D110): a suggestion from observed demand.
+export interface EvolutionSuggestion {
+  key: string;
+  observed: string;
+  gain: string;
+  action: { label: string; href: string } | null;
+}
+
+// The síndico's month on "Hoje" (LB-082, D108).
+export interface LaunchMonth {
+  active: boolean;
+  month: string;
+  items: {
+    key: string;
+    title: string;
+    detail: string;
+    actions: { label: string; href: string; primary: boolean }[];
+  }[];
 }
 
 export interface FirstValueField {
@@ -837,6 +893,7 @@ export interface PortfolioLaunchRow {
   first_value_at: string | null;
   hours_to_first_value: number | null;
   steps_postponed: number;
+  alerts_open: number;
 }
 
 // Data conflicts (D93): two documents that say different things about a contract.
@@ -855,6 +912,8 @@ export interface DataIssue {
   condominium_id: string;
   condominium?: string;
   kind: string;
+  // Who sees it (D110): everyone who views the condominium, or the team and the management.
+  audiencia: "condominio" | "equipe";
   status: "aberto" | "resolvido" | "descartado";
   field: string | null;
   title: string;

@@ -1,4 +1,4 @@
-import { Download, Upload } from "lucide-react";
+import { Download, Gavel, Upload } from "lucide-react";
 import Link from "next/link";
 
 import { ActionsPreview } from "@/components/condoos/ActionsPreview";
@@ -8,13 +8,20 @@ import { DelegationBoard } from "@/components/condoos/DelegationBoard";
 import { OpportunitiesPreview } from "@/components/condoos/OpportunitiesPreview";
 import { InsightCard } from "@/components/condoos/InsightCard";
 import { JourneyCard, JourneyReopen } from "@/components/condoos/JourneyCard";
+import { MonthRoutine } from "@/components/condoos/MonthRoutine";
 import { SEVERITY_DOT } from "@/components/condoos/SeverityBadge";
 import { MonthSelect } from "@/components/MonthSelect";
 import { buttonClass } from "@/components/ui/Button";
 import { Card, CardTitle } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { apiGet } from "@/lib/api";
-import { competenceParam, formatBRL, formatBRLShort, formatMonth } from "@/lib/format";
+import {
+  competenceParam,
+  formatBRL,
+  formatBRLShort,
+  formatMonth,
+  formatMonthTitle,
+} from "@/lib/format";
 import { SEVERITY_PLURAL } from "@/lib/labels";
 import type {
   Briefing,
@@ -22,6 +29,7 @@ import type {
   Condominium,
   DelegationBoard as Board,
   Launch,
+  LaunchMonth,
   Severity,
   Summary,
 } from "@/lib/types";
@@ -42,13 +50,14 @@ export default async function ResumoPage({
 }) {
   const { id } = await params;
   const { mes } = await searchParams;
-  const [condo, competences, summary, briefing, launch, board] = await Promise.all([
+  const [condo, competences, summary, briefing, launch, board, routine] = await Promise.all([
     apiGet<Condominium>(`/condominiums/${id}`),
     apiGet<Competence[]>(`/condominiums/${id}/competences`),
     apiGet<Summary>(`/condominiums/${id}/summary${mes ? `?competence=${mes}` : ""}`),
     apiGet<Briefing>(`/condominiums/${id}/briefing`),
     apiGet<Launch>(`/condominiums/${id}/launch`),
     apiGet<Board>(`/condominiums/${id}/delegations/board`),
+    apiGet<LaunchMonth>(`/condominiums/${id}/launch/month`),
   ]);
   // Launch (D89): the implementation journey above the briefing while it is not hidden.
   const journey = launch.dismissed ? (
@@ -63,6 +72,7 @@ export default async function ResumoPage({
   // Hoje (VS-04): the day's briefing first; the month's audit summary follows, unchanged.
   const today = (
     <>
+      <MonthRoutine condominiumId={id} routine={routine} />
       {journey}
       <BriefingView
         compact
@@ -101,7 +111,29 @@ export default async function ResumoPage({
       </div>
       {today}
       <h2 className="pt-2 text-lg font-semibold">Auditoria do mês</h2>
+      {/* Which month this is and why (LB-083, D108): by default the last closed month, the
+          report's view; later months with points waiting are named right below. */}
+      <p className="text-sm text-fg-2" data-testid="audit-month">
+        {summary.competence_status === "fechada"
+          ? `${mes ? "Mês fechado" : "Último mês fechado"}: ${formatMonth(summary.competence)}`
+          : `Mês em aberto (prévia): ${formatMonth(summary.competence)}`}
+      </p>
       <MonthSelect competences={competences} value={summary.competence} />
+      {(summary.later_waiting ?? []).map((w) => (
+        <Link
+          key={w.competence}
+          href={`/condominio/${id}/achados?mes=${competenceParam(w.competence)}&status=publicado`}
+          className="flex items-center gap-2 rounded-[var(--radius-card)] border border-line bg-surface p-3 text-sm hover:bg-elevated"
+          data-testid="later-waiting"
+        >
+          <Gavel size={14} aria-hidden className="shrink-0 text-info" />
+          <span>
+            {formatMonthTitle(w.competence)} (em aberto): {w.waiting}{" "}
+            {w.waiting === 1 ? "ponto aguarda decisão" : "pontos aguardam decisão"} ·{" "}
+            {formatBRLShort(w.amount_at_risk)}
+          </span>
+        </Link>
+      ))}
 
       <Card tone="highlight" aria-label="Destaque do mês">
         <p className="tabular text-[32px] leading-tight font-semibold" data-testid="amount-at-risk">

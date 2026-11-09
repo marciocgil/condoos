@@ -1,11 +1,13 @@
-import { CalendarClock, FileSignature } from "lucide-react";
+import { CalendarClock, FileSearch, FileSignature } from "lucide-react";
+import Link from "next/link";
 
 import { Badge } from "@/components/ui/Badge";
+import { buttonClass } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { apiGet } from "@/lib/api";
 import { indexLabel } from "@/lib/labels";
 import { formatBRL, formatDate } from "@/lib/format";
-import type { Contract } from "@/lib/types";
+import type { Contract, Launch } from "@/lib/types";
 
 function nextAdjustment(baseMonth: number | null, index: string, today: Date): string | null {
   if (!baseMonth || !["IPCA", "IGPM", "INPC"].includes(index)) return null;
@@ -19,15 +21,46 @@ function daysUntil(iso: string, today: Date): number {
 
 export default async function ContratosPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const contracts = await apiGet<Contract[]>(`/condominiums/${id}/contracts`);
+  const [contracts, launch] = await Promise.all([
+    apiGet<Contract[]>(`/condominiums/${id}/contracts`),
+    apiGet<Launch>(`/condominiums/${id}/launch`),
+  ]);
+  // Contracts sent and still with the CondoOS team (LB-081, D108): they become contracts
+  // only after the review (D59), so the screen says they are on the way.
+  const inReview = launch.in_review.by_type.contrato ?? 0;
   const today = new Date();
   return (
     <section aria-labelledby="contracts-title" className="space-y-3">
       <h1 id="contracts-title" className="text-xl font-semibold">
         Contratos
       </h1>
-      {contracts.length === 0 && (
-        <EmptyState icon={<FileSignature size={28} />} title="Nenhum contrato cadastrado">
+      {inReview > 0 && (
+        <div
+          role="note"
+          data-testid="contracts-in-review"
+          className="flex items-start gap-2 rounded-[var(--radius-card)] border border-line bg-surface p-3 text-sm"
+        >
+          <FileSearch size={16} aria-hidden className="mt-0.5 shrink-0 text-info" />
+          <span>
+            {inReview === 1
+              ? "1 contrato em conferência pela equipe CondoOS. Ele aparece aqui assim que a conferência terminar."
+              : `${inReview} contratos em conferência pela equipe CondoOS. Eles aparecem aqui assim que a conferência terminar.`}
+          </span>
+        </div>
+      )}
+      {contracts.length === 0 && inReview === 0 && (
+        <EmptyState
+          icon={<FileSignature size={28} />}
+          title="Nenhum contrato cadastrado"
+          action={
+            <Link
+              href={`/condominio/${id}/enviar?passo=enviar_contrato`}
+              className={buttonClass("primary", "sm")}
+            >
+              Enviar contrato
+            </Link>
+          }
+        >
           Envie os contratos em PDF para que os reajustes e a vigência sejam conferidos.
         </EmptyState>
       )}

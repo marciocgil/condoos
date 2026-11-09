@@ -9,7 +9,7 @@ Approved by Marcio on 09/11/2026. Additive. Downgrade drops the three tables; no
 data is changed.
 
 Revision ID: 0025
-Revises: 0023
+Revises: 0024
 """
 
 from collections.abc import Sequence
@@ -19,7 +19,7 @@ from alembic import op
 from sqlalchemy.dialects import postgresql
 
 revision: str = "0025"
-down_revision: str | None = "0023"
+down_revision: str | None = "0024"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 

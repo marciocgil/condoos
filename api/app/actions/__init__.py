@@ -15,7 +15,7 @@ from datetime import date, timedelta
 from decimal import Decimal
 from typing import Any
 
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -30,12 +30,14 @@ from app.db.enums import (
     ActionStatus,
     OutboxStatus,
     PolicyDecision,
+    Role,
 )
 from app.db.models import (
     ActionDecision,
     ActionRequest,
     CaseRecord,
     Condominium,
+    Membership,
     Opportunity,
     OutboxEvent,
     Supplier,
@@ -510,6 +512,66 @@ async def record_execution(
     return req, None
 
 
+APPROVER_GONE = (
+    "Quem aprovou não é mais síndico deste condomínio: a aprovação foi anulada e o pedido "
+    "voltou para aprovação de quem responde agora."
+)
+
+
+async def approver_active(session: AsyncSession, req: ActionRequest) -> bool:
+    """Whether the person who approved still holds an active síndico access in this
+    condominium (LB-061, D109). Approving is the síndico's alone (``APPROVE_IN_CONDO``)."""
+    if req.approved_by_user_id is None:
+        return False
+    now = utcnow()
+    found = await session.scalar(
+        select(Membership.id)
+        .where(
+            Membership.condominium_id == req.condominium_id,
+            Membership.user_id == req.approved_by_user_id,
+            Membership.role == Role.SINDICO.value,
+            Membership.revoked_at.is_(None),
+            or_(Membership.expires_at.is_(None), Membership.expires_at > now),
+        )
+        .limit(1)
+    )
+    return found is not None
+
+
+async def revalidate_approvals(
+    session: AsyncSession, condo_id: uuid.UUID, *, user_id: uuid.UUID | None
+) -> int:
+    """Troca de síndico (F06, LB-061, D109): every open approval given by someone who is no
+    longer síndico goes back to approval. Nothing approved by a person who left is carried
+    out. Returns how many requests went back."""
+    reverted = 0
+    for req in await session.scalars(
+        select(ActionRequest)
+        .where(
+            ActionRequest.condominium_id == condo_id,
+            ActionRequest.approved_by_user_id.is_not(None),
+            ActionRequest.status.in_(
+                [ActionStatus.ENFILEIRADA.value, ActionStatus.AGUARDANDO_EXECUCAO_MANUAL.value]
+            ),
+        )
+        .with_for_update()
+    ):
+        if await approver_active(session, req):
+            continue
+        _void_approval(req)
+        await _cancel_outbox(session, req)
+        await _decide(
+            session,
+            req,
+            kind=ActionDecisionKind.INVALIDAR,
+            user_id=user_id,
+            to_status=ActionStatus.AGUARDANDO_APROVACAO,
+            comment=APPROVER_GONE,
+        )
+        reverted += 1
+    return reverted
+
+
 async def _recheck(
     session: AsyncSession,
     req: ActionRequest,
@@ -520,7 +582,9 @@ async def _recheck(
     """Back to approval when the approval no longer covers what is about to happen."""
     reason: str | None = None
     kind = ActionDecisionKind.INVALIDAR
-    if req.approval_expires_at is None or req.approval_expires_at <= utcnow():
+    if not await approver_active(session, req):
+        reason = APPROVER_GONE
+    elif req.approval_expires_at is None or req.approval_expires_at <= utcnow():
         reason = "A aprovação venceu antes da execução: o pedido voltou para aprovação."
         kind = ActionDecisionKind.EXPIRAR
     elif final_cost is not None and final_cost > Decimal(req.cost_cap):

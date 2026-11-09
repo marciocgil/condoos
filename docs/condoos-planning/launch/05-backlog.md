@@ -99,9 +99,17 @@ Data: 07/11/2026. IDs **LB-xxx** (sem colidir com CB-xxx do `docs/backlog.md`). 
 - **LB-050** Provedor de e-mail de entrada real (IMAP ou serviço), com mock · M · ✅ (D101: SES em São Paulo → S3, bucket simulado nos testes; falta o domínio). **LB-051** Saúde do canal: último documento, última leitura, falhas · M · ✅ (D101). **LB-052** Documento esperado com verificação de outros canais antes de acusar ausência (F03) · M · ✅ (D102). **LB-053** Envio de e-mail de pedido como tipo de ação L3 aprovado (se Q-L02) com recibo de envio ≠ entrega · G · ✅ (D103). **LB-054** WhatsApp oficial — **só especificação** até contrato ⛓. **LB-055** Cobertura por competência na Agenda · P · ✅ (D102).
 - **Gate LG5:** fatura não recebida, importação duplicada, e-mail desconectado, mensagem não entregue — sem falso sucesso.
 
+## Experiência do piloto (P0) · ✅ entregue (D108)
+
+Proposta em `11-proposta-experiencia-piloto.md`, aprovada com Q-L07..Q-L10 nas recomendações. Sem migração; API só acrescenta campos. Todos os itens abaixo entregues (D108).
+
+- **LB-080** Guia em passos ("Passo X de N", tela com contexto, "Continuar o guia") · M. **LB-081** "Em conferência" visível no Hoje e em Contratos · P. **LB-082** Roteiro do mês no Hoje depois de LM3 · M. **LB-083** Hoje sem mensagens que se contradizem (mês fechado explícito, "ainda não começou" × "atrasado", plurais, "Hoje" no link de volta) · P. **LB-084** Severidade com texto na lista e explicada no detalhe · P. **LB-085** "Pergunte ao CondoOS" só quando o chat responde · P. **LB-086** Texto de cada decisão e "Próximo ponto de atenção" · P.
+- **Aceite:** nos roteiros da síndica nova (Bosque dos Ipês) e da síndica em operação (Acácias), o síndico não precisa sair do caminho indicado pela tela e nenhuma tela contradiz outra; E2E e capturas antes e depois.
+
 ## LF6 — Saúde contínua (P1)
 
-- **LB-060** Monitores diários (job) de canal parado, contrato aditado, revisor revogado · M. **LB-061** Troca de síndico (F06): suspende aprovações pendentes e rebaixa C7 · M. **LB-062** Alertas como `data_issue` interno, sem poluir o síndico · P. **LB-063** Centro de Evolução (sugestões quando surge demanda) · M. **LB-064** Histórico de estados de capacidade · P. **LB-065** Rollback testado de capacidade · P.
+- **LF6-a ✅ (D109):** LB-061, LB-064, LB-065. **LF6-b ✅ (D110):** LB-060, LB-062, LB-063 (`12-lf6b-proposta-monitores.md`).
+- **LB-060** Monitores diários (job) de canal parado, contrato aditado, revisor revogado · M · ✅ (D110). **LB-061** Troca de síndico (F06): suspende aprovações pendentes e rebaixa C7 · M · ✅ (D109: aprovações de quem saiu voltam para aprovação; C7 espera o síndico ativo entrar). **LB-062** Alertas como `data_issue` interno, sem poluir o síndico · P · ✅ (D110, migração 0024). **LB-063** Centro de Evolução (sugestões quando surge demanda) · M · ✅ (D110). **LB-064** Histórico de estados de capacidade · P · ✅ (D109: `audit_log`, sem migração). **LB-065** Rollback testado de capacidade · P · ✅ (D109).
 - **Gate LG6:** troca de síndico, contrato substituído, contato incorreto, alteração bancária (sempre negada), credencial revogada.
 
 ## LF7 — Pilotos (depende de B5)

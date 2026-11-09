@@ -1,9 +1,10 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
-import { Button, type ButtonVariant } from "@/components/ui/Button";
+import { Button, buttonClass, type ButtonVariant } from "@/components/ui/Button";
 import { textareaClass } from "@/components/ui/Field";
 import { ACTION_LABEL } from "@/lib/labels";
 
@@ -23,6 +24,15 @@ const COMMENT_LABEL: Record<string, string> = {
   descartar: "Motivo do descarte",
   solicitar_evidencia: "Que evidência falta para decidir?",
 };
+// What each of the síndico's decisions does, said before the click (LB-086, D108). Follows
+// ``findings/decisions.py`` and the risk rule: ignored findings leave the amount at risk.
+const EFFECT: Record<string, string> = {
+  confirmar:
+    "Confirmar: você concorda que é um ponto a tratar. Ele segue no valor em risco e no relatório.",
+  contestar:
+    "Contestar: você discorda e diz por quê. O motivo fica na trilha e o ponto segue no relatório como contestado.",
+  ignorar: "Ignorar: o ponto sai do valor em risco. A decisão fica registrada e pode ser revista.",
+};
 const VARIANT: Record<string, ButtonVariant> = {
   validar: "primary",
   confirmar: "primary",
@@ -34,10 +44,15 @@ export function DecisionBar({
   condominiumId,
   findingId,
   actions,
+  nextHref,
+  homeHref,
 }: {
   condominiumId: string;
   findingId: string;
   actions: string[];
+  /** The síndico's next point waiting for a decision, if any, and the way back to Hoje. */
+  nextHref?: string | null;
+  homeHref?: string;
 }) {
   const router = useRouter();
   const [pending, setPending] = useState<string | null>(null);
@@ -46,7 +61,7 @@ export function DecisionBar({
   const [done, setDone] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  if (actions.length === 0) return null;
+  if (actions.length === 0 && !done) return null;
 
   async function send(action: string, text?: string) {
     setBusy(true);
@@ -69,8 +84,16 @@ export function DecisionBar({
   }
 
   const sorted = [...actions].sort((a, b) => ORDER.indexOf(a) - ORDER.indexOf(b));
+  const effects = sorted.filter((a) => EFFECT[a]);
   return (
     <div className="space-y-3">
+      {effects.length > 0 && !done && (
+        <ul className="space-y-1 text-[13px] text-fg-2" data-testid="decision-effects">
+          {effects.map((a) => (
+            <li key={a}>{EFFECT[a]}</li>
+          ))}
+        </ul>
+      )}
       <div
         className="grid grid-cols-3 gap-2 sm:flex sm:flex-wrap"
         role="group"
@@ -79,7 +102,8 @@ export function DecisionBar({
         {sorted.map((action) => (
           <Button
             key={action}
-            variant={VARIANT[action] ?? "secondary"}
+            // After a decision the next point is the primary action (one lime button).
+            variant={done ? "secondary" : (VARIANT[action] ?? "secondary")}
             disabled={busy}
             aria-expanded={NEEDS_COMMENT.has(action) ? pending === action : undefined}
             onClick={() =>
@@ -125,9 +149,25 @@ export function DecisionBar({
         </p>
       )}
       {done && !error && (
-        <p role="status" className="text-sm text-success">
-          {done}
-        </p>
+        <div className="space-y-2">
+          <p role="status" className="text-sm text-success">
+            {done}
+          </p>
+          {homeHref && (
+            <div className="flex flex-wrap gap-2">
+              {nextHref ? (
+                <Link href={nextHref} className={buttonClass("primary", "sm")}>
+                  Próximo ponto de atenção
+                </Link>
+              ) : (
+                <p className="text-sm">Tudo decidido por enquanto.</p>
+              )}
+              <Link href={homeHref} className={buttonClass("secondary", "sm")}>
+                Voltar ao Hoje
+              </Link>
+            </div>
+          )}
+        </div>
       )}
     </div>
   );

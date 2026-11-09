@@ -39,6 +39,7 @@ from app.db.models import (
     Supplier,
 )
 from app.db.session import DbSession
+from app.launch.health import record_capability_changes
 from app.policy import (
     ALL_AUTOMATIONS,
     APPROVAL_VALID_DAYS,
@@ -527,6 +528,9 @@ async def pause_automation(
         details={"automation_type": body.automation_type},
     )
     await db.flush()
+    await record_capability_changes(
+        db, access.condominium_id, reason="pausa", actor_user_id=access.user_id
+    )
     return await _pauses(db, access)
 
 
@@ -556,4 +560,7 @@ async def resume_automation(
         details={"automation_type": pause.automation_type},
     )
     await db.flush()
+    await record_capability_changes(
+        db, access.condominium_id, reason="pausa", actor_user_id=access.user_id
+    )
     return await _pauses(db, access)

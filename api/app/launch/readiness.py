@@ -23,7 +23,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.chat.search import INDEXED_TYPES
 from app.core.time import add_months, local_today
 from app.data_issues import open_issues
-from app.db.enums import CompetenceStatus, DocumentType, ExtractionStatus, PlatformRole
+from app.db.enums import CompetenceStatus, DocumentType, ExtractionStatus, PlatformRole, Role
 from app.db.models import (
     BankTransaction,
     Competence,
@@ -33,6 +33,7 @@ from app.db.models import (
     Document,
     DocumentChunk,
     Expense,
+    Membership,
 )
 from app.llm.client import resolve_mode
 from app.pending import month_pending
@@ -265,7 +266,25 @@ async def actions_capability(session: AsyncSession, condo_id: uuid.UUID) -> Read
     condo = await session.get(Condominium, condo_id)
     limit = approval_limit(condo) if condo is not None else None
     paused = await active_pause(session, condo_id, "action.dispatch") is not None
-    r.facts = {"alcada_configurada": limit is not None, "acoes_pausadas": paused}
+    # Only the síndico approves (APPROVE_IN_CONDO). After a change of síndico (F06, LB-061,
+    # D109) the capability waits until the new person has an active access and has entered.
+    now = func.now()
+    approver = await session.scalar(
+        select(Membership.id)
+        .where(
+            Membership.condominium_id == condo_id,
+            Membership.role == Role.SINDICO.value,
+            Membership.accepted_at.is_not(None),
+            Membership.revoked_at.is_(None),
+            or_(Membership.expires_at.is_(None), Membership.expires_at > now),
+        )
+        .limit(1)
+    )
+    r.facts = {
+        "alcada_configurada": limit is not None,
+        "acoes_pausadas": paused,
+        "sindico_ativo": approver is not None,
+    }
     if limit is None:
         r.missing = [
             "Alçada do síndico não configurada: a regra de alçada não avalia e nenhuma ação "
@@ -273,6 +292,12 @@ async def actions_capability(session: AsyncSession, condo_id: uuid.UUID) -> Read
         ]
         return r
     r.state = "supervisionada"
+    if approver is None:
+        r.state = "analise_parcial"
+        r.missing.append(
+            "Nenhum síndico com acesso ativo entrou no CondoOS: as ações esperam a aprovação "
+            "de quem responde pelo condomínio."
+        )
     if paused:
         r.state = "analise_parcial"
         r.missing.append("As ações estão pausadas neste condomínio.")

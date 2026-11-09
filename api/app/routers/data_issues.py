@@ -10,11 +10,12 @@ from typing import Annotated, Any, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
-from sqlalchemy import select
+from sqlalchemy import Select, select
 
 from app.auth.deps import CurrentPrincipal, require
 from app.auth.rbac import CondoAccess, Permission
 from app.data_issues import DataIssueError, as_dict, discard, reopen, resolve
+from app.db.enums import DataIssueAudience
 from app.db.models import DataIssue, DataIssueEvent
 from app.db.session import DbSession
 from app.routers.portfolio import _manager_access
@@ -26,7 +27,8 @@ Status = Literal["aberto", "resolvido", "descartado"]
 
 
 class ResolveIn(BaseModel):
-    prevailing: int = Field(ge=0)
+    # Required for a conflict (which side prevails); a health alert has no sides (D110).
+    prevailing: int | None = Field(default=None, ge=0)
     reason: str = Field(max_length=1000)
 
 
@@ -34,10 +36,21 @@ class ReasonIn(BaseModel):
     reason: str = Field(max_length=1000)
 
 
+def _visible(stmt: Select[Any], access: CondoAccess) -> Select[Any]:
+    """Health alerts for the team (D110, Q-L12) are seen only by the CondoOS team and the
+    management (``VIEW_PENDING_FINDINGS``); for anyone else they do not exist (404)."""
+    if access.can(Permission.VIEW_PENDING_FINDINGS):
+        return stmt
+    return stmt.where(DataIssue.audiencia == DataIssueAudience.CONDOMINIO.value)
+
+
 async def _issue(db: DbSession, access: CondoAccess, issue_id: uuid.UUID) -> DataIssue:
-    issue = await db.scalar(
-        select(DataIssue).where(
-            DataIssue.id == issue_id, DataIssue.condominium_id == access.condominium_id
+    issue: DataIssue | None = await db.scalar(
+        _visible(
+            select(DataIssue).where(
+                DataIssue.id == issue_id, DataIssue.condominium_id == access.condominium_id
+            ),
+            access,
         )
     )
     if issue is None:
@@ -56,7 +69,9 @@ async def list_issues(
     db: DbSession,
     status_: Annotated[Status | None, Query(alias="status")] = None,
 ) -> list[dict[str, Any]]:
-    stmt = select(DataIssue).where(DataIssue.condominium_id == access.condominium_id)
+    stmt = _visible(
+        select(DataIssue).where(DataIssue.condominium_id == access.condominium_id), access
+    )
     if status_ is not None:
         stmt = stmt.where(DataIssue.status == status_)
     rows = await db.scalars(stmt.order_by(DataIssue.created_at.desc()))
@@ -158,8 +173,11 @@ async def portfolio_issues(
     out: list[dict[str, Any]] = []
     for condo, access in accesses:
         rows = await db.scalars(
-            select(DataIssue).where(
-                DataIssue.condominium_id == condo.id, DataIssue.status == status_
+            _visible(
+                select(DataIssue).where(
+                    DataIssue.condominium_id == condo.id, DataIssue.status == status_
+                ),
+                access,
             )
         )
         for issue in rows:

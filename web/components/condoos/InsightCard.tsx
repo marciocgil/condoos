@@ -5,9 +5,7 @@ import { formatBRLShort } from "@/lib/format";
 import type { Finding } from "@/lib/types";
 
 import { FindingStatusBadge } from "./FindingStatusBadge";
-import { SEVERITY_DOT } from "./SeverityBadge";
-
-const SEVERITY_TEXT = { alta: "grave", media: "médio", baixa: "baixo" } as const;
+import { SeverityBadge } from "./SeverityBadge";
 
 /** AI Insight Card (DS §5.5), compact: a finding in a list, leading to its evidence. */
 export function InsightCard({
@@ -30,25 +28,18 @@ export function InsightCard({
           {finding.supplier_name ?? finding.category_label ?? "—"} ·{" "}
           {formatBRLShort(finding.amount_at_risk)}
         </p>
-        {(showStatus || finding.ai_assisted) && (
-          <div className="mt-2 flex flex-wrap gap-2">
-            {showStatus && <FindingStatusBadge status={finding.status} />}
-            {finding.ai_assisted && (
-              <span className="inline-flex items-center gap-1 text-xs text-fg-2">
-                <Sparkles size={12} aria-hidden /> Assistido por IA
-              </span>
-            )}
-          </div>
-        )}
+        {/* Severity always in words and icon, never only a colour (LB-084, D108). */}
+        <div className="mt-2 flex flex-wrap gap-2">
+          <SeverityBadge severity={finding.severity} />
+          {showStatus && <FindingStatusBadge status={finding.status} />}
+          {finding.ai_assisted && (
+            <span className="inline-flex items-center gap-1 text-xs text-fg-2">
+              <Sparkles size={12} aria-hidden /> Assistido por IA
+            </span>
+          )}
+        </div>
       </div>
-      <span className="flex items-center gap-2">
-        <span
-          className={`h-2.5 w-2.5 rounded-full ${SEVERITY_DOT[finding.severity]}`}
-          aria-label={`severidade ${SEVERITY_TEXT[finding.severity]}`}
-          role="img"
-        />
-        <ChevronRight size={16} className="text-muted" aria-hidden />
-      </span>
+      <ChevronRight size={16} className="shrink-0 text-muted" aria-hidden />
     </Link>
   );
 }

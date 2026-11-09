@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { BoardCard, MembersCard, ProfileCard } from "@/components/condoos/RegistryCards";
 import { CapabilityReadinessCard } from "@/components/condoos/CapabilityReadiness";
+import { EvolutionCard } from "@/components/condoos/EvolutionCard";
 import { InboundEmailCard } from "@/components/condoos/InboundEmailCard";
 import { AutomationPausesCard } from "@/components/condoos/AutomationPausesCard";
 import { ReviewPolicyCard } from "@/components/condoos/ReviewPolicyCard";
@@ -11,14 +12,18 @@ import { PageHeader } from "@/components/layout/PageHeader";
 import { cx } from "@/components/ui/cx";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { apiGet } from "@/lib/api";
-import type {
-  AutomationPauses,
-  InboundChannel,
-  Launch,
-  Me,
-  ReviewPolicy,
-  Settings,
-  StaffAssignment,
+import {
+  ALERT_KINDS,
+  type AutomationPauses,
+  type CapabilityChange,
+  type DataIssue,
+  type EvolutionSuggestion,
+  type InboundChannel,
+  type Launch,
+  type Me,
+  type ReviewPolicy,
+  type Settings,
+  type StaffAssignment,
 } from "@/lib/types";
 
 export default async function ConfiguracoesPage({
@@ -40,13 +45,21 @@ export default async function ConfiguracoesPage({
     );
   }
   const current = condos.find((c) => c.id === condominio) ?? condos[0]!;
-  const [settings, policy, pauses, launch, inbound] = await Promise.all([
-    apiGet<Settings>(`/condominiums/${current.id}/settings`),
-    apiGet<ReviewPolicy>(`/condominiums/${current.id}/review-policy`),
-    apiGet<AutomationPauses>(`/condominiums/${current.id}/automation-pauses`),
-    apiGet<Launch>(`/condominiums/${current.id}/launch`),
-    apiGet<InboundChannel>(`/condominiums/${current.id}/inbound`),
-  ]);
+  const [settings, policy, pauses, launch, inbound, history, evolution, issues] = await Promise.all(
+    [
+      apiGet<Settings>(`/condominiums/${current.id}/settings`),
+      apiGet<ReviewPolicy>(`/condominiums/${current.id}/review-policy`),
+      apiGet<AutomationPauses>(`/condominiums/${current.id}/automation-pauses`),
+      apiGet<Launch>(`/condominiums/${current.id}/launch`),
+      apiGet<InboundChannel>(`/condominiums/${current.id}/inbound`),
+      apiGet<CapabilityChange[]>(`/condominiums/${current.id}/launch/history`),
+      apiGet<{ items: EvolutionSuggestion[]; can_manage: boolean }>(
+        `/condominiums/${current.id}/launch/evolution`,
+      ),
+      apiGet<DataIssue[]>(`/condominiums/${current.id}/data-issues?status=aberto`),
+    ],
+  );
+  const alerts = issues.filter((i) => ALERT_KINDS.has(i.kind)).length;
   const staff = current.permissions.includes("manage_platform")
     ? await apiGet<StaffAssignment[]>(`/condominiums/${current.id}/assignments`)
     : null;
@@ -76,7 +89,25 @@ export default async function ConfiguracoesPage({
       <div className="grid gap-6 xl:grid-cols-[1fr_360px]">
         <SettingsForm key={current.id} condominiumId={current.id} settings={settings} />
         <div className="space-y-6">
-          <CapabilityReadinessCard key={`c-${current.id}`} items={launch.readiness} />
+          <CapabilityReadinessCard
+            key={`c-${current.id}`}
+            items={launch.readiness}
+            history={history}
+          />
+          <Link
+            href={`/admin/validacao?condominio=${current.id}`}
+            className="block text-sm text-fg-2 hover:text-fg"
+            data-testid="alerts-link"
+          >
+            Alertas de saúde abertos: {alerts === 0 ? "nenhum" : alerts}
+          </Link>
+          <EvolutionCard
+            key={`v-${current.id}`}
+            condominiumId={current.id}
+            items={evolution.items}
+            canManage={evolution.can_manage}
+            base={`/condominio/${current.id}`}
+          />
           <InboundEmailCard key={`e-${current.id}`} condominiumId={current.id} channel={inbound} />
           <ProfileCard
             key={`p-${current.id}`}

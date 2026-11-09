@@ -45,7 +45,9 @@ from app.db.models import (
     CaseTask,
     Condominium,
     Decision,
+    DelegationRequest,
     Document,
+    Expense,
     Finding,
     MatchIssue,
     Opportunity,
@@ -86,6 +88,10 @@ OPP_VERB = {
     "rejeitar": "rejeitada na revisão",
     "devolver": "devolvida para ajuste",
 }
+
+
+def _count(n: int, one: str, many: str) -> str:
+    return "" if n == 0 else f"1 {one}" if n == 1 else f"{n} {many}"
 
 
 def _brl(value: Decimal | str) -> str:
@@ -609,12 +615,19 @@ class Builder:
         )
         limit_dt = self.now - timedelta(days=STALE_DAYS)
         if last_doc is None or last_doc < limit_dt:
-            when = f"o último em {last_doc:%d/%m/%Y}" if last_doc else "nenhum ainda"
+            # "Not started" and "late" read differently (LB-083, D108): a condominium that has
+            # not sent anything yet is starting, not failing. Both stay partial sources.
             self.partial.append(
                 {
                     "source": "documentos",
                     "label": "Documentos recebidos",
-                    "reason": f"Nenhum documento novo há mais de {STALE_DAYS} dias ({when}).",
+                    "reason": (
+                        f"Nenhum documento novo há mais de {STALE_DAYS} dias "
+                        f"(o último em {last_doc:%d/%m/%Y})."
+                        if last_doc
+                        else "Ainda não recebemos documentos. Assim que chegarem, eu aviso aqui."
+                    ),
+                    "not_started": last_doc is None,
                 }
             )
         out.append(
@@ -631,12 +644,18 @@ class Builder:
             )
         )
         if last_bank is None or last_bank < limit_dt.date():
-            when = f"o último em {last_bank:%d/%m/%Y}" if last_bank else "nenhum ainda"
             self.partial.append(
                 {
                     "source": "extrato",
                     "label": "Extrato bancário",
-                    "reason": f"Extrato sem lançamentos há mais de {STALE_DAYS} dias ({when}): pagamentos podem não aparecer.",
+                    "reason": (
+                        f"Extrato sem lançamentos há mais de {STALE_DAYS} dias (o último em "
+                        f"{last_bank:%d/%m/%Y}): pagamentos podem não aparecer."
+                        if last_bank
+                        else "Nenhum extrato recebido ainda. Quando chegar, confiro os "
+                        "pagamentos com o banco."
+                    ),
+                    "not_started": last_bank is None,
                 }
             )
         out.append(
@@ -672,16 +691,24 @@ class Builder:
             sections.append(
                 {"key": key, "title": title, "count": len(items), "items": items[:MAX_ITEMS]}
             )
-        counts = {s["key"]: s["count"] for s in sections}
+        counts: dict[str, int] = {str(s["key"]): int(str(s["count"])) for s in sections}
         hour = self.now.astimezone(ZoneInfo(self.condo.timezone or DEFAULT_TIMEZONE)).hour
         greeting = "Bom dia" if hour < 12 else "Boa tarde" if hour < 18 else "Boa noite"
+        # Plain sentences without "(ões)" and without zeros (LB-083, D108).
         parts = [
-            f"{counts['decisoes']} decisão(ões) aguardam você",
-            f"{counts['riscos']} risco(s) ou atraso(s)",
-            f"{counts['agenda']} compromisso(s) nos próximos 7 dias",
+            _count(counts["decisoes"], "decisão aguarda você", "decisões aguardam você"),
+            _count(counts["riscos"], "risco ou atraso", "riscos ou atrasos"),
+            _count(
+                counts["agenda"],
+                "compromisso nos próximos 7 dias",
+                "compromissos nos próximos 7 dias",
+            ),
         ]
-        headline = f"{greeting}. Em {self.condo.name}: " + "; ".join(parts) + "."
-        if self.partial:
+        said = [p for p in parts if p]
+        headline = f"{greeting}. Em {self.condo.name}: " + (
+            "; ".join(said) + "." if said else "nada pendente com você hoje."
+        )
+        if any(not p.get("not_started") for p in self.partial):
             headline += " Algumas fontes estão parciais: veja os avisos."
         return {"headline": headline, "sections": sections}
 
@@ -701,13 +728,48 @@ async def latest_for_today(
     )
 
 
+# Records a briefing is built from (D82). A change in any of them after today's latest
+# version makes that version stale (D111).
+SOURCES = (
+    Document,
+    Expense,
+    BankTransaction,
+    Finding,
+    CaseRecord,
+    CaseTask,
+    ActionRequest,
+    Opportunity,
+    DelegationRequest,
+)
+
+
+async def changed_since(session: AsyncSession, condo_id: uuid.UUID, since: datetime) -> bool:
+    """Whether any source record of this condominium was created or changed after ``since``.
+    One indexed lookup per table, stopping at the first hit."""
+    for model in SOURCES:
+        found = await session.scalar(
+            select(model.id)
+            .where(model.condominium_id == condo_id, model.updated_at > since)
+            .limit(1)
+        )
+        if found is not None:
+            return True
+    return False
+
+
 async def generate(
     session: AsyncSession, access: CondoAccess, condo: Condominium, *, refresh: bool = False
 ) -> Briefing:
-    """Today's briefing for this person: the latest version, or a new one when asked (or none
-    exists yet today). The period starts at the person's previous briefing."""
+    """Today's briefing for this person: the latest version, or a new one when asked, when
+    none exists yet today, or when its sources changed since it was generated (D111: a
+    document that arrived in the afternoon shows without pressing "Atualizar"). The period
+    starts at the person's previous briefing."""
     today_row = await latest_for_today(session, condo, access.user_id)
-    if today_row is not None and not refresh:
+    if (
+        today_row is not None
+        and not refresh
+        and not await changed_since(session, condo.id, today_row.generated_at)
+    ):
         return today_row
     now = utcnow()
     previous = await session.scalar(

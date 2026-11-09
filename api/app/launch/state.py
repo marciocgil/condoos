@@ -13,15 +13,19 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.audit import record_audit
 from app.core.time import local_date, utcnow
-from app.db.enums import CLOSED_CASE, Role
-from app.db.models import AuditLog, CaseRecord, Condominium, Document, Membership
+from app.db.enums import ALERT_KINDS, CLOSED_CASE, DataIssueStatus, ExtractionStatus, Role
+from app.db.models import AuditLog, CaseRecord, Condominium, DataIssue, Document, Membership
 from app.db.models import LaunchState as LaunchStateRow
+from app.launch.evolution import PREFIX as EVO_PREFIX
+from app.launch.evolution import SIGNALS as EVO_SIGNALS
 from app.launch.first_value import first_value
 from app.launch.journey import done_for_you, milestones
 from app.launch.readiness import readiness
-from app.launch.steps import CATALOGUE, GOALS, next_steps
+from app.launch.steps import CATALOGUE, GOALS, next_steps, progress
+from app.reports.data import DOC_TYPE_LABEL
 
 POSTPONE_DAYS = 7
+EVO_POSTPONE_DAYS = 30
 
 
 async def get_state(session: AsyncSession, condo_id: uuid.UUID) -> LaunchStateRow | None:
@@ -61,10 +65,12 @@ async def set_goal(
 async def postpone(
     session: AsyncSession, condo_id: uuid.UUID, step: str, user_id: uuid.UUID, today: date
 ) -> date:
-    if step not in CATALOGUE:
+    evolution = step.startswith(EVO_PREFIX) and step[len(EVO_PREFIX) :] in EVO_SIGNALS
+    if step not in CATALOGUE and not evolution:
         raise ValueError("Passo desconhecido.")
     row = await _ensure(session, condo_id)
-    until = today + timedelta(days=POSTPONE_DAYS)
+    # A suggestion of the Centro de Evolução put off comes back after a month (D110).
+    until = today + timedelta(days=EVO_POSTPONE_DAYS if evolution else POSTPONE_DAYS)
     row.postponed = {**(row.postponed or {}), step: until.isoformat()}
     row.updated_by_user_id = user_id
     await record_audit(
@@ -95,6 +101,57 @@ async def set_dismissed(
     )
 
 
+IN_REVIEW_SHOWN = 5
+
+
+async def in_review(session: AsyncSession, condo_id: uuid.UUID) -> dict[str, Any]:
+    """Documents sent to the condominium still being read or waiting for a person (LB-081,
+    D108): the síndico sees what is with the CondoOS team and since when. No deadline is
+    promised (Q-L07)."""
+    waiting = (
+        Document.condominium_id == condo_id,
+        Document.reviewed_at.is_(None),
+        Document.extraction_status.in_(
+            [
+                ExtractionStatus.PENDING.value,
+                ExtractionStatus.PROCESSING.value,
+                ExtractionStatus.NEEDS_REVIEW.value,
+            ]
+        ),
+    )
+    by_type = {
+        str(k): int(n)
+        for k, n in (
+            await session.execute(
+                select(Document.doc_type, func.count()).where(*waiting).group_by(Document.doc_type)
+            )
+        ).all()
+    }
+    total = sum(by_type.values())
+    docs = await session.scalars(
+        select(Document).where(*waiting).order_by(Document.created_at).limit(IN_REVIEW_SHOWN)
+    )
+    return {
+        "total": total,
+        "by_type": by_type,
+        "items": [
+            {
+                "id": str(d.id),
+                "doc_type": d.doc_type,
+                "doc_type_label": DOC_TYPE_LABEL.get(d.doc_type, d.doc_type),
+                "filename": d.original_filename,
+                "state": (
+                    "em_conferencia"
+                    if d.extraction_status == ExtractionStatus.NEEDS_REVIEW.value
+                    else "lendo"
+                ),
+                "since": d.created_at.isoformat(),
+            }
+            for d in docs
+        ],
+    }
+
+
 async def overview(session: AsyncSession, condo: Condominium, today: date) -> dict[str, Any]:
     row = await get_state(session, condo.id)
     ready = await readiness(session, condo.id)
@@ -116,7 +173,9 @@ async def overview(session: AsyncSession, condo: Condominium, today: date) -> di
         "milestones": [m.as_dict() for m in await milestones(session, condo.id)],
         "readiness": [r.as_dict() for r in ready],
         "next_steps": next_steps(goal, ready, open_cases, row.postponed if row else {}, today),
+        "progress": progress(goal, ready, open_cases),
         "done_for_you": await done_for_you(session, condo.id),
+        "in_review": await in_review(session, condo.id),
     }
 
 
@@ -157,6 +216,16 @@ async def portfolio_row(session: AsyncSession, condo: Condominium, today: date) 
         .select_from(AuditLog)
         .where(AuditLog.condominium_id == condo.id, AuditLog.action == "launch.step_postponed")
     )
+    # Open health alerts of the daily monitors (D110), for the team's portfolio.
+    alerts = await session.scalar(
+        select(func.count())
+        .select_from(DataIssue)
+        .where(
+            DataIssue.condominium_id == condo.id,
+            DataIssue.status == DataIssueStatus.ABERTO.value,
+            DataIssue.kind.in_([k.value for k in ALERT_KINDS]),
+        )
+    )
     moments = [m for m in (last_doc, last_event) if m is not None]
     last = max(moments) if moments else None
     nxt = next((m for m in ms if not m.done), None)
@@ -176,6 +245,7 @@ async def portfolio_row(session: AsyncSession, condo: Condominium, today: date) 
         "first_value_at": first_value_at.isoformat() if first_value_at else None,
         "hours_to_first_value": hours_to_value,
         "steps_postponed": int(postponed or 0),
+        "alerts_open": int(alerts or 0),
     }
 
 

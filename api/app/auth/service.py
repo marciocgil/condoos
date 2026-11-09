@@ -11,7 +11,9 @@ from app.auth.mailer import Mailer, OutgoingEmail
 from app.auth.tokens import hash_token, new_token
 from app.config import get_settings
 from app.core.audit import record_audit
+from app.core.jobs import enqueue
 from app.core.time import utcnow
+from app.db.enums import Role
 from app.db.models import AppUser, MagicLinkToken, Membership, UserSession
 
 
@@ -109,15 +111,30 @@ async def consume_magic_link(session: AsyncSession, raw_token: str) -> NewSessio
         )
     )
     # The first login accepts pending invitations (D77).
-    await session.execute(
-        update(Membership)
-        .where(
-            Membership.user_id == user_id,
-            Membership.accepted_at.is_(None),
-            Membership.revoked_at.is_(None),
+    accepted = (
+        await session.execute(
+            update(Membership)
+            .where(
+                Membership.user_id == user_id,
+                Membership.accepted_at.is_(None),
+                Membership.revoked_at.is_(None),
+            )
+            .values(accepted_at=now)
+            .returning(Membership.id, Membership.condominium_id, Membership.role)
         )
-        .values(accepted_at=now)
-    )
+    ).all()
+    # A síndico entering can bring a capability back (C7 after a change of síndico, D109):
+    # the history is checked for that condominium by the worker, right away.
+    for membership_id, condominium_id, role in accepted:
+        if role == Role.SINDICO.value and condominium_id is not None:
+            await enqueue(
+                session,
+                "launch.health",
+                {"condominium_id": str(condominium_id), "reason": "acesso"},
+                condominium_id=condominium_id,
+                dedupe_key=f"health:acesso:{membership_id}:{now.isoformat()}",
+                priority=True,
+            )
     await record_audit(
         session,
         action="auth.login",

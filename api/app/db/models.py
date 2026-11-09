@@ -52,6 +52,7 @@ from app.db.enums import (
     ComplianceApplicability,
     ComplianceCategory,
     ComplianceEventKind,
+    DataIssueAudience,
     DataIssueEventKind,
     DataIssueKind,
     DataIssueStatus,
@@ -1101,6 +1102,7 @@ class DataIssue(IdTimestampMixin, Base):
     __table_args__ = (
         _enum_check("kind", DataIssueKind),
         _enum_check("status", DataIssueStatus),
+        _enum_check("audiencia", DataIssueAudience),
         UniqueConstraint("condominium_id", "dedupe_key"),
     )
 
@@ -1124,6 +1126,9 @@ class DataIssue(IdTimestampMixin, Base):
         "app_user.id", nullable=True, ondelete="SET NULL"
     )
     resolved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    audiencia: Mapped[str] = mapped_column(
+        String(15), default=DataIssueAudience.CONDOMINIO.value, server_default="condominio"
+    )
 
 
 class DataIssueEvent(IdTimestampMixin, Base):
