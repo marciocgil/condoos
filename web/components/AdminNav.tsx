@@ -193,16 +193,22 @@ export function AdminNav({
       )}
       <nav aria-label="Menu da administradora" className="flex-1 overflow-y-auto px-3">
         {groups.map((group) => (
-          <div key={group.title ?? "topo"} className={group.title ? "mt-4" : undefined}>
-            {group.title &&
-              (collapsed ? (
-                <hr className="mx-2 mb-2 border-line" />
-              ) : (
-                <p className="mb-1 px-3 text-[11px] font-medium tracking-wide text-muted uppercase">
-                  {group.title}
-                </p>
-              ))}
-            <ul className="space-y-1" aria-label={group.title ?? "Principal"}>
+          <div
+            key={group.title ?? "topo"}
+            className={group.title ? "mt-3 border-t border-line pt-3" : undefined}
+          >
+            {group.title && !collapsed && (
+              <p className="mb-1.5 px-3 text-[11px] font-semibold tracking-[0.04em] whitespace-nowrap text-fg uppercase">
+                {group.title}
+              </p>
+            )}
+            <ul
+              className={cx(
+                "space-y-0.5",
+                group.title && !collapsed && "ml-2 border-l border-line pl-1",
+              )}
+              aria-label={group.title ?? "Principal"}
+            >
               {group.items.map((item) => {
                 const active = pathname.startsWith(item.href);
                 const Icon = item.icon;
@@ -213,7 +219,10 @@ export function AdminNav({
                       aria-current={active ? "page" : undefined}
                       title={collapsed ? item.label : undefined}
                       className={cx(
-                        "transition-ui flex h-9 items-center gap-3 rounded-[var(--radius-control)] px-3 text-sm",
+                        "transition-ui flex h-9 items-center rounded-[var(--radius-control)]",
+                        group.title && !collapsed
+                          ? "gap-2.5 px-2.5 text-[13px] whitespace-nowrap"
+                          : "gap-3 px-3 text-sm",
                         active
                           ? "bg-surface font-medium text-fg"
                           : "text-fg-2 hover:bg-surface hover:text-fg",
