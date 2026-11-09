@@ -47,41 +47,75 @@ Os arquivos estão em `api/tests/fixtures/corpus/`. São fictícios, todos em no
 
 Não há extrato bancário no corpus. Por isso as notas aparecem como "Nota sem pagamento registrado", e isso é o comportamento esperado.
 
-## 3. Preparação (só em produção)
+## 3. Etapa 0: atualizar o servidor e começar do zero (produção)
 
-Faça isto no servidor, como o usuário `condoos`, dentro de `~/condoos`. O roteiro segue o teste de fumaça de `docs/deploy.md` (9.9): tudo o que o teste criar é apagado no fim pela restauração do backup.
+Apaga **todo** o cadastro de testes anteriores (condomínios, pessoas, documentos, achados, pedidos) e deixa o CondoOS só com o acesso de Admin. Faça só enquanto não houver dado real (D107). No servidor, como o usuário `condoos`:
 
-Abreviação usada nos comandos:
+1. Vá para a pasta e defina a abreviação:
 
-```bash
-C="docker compose -f docker-compose.prod.yml --env-file deploy/.env.production"
-```
+   ```bash
+   cd ~/condoos
+   ```
 
-1. Faça um backup e **anote o nome do arquivo**:
+   ```bash
+   C="docker compose -f docker-compose.prod.yml --env-file deploy/.env.production"
+   ```
+
+2. Backup de segurança (anote o nome do arquivo):
 
    ```bash
    deploy/backup.sh
    ```
 
-2. Desligue a consulta de CNPJ. Os CNPJs do corpus são inventados e podem existir de verdade:
+3. Atualize o código:
 
    ```bash
-   SUPPLIER_PROVIDER=offline docker compose -f docker-compose.prod.yml --env-file deploy/.env.production up -d api worker
+   git fetch origin claude/dazzling-euler-ja9ojc && git checkout claude/dazzling-euler-ja9ojc && git pull
    ```
 
-3. Cadastre a revisora, um segundo e-mail seu:
+4. Pare o aplicativo:
 
    ```bash
-   $C exec api python -m app.platform add-person seu-email+revisora@gmail.com "Revisora Teste"
+   $C stop api worker web
+   ```
+
+5. Apague o banco e crie um vazio:
+
+   ```bash
+   $C exec -T postgres psql -U postgres -c "DROP DATABASE condoos WITH (FORCE);" -c "CREATE DATABASE condoos;"
+   ```
+
+6. Apague os arquivos dos condomínios no S3 (os backups ficam). Rode os dois comandos no mesmo terminal:
+
+   ```bash
+   set -a; . deploy/.env.production; set +a
    ```
 
    ```bash
-   $C exec api python -m app.platform grant-role seu-email+revisora@gmail.com condoos_reviewer "Teste de ponta a ponta"
+   docker run --rm -e AWS_ACCESS_KEY_ID="$S3_ACCESS_KEY_ID" -e AWS_SECRET_ACCESS_KEY="$S3_SECRET_ACCESS_KEY" -e AWS_DEFAULT_REGION=sa-east-1 amazon/aws-cli:2.27.0 s3 rm "s3://$S3_BUCKET/cond/" --recursive
    ```
 
-Na stack local, use `make reset`, depois `make up`, e os mesmos comandos com `docker compose exec api python -m app.platform ...`. Ali os e-mails chegam no Mailpit (`http://localhost:8025`). Atenção: na stack local o seed já usa o CNPJ do corpus. Num banco com seed, cadastre outro CNPJ, e os documentos irão para a fila com o motivo "CNPJ do tomador não é o do condomínio".
+7. Suba a versão nova com a consulta de CNPJ desligada (a API cria as tabelas do zero) e espere `healthy`:
 
----
+   ```bash
+   SUPPLIER_PROVIDER=offline $C up -d --build
+   ```
+
+   ```bash
+   $C ps
+   ```
+
+8. Recrie o seu acesso de Admin (`add-person` e depois `grant-role <e-mail> condoos_admin "<motivo>"`).
+9. Cadastre a revisora: `add-person seu-email+revisora@gmail.com "Revisora Teste"` e `grant-role seu-email+revisora@gmail.com condoos_reviewer "Teste de ponta a ponta"`. **O link de acesso só é enviado para e-mails cadastrados**: sem este passo, o link da revisora nunca chega.
+10. Backup limpo (anote o nome; é para ele que a limpeza final volta):
+
+    ```bash
+    deploy/backup.sh
+    ```
+
+11. Entre como Admin: a Carteira deve mostrar "0 condomínios".
+
+Na stack local, use `make reset`, depois `make up`, e os mesmos comandos `app.platform` com `docker compose exec api python -m ...`. Os e-mails chegam no Mailpit (`http://localhost:8025`). Atenção: o seed local já usa o CNPJ do corpus; num banco com seed, cadastre outro CNPJ.
 
 ## 4. Passo a passo
 
@@ -273,7 +307,7 @@ Na stack local, use `make reset`, depois `make up`, e os mesmos comandos com `do
 
 ## 6. Limpeza (produção)
 
-1. Restaure o backup da preparação. O banco volta a como estava e os serviços sobem de novo com a consulta de CNPJ ligada:
+1. Restaure o **backup limpo** da Etapa 0 (passo 10). O banco volta a como estava e os serviços sobem de novo com a consulta de CNPJ ligada:
 
    ```bash
    deploy/restore.sh <nome-do-backup>
