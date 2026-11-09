@@ -38,7 +38,7 @@ test("conflito entre contratos: síndica vê análise parcial e a gerente decide
 
   await loginAs(page, "diego.gerente@atlantida.example.com");
   await page.goto(`/admin/validacao?condominio=${acacias.id}`);
-  await expect(page.getByRole("heading", { name: "Central de Validação" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Conflitos de dados" })).toBeVisible();
   const cards = page.locator('[data-testid^="issue-"]').filter({ hasText: TITLE });
   await expect(cards.first()).toBeVisible();
   // Earlier runs left more contracts of this supplier: settle every conflict this test made.

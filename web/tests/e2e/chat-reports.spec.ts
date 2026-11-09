@@ -12,7 +12,7 @@ test.describe("síndico — chat e relatórios", () => {
 
   test("pergunta a partir de um achado leva o contexto da tela", async ({ page }) => {
     await loginAs(page, SINDICA);
-    await page.getByRole("link", { name: "Achados" }).click();
+    await page.getByRole("link", { name: "Finanças" }).click();
     await page.goto(page.url().split("?")[0] + "?mes=2026-10");
     await page.locator('a[href*="/achados/"]').first().click();
     await expect(page.getByRole("heading", { name: "Por que foi apontado" })).toBeVisible();
@@ -47,7 +47,8 @@ test.describe("síndico — chat e relatórios", () => {
       /relatorio-jardim-das-acacias-\d{4}-\d{2}\.pdf$/,
     );
 
-    await page.getByRole("link", { name: "Histórico" }).click();
+    await page.getByRole("link", { name: "Finanças" }).click();
+    await page.getByRole("link", { name: "Relatórios", exact: true }).click();
     await expect(page.getByRole("heading", { name: "Relatórios mensais" })).toBeVisible();
     const xlsx = page.waitForEvent("download");
     await page.getByRole("link", { name: "XLSX" }).first().click();

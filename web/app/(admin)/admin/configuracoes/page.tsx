@@ -32,7 +32,7 @@ export default async function ConfiguracoesPage({
   if (condos.length === 0) {
     return (
       <>
-        <PageHeader title="Configurações" />
+        <PageHeader title="Dados do condomínio" />
         <EmptyState title="Sem permissão">
           Somente o gerente ou a administração CondoOS configura os condomínios.
         </EmptyState>
@@ -53,7 +53,7 @@ export default async function ConfiguracoesPage({
   return (
     <>
       <PageHeader
-        title="Configurações"
+        title="Dados do condomínio"
         subtitle="Dados do condomínio, corpo diretivo, acessos, alçadas e parâmetros das regras."
       />
       <nav aria-label="Condomínio" className="mb-6 flex flex-wrap gap-2">

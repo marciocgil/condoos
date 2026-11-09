@@ -1,6 +1,3 @@
-import { ChevronRight, ShieldCheck } from "lucide-react";
-import Link from "next/link";
-
 import { CapabilityReadinessCard } from "@/components/condoos/CapabilityReadiness";
 import { AutomationPausesCard } from "@/components/condoos/AutomationPausesCard";
 import { InboundEmailCard } from "@/components/condoos/InboundEmailCard";
@@ -21,17 +18,6 @@ export default async function AjustesPage({ params }: { params: Promise<{ id: st
   return (
     <>
       <h1 className="text-xl font-semibold">Ajustes</h1>
-      <Link
-        href={`/condominio/${id}/conformidade`}
-        className="transition-ui flex items-center gap-3 rounded-[var(--radius-card)] border border-line bg-surface p-4 hover:border-control"
-      >
-        <ShieldCheck size={20} aria-hidden className="text-fg-2" />
-        <span className="min-w-0 flex-1">
-          <span className="block text-sm font-medium">Conformidade e vencimentos</span>
-          <span className="block text-[13px] text-fg-2">AVCB, seguro, laudos e manutenções</span>
-        </span>
-        <ChevronRight size={16} aria-hidden className="text-muted" />
-      </Link>
       <CapabilityReadinessCard items={launch.readiness} />
       <InboundEmailCard condominiumId={id} channel={inbound} />
       <ReviewPolicyCard condominiumId={id} policy={policy} />

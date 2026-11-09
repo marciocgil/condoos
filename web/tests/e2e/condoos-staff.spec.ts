@@ -17,14 +17,16 @@ test.describe("equipe CondoOS (D77)", () => {
     await expect(table).toContainText("Mirante do Vale");
     await expect(table).not.toContainText("Jardim das Acácias");
     await expect(page.getByRole("link", { name: "Novo condomínio" })).toHaveCount(0);
-    await page.getByRole("link", { name: "Configurações" }).first().click();
+    // D111: the menu hides what the role does not use; the page still refuses.
+    await expect(page.getByRole("link", { name: "Dados do condomínio" })).toHaveCount(0);
+    await page.goto("/admin/configuracoes");
     await expect(page.getByText("Sem permissão")).toBeVisible();
   });
 
   test("admin vê quem revisa os achados e o fuso do condomínio", async ({ page }) => {
     await loginAs(page, ADMIN);
     await expect(page.getByRole("link", { name: "Novo condomínio" })).toBeVisible();
-    await page.getByRole("link", { name: "Configurações" }).first().click();
+    await page.getByRole("link", { name: "Dados do condomínio" }).first().click();
     await expect(page.getByText("Quem revisa os achados")).toBeVisible();
     await expect(
       page.getByText("Achados graves: revisados por uma pessoa antes de publicar."),

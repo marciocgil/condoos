@@ -1,6 +1,6 @@
 # Proposta: menu organizado por propósito
 
-Data: 09/11/2026. **Aguardando validação do Marcio.** Nada foi implementado.
+Data: 09/11/2026. **Aprovada pelo Marcio (1 a 5: sim) e implementada (D111).** Ajustes na implementação: a Carteira fica para todos no desktop, e a aba "Histórico" do celular (trilha e relatórios, não despesas) virou "Relatórios" em Finanças.
 
 ## 1. Por que mudar
 

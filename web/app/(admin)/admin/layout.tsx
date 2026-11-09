@@ -14,7 +14,14 @@ export default async function AdminLayout({ children }: { children: ReactNode })
   return (
     <div className="flex min-h-dvh">
       <Suspense fallback={<div className="w-[232px] shrink-0 border-r border-line bg-bg-2" />}>
-        <AdminNav queueCount={queue.total} companyName={company} />
+        <AdminNav
+          queueCount={queue.total}
+          companyName={company}
+          access={{
+            permissions: [...new Set(me.condominiums.flatMap((c) => c.permissions))],
+            platform: me.platform_roles.length > 0,
+          }}
+        />
       </Suspense>
       <div className="min-w-0 flex-1">
         <AdminHeader companyName={company} userName={me.name} />

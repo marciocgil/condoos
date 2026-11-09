@@ -12,7 +12,7 @@ test.describe("assuntos", () => {
     test.skip(test.info().project.name !== "sindico-mobile", "fluxo do celular");
     const title = `Infiltração na garagem ${Date.now()}`;
     await loginAs(page, SINDICA);
-    await page.getByRole("link", { name: "Assuntos" }).click();
+    await page.getByRole("link", { name: "Rotina" }).click(); // tab opens on Assuntos (D111)
     await page.getByRole("link", { name: "Novo assunto" }).click();
     await page.getByLabel("Título").fill(title);
     await page.getByLabel("Categoria").selectOption("manutencao");

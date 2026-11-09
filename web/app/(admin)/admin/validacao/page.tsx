@@ -27,7 +27,7 @@ export default async function ValidacaoPage({
   return (
     <>
       <PageHeader
-        title="Central de Validação"
+        title="Conflitos de dados"
         subtitle={`${n} ${n === 1 ? "divergência aberta" : "divergências abertas"} entre documentos`}
       />
       <CondoFilter pathname="/admin/validacao" condos={condos} selected={selected} />

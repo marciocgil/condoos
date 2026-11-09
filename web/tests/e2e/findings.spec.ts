@@ -7,7 +7,7 @@ const GERENTE = "diego.gerente@atlantida.example.com";
 
 /** Opens, one by one, the October findings until one offers the wanted action. */
 async function openFindingWith(page: Page, action: string): Promise<string> {
-  await page.getByRole("link", { name: "Achados" }).click();
+  await page.getByRole("link", { name: "Finanças" }).click(); // tab opens on Achados (D111)
   await expect(page).toHaveURL(/\/achados/);
   await page.goto(page.url().split("?")[0] + "?mes=2026-10");
   const hrefs = await page
@@ -89,7 +89,7 @@ test("gerente abre a lista de achados no desktop e analisa um deles", async ({ p
     .getByRole("link", { name: /Acácias/ })
     .click();
   await expect(page).toHaveURL(/condominio=/);
-  await table.getByRole("row").nth(1).click();
+  await table.getByRole("row").nth(1).getByRole("link").first().click(); // the first cell links
   await expect(page).toHaveURL(/\/admin\/achados\/[^/]+\/[^/]+$/);
   await expect(page.getByText("Detalhe do achado")).toBeVisible();
 });

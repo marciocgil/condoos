@@ -13,7 +13,10 @@ const TITLES: [string, string][] = [
   ["/admin/enviar", "Fila de exceções"],
   ["/admin/fornecedores", "Fornecedores"],
   ["/admin/contratos", "Contratos"],
-  ["/admin/configuracoes", "Configurações"],
+  ["/admin/configuracoes", "Dados do condomínio"],
+  ["/admin/validacao", "Conflitos de dados"],
+  ["/admin/relatorios", "Relatórios"],
+  ["/admin/conformidade", "Conformidade"],
   ["/admin/pergunte", "Pergunte à IA"],
 ];
 const SUB: [string, string][] = [

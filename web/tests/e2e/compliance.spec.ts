@@ -12,9 +12,8 @@ test("síndica cadastra uma obrigação, confirma que se aplica e registra a val
   test.skip(test.info().project.name !== "sindico-mobile", "fluxo do celular");
   const name = `Laudo de teste ${Date.now()}`;
   await loginAs(page, "ana.sindica@acacias.example.com");
-  const id = page.url().match(/condominio\/([^/]+)/)?.[1];
-  await page.goto(`/condominio/${id}/ajustes`);
-  await page.getByRole("link", { name: /Conformidade e vencimentos/ }).click();
+  await page.getByRole("link", { name: "Rotina" }).click();
+  await page.getByRole("link", { name: "Conformidade", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Conformidade e vencimentos" })).toBeVisible();
   // The seed: the insurance expires soon, the catalogue is on.
   const list = page.getByRole("list", { name: "Obrigações" });

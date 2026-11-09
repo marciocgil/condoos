@@ -19,7 +19,7 @@ export default async function HistoricoPage({ params }: { params: Promise<{ id: 
   const closed = reports.filter((r) => r.status === "fechada");
   return (
     <>
-      <h1 className="text-xl font-semibold">Histórico</h1>
+      <h1 className="text-xl font-semibold">Relatórios</h1>
       <Card>
         <CardTitle
           action={
