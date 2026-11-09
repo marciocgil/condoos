@@ -45,7 +45,9 @@ from app.db.models import (
     CaseTask,
     Condominium,
     Decision,
+    DelegationRequest,
     Document,
+    Expense,
     Finding,
     MatchIssue,
     Opportunity,
@@ -698,13 +700,48 @@ async def latest_for_today(
     )
 
 
+# Records a briefing is built from (D82). A change in any of them after today's latest
+# version makes that version stale (D111).
+SOURCES = (
+    Document,
+    Expense,
+    BankTransaction,
+    Finding,
+    CaseRecord,
+    CaseTask,
+    ActionRequest,
+    Opportunity,
+    DelegationRequest,
+)
+
+
+async def changed_since(session: AsyncSession, condo_id: uuid.UUID, since: datetime) -> bool:
+    """Whether any source record of this condominium was created or changed after ``since``.
+    One indexed lookup per table, stopping at the first hit."""
+    for model in SOURCES:
+        found = await session.scalar(
+            select(model.id)
+            .where(model.condominium_id == condo_id, model.updated_at > since)
+            .limit(1)
+        )
+        if found is not None:
+            return True
+    return False
+
+
 async def generate(
     session: AsyncSession, access: CondoAccess, condo: Condominium, *, refresh: bool = False
 ) -> Briefing:
-    """Today's briefing for this person: the latest version, or a new one when asked (or none
-    exists yet today). The period starts at the person's previous briefing."""
+    """Today's briefing for this person: the latest version, or a new one when asked, when
+    none exists yet today, or when its sources changed since it was generated (D111: a
+    document that arrived in the afternoon shows without pressing "Atualizar"). The period
+    starts at the person's previous briefing."""
     today_row = await latest_for_today(session, condo, access.user_id)
-    if today_row is not None and not refresh:
+    if (
+        today_row is not None
+        and not refresh
+        and not await changed_since(session, condo.id, today_row.generated_at)
+    ):
         return today_row
     now = utcnow()
     previous = await session.scalar(

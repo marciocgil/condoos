@@ -319,3 +319,31 @@ async def test_retention_keeps_90_days(admin_engine: AsyncEngine) -> None:
     async with sessionmaker_for(admin_engine)() as s:
         assert await s.get(Briefing, old) is None
         assert await s.get(Briefing, recent) is not None
+
+
+async def test_briefing_follows_new_records_without_refresh(
+    mailer: MemoryMailer, admin_engine: AsyncEngine
+) -> None:
+    """D111: a document that arrives after today's briefing shows on the next visit, as a new
+    version, without pressing "Atualizar"; with nothing new, the same version stays."""
+    from app.onboarding import onboard
+    from tests.test_launch import _document
+    from tests.test_onboarding import _spec
+
+    async with sessionmaker_for(admin_engine)() as s, s.begin():
+        spec = _spec(management_company_name=None)
+        condo = await onboard(s, spec)
+    assert spec.board[0].email
+    url = f"/condominiums/{condo.id}/briefing"
+    async with _client() as sindica:
+        await login(sindica, mailer, spec.board[0].email)
+        first = (await sindica.get(url)).json()
+        assert "documentos" in {p["source"] for p in first["partial_sources"]}
+        assert (await sindica.get(url)).json()["id"] == first["id"]  # nothing new
+
+        async with sessionmaker_for(admin_engine)() as s, s.begin():
+            s.add(_document(condo, "nfse"))
+        second = (await sindica.get(url)).json()
+        assert second["version"] == first["version"] + 1
+        assert "documentos" not in {p["source"] for p in second["partial_sources"]}
+        assert (await sindica.get(url)).json()["id"] == second["id"]

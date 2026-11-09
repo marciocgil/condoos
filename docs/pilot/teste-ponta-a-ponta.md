@@ -215,7 +215,7 @@ Na stack local, use `make reset`, depois `make up`, e os mesmos comandos com `do
 1. **Hoje:**
    - **Seu mês: outubro de 2026** mostra as decisões que esperam por ela e o fechamento ("Aguardando a conferência…" ou "Pronto para fechar"). Captura: `14-sindica-hoje-resultados.png`.
    - O cartão de implantação vira uma linha ("Implantação: 4 de 5 marcos…").
-   - Toque em **Atualizar** no resumo do dia, porque ele é gerado uma vez por dia. Antes de atualizar, ele ainda pode dizer "Ainda não recebemos documentos" (ver seção 7).
+   - O resumo do dia já mostra os documentos recebidos: ele é refeito sozinho quando chega registro novo (D111).
 2. **Contratos:** o contrato da Brilho Total, com valor mensal de R$ 9.200,00, índice IPCA, próximo reajuste em 01/2027, fim em 31/12/2026 e o selo **Vence em N dias**. Captura: `15-sindica-contratos.png`.
 3. **Achados:** a lista mostra cada ponto com o selo de severidade em texto. Captura: `16-sindica-achados.png`. Esperado com estes arquivos:
    - **Nota sem pagamento registrado** (Baixo) para as notas e o recibo, porque não foi enviado extrato;
@@ -288,7 +288,7 @@ Na stack local, use `make reset`, depois `make up`, e os mesmos comandos com `do
 
 - **Leitura:** em produção, com Docling e IA, a leitura acerta 87% do corpus (D98). Fotos degradadas costumam ir para a fila. Na stack local, sem IA, quase tudo vai para a fila, e isso não é defeito.
 - **Achados:** podem aparecer outros além dos dois esperados. Toda regra explica o motivo na tela; anote os que surpreenderem.
-- **O resumo do dia diz "Ainda não recebemos documentos" depois do envio:** o resumo é gerado uma vez por dia. Toque em **Atualizar**.
+- **O resumo do dia diz "Ainda não recebemos documentos" depois do envio:** desde a D111 isso não deve acontecer. Se acontecer, anote: é defeito.
 - **O link de acesso não chega:** confira a caixa certa (o `+sindica` vai para a sua caixa) e o limite de 5 links por hora por e-mail.
 - **O documento aparece na fila com "CNPJ do tomador não é o do condomínio":** o condomínio foi cadastrado com outro CNPJ.
 - **O link da administradora diz "inválido":** foi gerado um link novo (o anterior para de valer), o pedido foi concluído ou o prazo venceu.
@@ -308,5 +308,5 @@ Todas as etapas de A a G funcionaram:
 - a síndica viu "Seu mês", o contrato com "Vence em 52 dias", os achados com severidade em texto e a agenda.
 
 Observações:
-- O resumo do dia só mostrou os documentos depois de "Atualizar".
+- O resumo do dia só mostrou os documentos depois de "Atualizar". Corrigido no mesmo dia (D111): agora ele é refeito sozinho quando chega registro novo.
 - A prévia do PDF na tela de correção fica vazia na stack local, porque o armazenamento ali é em memória; em produção ela aparece.
