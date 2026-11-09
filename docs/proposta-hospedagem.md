@@ -1,6 +1,6 @@
 # Proposta: hospedagem do CondoOS para o piloto (AWS São Paulo)
 
-Data: 09/11/2026. **Aguardando decisão do Marcio.** Nada foi criado ainda.
+Data: 09/11/2026. **Aguardando decisão do Marcio.** Nada foi criado ainda. O Marcio achou as opções da AWS caras e pediu para considerar a Hostinger: ver a seção 7.
 
 ## 1. O que precisa rodar
 
@@ -74,3 +74,30 @@ Isto não é hospedagem, mas o piloto real depende disto (`docs/lgpd.md` e `CLAU
 2. **Endereço:** `app.condoos.ia.br`?
 3. **Limite de gastos da AWS:** o limite configurado no upgrade precisa comportar uns US$ 120 a 150 por mês. Com "Suspender lançamento de novos recursos" marcado, um limite baixo impede criar a máquina.
 4. **Quem executa:** eu não tenho acesso à sua conta AWS. Ou você clica guiado por mim, como fizemos no e-mail, ou roda um script que eu preparo, conferindo cada passo antes.
+
+## 7. Alternativa: VPS da Hostinger em São Paulo (pedida pelo Marcio)
+
+Preços do site da Hostinger em 09/11/2026 (o valor mensal vale para **24 meses pagos adiantado**; depois renova pelo preço cheio). A existência de data center em São Paulo vem de um teste independente (VPSBenchmarks); confirmar no checkout.
+
+| Plano | vCPU | Memória | Disco | Promoção (24 meses) | Renovação |
+|---|---|---|---|---|---|
+| KVM 2 | 2 | 8 GB | 100 GB NVMe | R$ 42,99/mês (R$ 1.031,76 no total) | R$ 77,99/mês |
+| **KVM 4** | 4 | 16 GB | 200 GB NVMe | **R$ 59,99/mês** (R$ 1.439,76 no total) | R$ 149,99/mês |
+
+É a **opção A** (tudo numa máquina, PostgreSQL em contêiner) a uma fração do preço da AWS. O que muda:
+
+- **O e-mail continua na AWS** (SES e o bucket `condoos-entrada`, já pagos por uso, centavos por mês), e os **documentos também vão para um bucket S3 em São Paulo** (`condoos-documentos`, centavos por mês). Assim os arquivos ficam fora da máquina e sobrevivem a ela.
+- **Backup do banco por nossa conta:** o backup semanal incluído pela Hostinger não basta para dados reais. Proposta: `pg_dump` diário cifrado enviado ao S3 em São Paulo, com retenção de 30 dias, e teste de restauração antes do piloto.
+- **Manutenção do servidor por nossa conta:** atualizações automáticas de segurança do sistema, firewall só com 80 e 443, SSH só por chave (sem senha) e bloqueio de tentativas repetidas.
+- **Se a máquina cair, tudo sai do ar** até ela voltar; o banco volta pelo último backup diário (perda de até um dia, contra 5 minutos no RDS).
+- **Memória:** o KVM 2 (8 GB) funciona, mas fica no limite durante a leitura de documentos e a atualização do sistema (montar as imagens com o Docling pede memória). O **KVM 4 (16 GB)** dá folga e lê documentos mais rápido; recomendo o KVM 4.
+
+| | Hostinger KVM 4 + S3/SES | AWS opção B |
+|---|---|---|
+| Custo no piloto | **~R$ 60/mês** + centavos da AWS | ~US$ 120/mês |
+| Pagamento | R$ 1.440 adiantado (24 meses) | mensal, por uso |
+| Backup do banco | diário, montado por nós (perda de até 1 dia) | automático, PITR (perda de até 5 min) |
+| Manutenção do servidor | nossa | do banco, da AWS; da máquina, nossa |
+| Dados no Brasil | sim (data center em São Paulo, a confirmar) | sim |
+
+**Recomendação revisada:** para o piloto, **Hostinger KVM 4** com documentos e e-mail na AWS São Paulo e backup diário do banco no S3. Migrar para o RDS (opção B) quando houver mais condomínios ou exigência de recuperação mais rápida; a troca é só apontar o banco para outro endereço e restaurar o backup.
