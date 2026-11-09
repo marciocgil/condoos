@@ -10,6 +10,23 @@ Estados: `nao_iniciado`, `em_analise`, `em_desenvolvimento`, `em_teste`, `bloque
 - **Cobertura dos 65 FR** (`docs/02-gap-matrix.md`): 26 real, 14 parcial, 25 inexistentes. P0: 23 real, 6 parcial, nenhum inexistente (FR-007 entrou com a VS-05; FR-025 com D84; FR-006, 012, 015, 041 e 042 com D85).
 - **Gates:** G0 aberto · **G1 fechado** (CI, SEC-10 e evento de segurança, D78; CI verde no GitHub: https://github.com/marciocgil/marcio-linkedin-skills/actions/runs/42322097954) · G2 parcial · G3 atendido no código: cálculo reproduzível e revisão interna obrigatória antes do condomínio (D81); falta validação com dados de piloto · G4: pré-requisitos no código (política que nega por padrão, aprovação com escopo congelado, outbox idempotente, kill switch, D83); nenhuma automação externa habilitada · G5 não iniciado.
 
+## 1a. Prontidão para o piloto (revisão de 09/11/2026)
+
+Pré-condições do gate G0 (`docs/pilot-protocol.md` §1):
+
+| # | Pré-condição | Estado |
+|---|---|---|
+| 1 | DV-01 e DV-02 respondidas | ✅ D73, D74 |
+| 2 | Termo do piloto e base legal | ⏳ minuta pronta (D107); revisão jurídica e assinatura da síndica |
+| 3 | Revisão do Agent SDK (D54) e do processamento pela IA | ✅ exceção aceita (D107); transferência internacional no termo |
+| 4 | Chave de API e medições (acurácia, chat) | ✅ D98: chat 97% e zero vazamento; acurácia 87% (meta 90% conferida no piloto) |
+| 5 | CI ativo e G1 fechado | ✅ CI verde a cada push |
+| 6 | Ambiente de piloto separado, backup e restauração testados | ✅ D106 (Hostinger, backup diário cifrado, restauração testada) |
+
+Antes do primeiro documento real: teste de fumaça em produção (leitura com Docling e IA, chat, e-mail de entrada) com dados fictícios e restauração do backup depois; monitor externo de `/health`; Marcio fora da leitura da entrada de e-mail do docker local (um só leitor por bucket). O piloto começa em **shadow mode (V2)**: competências passadas, sem contato externo.
+
+Planejado e não construído, nenhum item bloqueia o V2: LF6 (saúde contínua, LB-060..065), LF7 (instrumentos do piloto, LB-070..073), VS-06 (Operate controlado; depende de G4 e de dados reais), P0 parciais (FR-002, 005, 014, 026, 033) e P1 sem início (FR-009, 010, 029, 030, 035–038, 047, 049, 051–057). P2/P3 adiados.
+
 ## 2. Estado por requisito (resumo)
 
 | Estado | FRs |
@@ -18,7 +35,7 @@ Estados: `nao_iniciado`, `em_analise`, `em_desenvolvimento`, `em_teste`, `bloque
 | pronto_para_validar | 016 (D93, D94), 001, 003, 004, 006, 007, 011, 012, 013, 015, 020, 021, 022, 023, 024, 025, 027, 032, 034, 041, 042, 043, 044, 045, 046, 048, 050 |
 | em_desenvolvimento | 058 (aprovação com escopo congelado; a contratação em si segue fora do sistema) |
 | em_analise | 002, 005, 008, 014, 017, 018, 019, 026, 028, 033 |
-| bloqueado | 031 (avaliação ao vivo: falta `ANTHROPIC_API_KEY`) |
+| bloqueado | — (031 medido ao vivo em 08/11/2026: 97%, zero vazamento, D98; passa a pronto_para_validar) |
 | nao_iniciado | 009, 010, 029, 030, 035, 036, 037, 038, 047, 049, 051–057 |
 | adiado (P2/P3) | 039, 040, 059–065 |
 
@@ -35,8 +52,8 @@ Detalhe e evidências: `docs/02-gap-matrix.md` e `docs/traceability.md`.
 
 | # | Bloqueio | Bloqueia | Quem destrava |
 |---|---|---|---|
-| B4 | Sem chave de API | FR-031 (avaliação ao vivo), acurácia com LLM, R04/R07 reais | Marcio (chave em ambiente de teste) |
-| B5 | Sem piloto real nem autorização de dados | G0, baseline | Marcio / pilotos |
+| ~~B4~~ | ~~Sem chave de API~~ resolvido em 08/11/2026 (D98) | — | — |
+| B5 | Sem autorização de dados do piloto | G0, baseline, LF7, VS-06 | Termo do piloto assinado pela síndica (D107) |
 
 ## 5. Próxima fatia e incrementos seguintes
 
@@ -53,9 +70,11 @@ Detalhe e evidências: `docs/02-gap-matrix.md` e `docs/traceability.md`.
 
 Política mínima e kill switch entregues com a VS-05 (D83); o produto continua sem enviar nada para fora.
 
-**Escopo excluído:** envio externo (e-mail, WhatsApp) além do link mágico; interfaces de zelador, fornecedor e morador (papéis só reservados); MFA; P2/P3; dados reais.
+**Escopo excluído:** envio externo além do link mágico e do e-mail do pedido de documentos aprovado pelo síndico (D103); WhatsApp; interfaces de zelador, fornecedor e morador (papéis só reservados); MFA; P2/P3; dados reais.
 
 ## 6. Histórico desta página
+
+- 09/11/2026 — Revisão de prontidão para o piloto (seção 1a): G0 com 5 de 6 pré-condições atendidas (falta o termo assinado); B4 resolvido; FR-031 medido; produção no ar (D106); rotação dos logs dos contêineres em produção.
 
 - 07/11/2026 — criação (prompt 01). Documentos vivos criados: `01-repo-audit.md`, `02-gap-matrix.md`, `03-decisions-register.md`, `product-roadmap.md`, `backlog.md`, `traceability.md`, `pilot-protocol.md`, esta página.
 - 07/11/2026 — DV-01..DV-05 respondidas pelo Marcio; registradas como D73–D77. Criados `data-model.md`, `authorization-matrix.md` e `flows.md`; backlog com EP-09 e CB-013..017, CB-026/027, CB-064; FR-046 sai de bloqueado.
