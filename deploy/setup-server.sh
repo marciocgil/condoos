@@ -57,14 +57,19 @@ install -m 600 -o condoos -g condoos /root/.ssh/authorized_keys /home/condoos/.s
 echo "condoos ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/condoos
 chmod 440 /etc/sudoers.d/condoos
 
-# SSH: key only, no root login.
-cat > /etc/ssh/sshd_config.d/90-condoos.conf <<'SSH'
+# SSH: key only, no root login. sshd keeps the FIRST value it reads, and the provider's image
+# ships files like 50-cloud-init.conf with "PasswordAuthentication yes": ours must sort first.
+rm -f /etc/ssh/sshd_config.d/90-condoos.conf
+cat > /etc/ssh/sshd_config.d/00-condoos.conf <<'SSH'
 PasswordAuthentication no
 KbdInteractiveAuthentication no
 PermitRootLogin no
 SSH
 sshd -t
 systemctl reload ssh || systemctl reload sshd
+# Fail loudly if another file still wins.
+sshd -T | grep -qx "passwordauthentication no" || { echo "SSH ainda aceita senha" >&2; exit 1; }
+sshd -T | grep -qx "permitrootlogin no" || { echo "SSH ainda aceita root" >&2; exit 1; }
 
 # Swap.
 if ! swapon --show | grep -q /swapfile; then
