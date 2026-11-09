@@ -18,10 +18,12 @@ from app.auth.rbac import CondoAccess, Permission
 from app.core.time import local_today
 from app.db.models import Condominium, Document
 from app.db.session import DbSession
+from app.launch.evolution import suggestions as evolution_suggestions
 from app.launch.health import history as capability_history
 from app.launch.month import month_routine
 from app.launch.state import (
     first_value_seen,
+    get_state,
     overview,
     portfolio_row,
     postpone,
@@ -67,6 +69,19 @@ async def get_month(condominium_id: uuid.UUID, access: CanView, db: DbSession) -
     """The síndico's month on "Hoje" (LB-082, D108); active only after LM3."""
     condo = await _condo(db, access)
     return await month_routine(db, condo.id, access, local_today(condo.timezone))
+
+
+@router.get("/condominiums/{condominium_id}/launch/evolution")
+async def get_evolution(
+    condominium_id: uuid.UUID, access: CanView, db: DbSession
+) -> dict[str, Any]:
+    """Centro de Evolução (LB-063, D110): at most three suggestions from observed demand."""
+    condo = await _condo(db, access)
+    row = await get_state(db, condo.id)
+    items = await evolution_suggestions(
+        db, condo, access, row.postponed if row else {}, local_today(condo.timezone)
+    )
+    return {"items": items, "can_manage": Permission.MANAGE_LAUNCH in access.permissions}
 
 
 @router.get("/condominiums/{condominium_id}/launch/history")

@@ -1,6 +1,6 @@
 # Launch LF6-b — proposta: monitores diários, alertas internos e Centro de Evolução (LB-060, LB-062, LB-063)
 
-Data: 09/11/2026. **Proposta, aguardando o Marcio.** Nada foi implementado. A LF6-a (troca de síndico, histórico das capacidades e rollback) já foi entregue sem migração (D109).
+Data: 09/11/2026. **Aprovada pelo Marcio em 09/11/2026 com as recomendações (Q-L11..Q-L14) e implementada (D110).** A LF6-a (troca de síndico, histórico das capacidades e rollback) já foi entregue sem migração (D109).
 
 ## 1. O que falta da LF6 e por que pede decisão
 

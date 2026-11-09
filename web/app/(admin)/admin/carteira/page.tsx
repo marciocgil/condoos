@@ -167,6 +167,16 @@ export default async function CarteiraPage() {
                 align: "right",
               },
               { key: "idle", header: "Atividade", cell: (r) => <IdleCell row={r} /> },
+              {
+                key: "alerts",
+                header: "Alertas",
+                // Health alerts of the daily monitors (D110), with words, not only a number.
+                cell: (r) =>
+                  r.alerts_open === 0
+                    ? "Nenhum"
+                    : `${r.alerts_open} ${r.alerts_open === 1 ? "aberto" : "abertos"}`,
+                align: "right",
+              },
             ]}
           />
         </section>

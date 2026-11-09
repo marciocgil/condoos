@@ -2,10 +2,11 @@ import Link from "next/link";
 
 import { CondoFilter } from "@/components/condoos/CondoFilter";
 import { DataIssueCard } from "@/components/condoos/DataIssueCard";
+import { HealthAlertCard } from "@/components/condoos/HealthAlertCard";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { apiGet } from "@/lib/api";
-import type { DataIssue, Portfolio, QueueItem } from "@/lib/types";
+import { ALERT_KINDS, type DataIssue, type Portfolio, type QueueItem } from "@/lib/types";
 
 /** Validation Centre (D93, LB-032): open conflicts between documents, the largest amount in
  * play first. The exception queue (extraction, matching, serious findings) stays in its own
@@ -23,7 +24,10 @@ export default async function ValidacaoPage({
     apiGet<DataIssue[]>(`/portfolio/data-issues${selected ? `?condominium_id=${selected}` : ""}`),
     apiGet<QueueItem[]>("/queue"),
   ]);
-  const n = issues.length;
+  // Health alerts (D110) and conflicts between documents (D93) are listed apart.
+  const alerts = issues.filter((i) => ALERT_KINDS.has(i.kind));
+  const conflicts = issues.filter((i) => !ALERT_KINDS.has(i.kind));
+  const n = conflicts.length;
   return (
     <>
       <PageHeader
@@ -45,11 +49,27 @@ export default async function ValidacaoPage({
         </EmptyState>
       ) : (
         <div className="space-y-4">
-          {issues.map((i) => (
+          {conflicts.map((i) => (
             <DataIssueCard key={i.id} issue={i} />
           ))}
         </div>
       )}
+      <section className="mt-8 space-y-4" aria-labelledby="alertas-titulo">
+        <h2 id="alertas-titulo" className="text-lg font-semibold">
+          Alertas de saúde ({alerts.length})
+        </h2>
+        <p className="text-sm text-fg-2">
+          Verificados todo dia: canal parado, contrato aditado, revisora ausente, acesso do síndico
+          e ações sem execução. Alertas não mudam permissões nem bloqueiam ações.
+        </p>
+        {alerts.length === 0 ? (
+          <EmptyState title="Nenhum alerta aberto">
+            Os monitores diários não encontraram nada para tratar.
+          </EmptyState>
+        ) : (
+          alerts.map((i) => <HealthAlertCard key={i.id} issue={i} />)
+        )}
+      </section>
     </>
   );
 }

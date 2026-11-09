@@ -13,9 +13,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.audit import record_audit
 from app.core.time import local_date, utcnow
-from app.db.enums import CLOSED_CASE, ExtractionStatus, Role
-from app.db.models import AuditLog, CaseRecord, Condominium, Document, Membership
+from app.db.enums import ALERT_KINDS, CLOSED_CASE, DataIssueStatus, ExtractionStatus, Role
+from app.db.models import AuditLog, CaseRecord, Condominium, DataIssue, Document, Membership
 from app.db.models import LaunchState as LaunchStateRow
+from app.launch.evolution import PREFIX as EVO_PREFIX
+from app.launch.evolution import SIGNALS as EVO_SIGNALS
 from app.launch.first_value import first_value
 from app.launch.journey import done_for_you, milestones
 from app.launch.readiness import readiness
@@ -23,6 +25,7 @@ from app.launch.steps import CATALOGUE, GOALS, next_steps, progress
 from app.reports.data import DOC_TYPE_LABEL
 
 POSTPONE_DAYS = 7
+EVO_POSTPONE_DAYS = 30
 
 
 async def get_state(session: AsyncSession, condo_id: uuid.UUID) -> LaunchStateRow | None:
@@ -62,10 +65,12 @@ async def set_goal(
 async def postpone(
     session: AsyncSession, condo_id: uuid.UUID, step: str, user_id: uuid.UUID, today: date
 ) -> date:
-    if step not in CATALOGUE:
+    evolution = step.startswith(EVO_PREFIX) and step[len(EVO_PREFIX) :] in EVO_SIGNALS
+    if step not in CATALOGUE and not evolution:
         raise ValueError("Passo desconhecido.")
     row = await _ensure(session, condo_id)
-    until = today + timedelta(days=POSTPONE_DAYS)
+    # A suggestion of the Centro de Evolução put off comes back after a month (D110).
+    until = today + timedelta(days=EVO_POSTPONE_DAYS if evolution else POSTPONE_DAYS)
     row.postponed = {**(row.postponed or {}), step: until.isoformat()}
     row.updated_by_user_id = user_id
     await record_audit(
@@ -211,6 +216,16 @@ async def portfolio_row(session: AsyncSession, condo: Condominium, today: date) 
         .select_from(AuditLog)
         .where(AuditLog.condominium_id == condo.id, AuditLog.action == "launch.step_postponed")
     )
+    # Open health alerts of the daily monitors (D110), for the team's portfolio.
+    alerts = await session.scalar(
+        select(func.count())
+        .select_from(DataIssue)
+        .where(
+            DataIssue.condominium_id == condo.id,
+            DataIssue.status == DataIssueStatus.ABERTO.value,
+            DataIssue.kind.in_([k.value for k in ALERT_KINDS]),
+        )
+    )
     moments = [m for m in (last_doc, last_event) if m is not None]
     last = max(moments) if moments else None
     nxt = next((m for m in ms if not m.done), None)
@@ -230,6 +245,7 @@ async def portfolio_row(session: AsyncSession, condo: Condominium, today: date) 
         "first_value_at": first_value_at.isoformat() if first_value_at else None,
         "hours_to_first_value": hours_to_value,
         "steps_postponed": int(postponed or 0),
+        "alerts_open": int(alerts or 0),
     }
 
 

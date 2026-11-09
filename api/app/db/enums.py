@@ -360,6 +360,31 @@ class DataIssueKind(StrEnum):
     # Reserved: no detector yet.
     DUPLICIDADE_SUSPEITA = "duplicidade_suspeita"
     DADO_VENCIDO = "dado_vencido"
+    # Health alerts from the daily monitors (LF6-b, D110).
+    CANAL_PARADO = "canal_parado"
+    CONTRATO_ADITADO = "contrato_aditado"
+    REVISOR_AUSENTE = "revisor_ausente"
+    SINDICO_SEM_ACESSO = "sindico_sem_acesso"
+    ACAO_PARADA = "acao_parada"
+
+
+ALERT_KINDS: frozenset[DataIssueKind] = frozenset(
+    {
+        DataIssueKind.CANAL_PARADO,
+        DataIssueKind.CONTRATO_ADITADO,
+        DataIssueKind.REVISOR_AUSENTE,
+        DataIssueKind.SINDICO_SEM_ACESSO,
+        DataIssueKind.ACAO_PARADA,
+    }
+)
+
+
+class DataIssueAudience(StrEnum):
+    """Who sees a data issue (D110): everyone who views the condominium, or only the CondoOS
+    team and the management (``VIEW_PENDING_FINDINGS``)."""
+
+    CONDOMINIO = "condominio"
+    EQUIPE = "equipe"
 
 
 class DataIssueStatus(StrEnum):

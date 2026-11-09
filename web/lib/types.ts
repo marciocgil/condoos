@@ -817,6 +817,23 @@ export interface CapabilityChange {
   reason: string;
 }
 
+// Health alerts from the daily monitors (D110) live in data_issue with these kinds.
+export const ALERT_KINDS = new Set([
+  "canal_parado",
+  "contrato_aditado",
+  "revisor_ausente",
+  "sindico_sem_acesso",
+  "acao_parada",
+]);
+
+// Centro de Evolução (LB-063, D110): a suggestion from observed demand.
+export interface EvolutionSuggestion {
+  key: string;
+  observed: string;
+  gain: string;
+  action: { label: string; href: string } | null;
+}
+
 // The síndico's month on "Hoje" (LB-082, D108).
 export interface LaunchMonth {
   active: boolean;
@@ -867,6 +884,7 @@ export interface PortfolioLaunchRow {
   first_value_at: string | null;
   hours_to_first_value: number | null;
   steps_postponed: number;
+  alerts_open: number;
 }
 
 // Data conflicts (D93): two documents that say different things about a contract.
@@ -885,6 +903,8 @@ export interface DataIssue {
   condominium_id: string;
   condominium?: string;
   kind: string;
+  // Who sees it (D110): everyone who views the condominium, or the team and the management.
+  audiencia: "condominio" | "equipe";
   status: "aberto" | "resolvido" | "descartado";
   field: string | null;
   title: string;

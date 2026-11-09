@@ -17,6 +17,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.actions import revalidate_approvals
 from app.core.audit import record_audit
+from app.core.time import local_today
+from app.data_issues.monitors import run_monitors
 from app.db.models import AuditLog, Condominium
 from app.launch.readiness import STATE_LABEL, readiness
 
@@ -124,5 +126,10 @@ async def health_job(session: AsyncSession, payload: dict[str, Any]) -> None:
                 # An access that expired since yesterday leaves no approval behind (LB-061).
                 await revalidate_approvals(session, condo_id, user_id=None)
                 await record_capability_changes(session, condo_id, reason=reason)
+                # LF6-b (D110): internal health alerts, reconciled every day.
+                condo = await session.get(Condominium, condo_id)
+                await run_monitors(
+                    session, condo_id, local_today(condo.timezone if condo else None)
+                )
         except Exception:
             logger.exception("health check failed condominium=%s", condo_id)

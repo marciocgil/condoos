@@ -22,6 +22,7 @@ of the data goes through the existing screens.
 
 import uuid
 from dataclasses import dataclass, field
+from dataclasses import field as dc_field
 from datetime import date
 from decimal import Decimal
 from typing import Any
@@ -32,13 +33,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.audit import record_audit
 from app.core.money import brl
 from app.core.time import utcnow
-from app.db.enums import DataIssueEventKind, DataIssueKind, DataIssueStatus
+from app.db.enums import DataIssueAudience, DataIssueEventKind, DataIssueKind, DataIssueStatus
 from app.db.models import Contract, ContractAmendment, DataIssue, DataIssueEvent, Document
 from app.matching.text import overlap
 
 CAPABILITIES = ["C2", "C3"]
 SAME_SERVICE = 0.6  # share of the shorter object's words found in the other
 SUPERSEDED = "Superado por novos dados: o conflito não aparece mais nos documentos."
+ALERT_SUPERSEDED = "Superado: a condição do alerta não aparece mais nos dados."
 MIN_REASON = 10
 
 
@@ -53,12 +55,17 @@ class Found:
     dedupe_key: str
     detector: str
     subject_id: uuid.UUID
-    supplier_id: uuid.UUID
+    supplier_id: uuid.UUID | None
     title: str
     detail: str
     field: str | None
     evidence: list[dict[str, Any]]
     amount_at_stake: Decimal | None = None
+    # Conflicts (D93) by default; the health monitors (D110) set their own.
+    kind: str = DataIssueKind.CONFLITO_DOCUMENTOS.value
+    subject_type: str = "contract"
+    capabilities: list[str] = dc_field(default_factory=lambda: list(CAPABILITIES))
+    audience: str = DataIssueAudience.CONDOMINIO.value
 
 
 @dataclass
@@ -254,14 +261,20 @@ async def _event(
     )
 
 
-async def detect(session: AsyncSession, condo_id: uuid.UUID) -> DetectionResult:
-    """Run every detector for one condominium. Idempotent."""
+async def reconcile(
+    session: AsyncSession, condo_id: uuid.UUID, found_list: list[Found], kinds: set[str]
+) -> DetectionResult:
+    """Open what was found, open again what came back after "superado", and close as
+    "superado" what is no longer found and nobody acted on. Only issues of ``kinds`` are
+    touched: conflicts and health alerts are reconciled separately. Idempotent."""
     result = DetectionResult()
-    found = {f.dedupe_key: f for f in await _find(session, condo_id)}
+    found = {f.dedupe_key: f for f in found_list}
     existing = {
         i.dedupe_key: i
         for i in await session.scalars(
-            select(DataIssue).where(DataIssue.condominium_id == condo_id)
+            select(DataIssue).where(
+                DataIssue.condominium_id == condo_id, DataIssue.kind.in_(sorted(kinds))
+            )
         )
     }
     for key, f in found.items():
@@ -270,19 +283,20 @@ async def detect(session: AsyncSession, condo_id: uuid.UUID) -> DetectionResult:
             issue = DataIssue(
                 id=uuid.uuid4(),
                 condominium_id=condo_id,
-                kind=DataIssueKind.CONFLITO_DOCUMENTOS.value,
+                kind=f.kind,
                 status=DataIssueStatus.ABERTO.value,
-                subject_type="contract",
+                subject_type=f.subject_type,
                 subject_id=f.subject_id,
                 supplier_id=f.supplier_id,
                 field=f.field,
                 title=f.title,
                 detail=f.detail,
                 evidence=f.evidence,
-                capabilities=list(CAPABILITIES),
+                capabilities=list(f.capabilities),
                 amount_at_stake=f.amount_at_stake,
                 detector=f.detector,
                 dedupe_key=key,
+                audiencia=f.audience,
             )
             session.add(issue)
             await session.flush()
@@ -308,12 +322,24 @@ async def detect(session: AsyncSession, condo_id: uuid.UUID) -> DetectionResult:
         )
         if human is not None:
             continue  # a person acted on it: never closed by itself
+        reason = (
+            SUPERSEDED
+            if issue.kind == DataIssueKind.CONFLITO_DOCUMENTOS.value
+            else (ALERT_SUPERSEDED)
+        )
         issue.status = DataIssueStatus.DESCARTADO.value
-        issue.resolution = {"superado": True, "reason": SUPERSEDED}
+        issue.resolution = {"superado": True, "reason": reason}
         await _event(session, issue, DataIssueEventKind.SUPERADO, None)
         result.superseded.append(issue.id)
     await session.flush()
     return result
+
+
+async def detect(session: AsyncSession, condo_id: uuid.UUID) -> DetectionResult:
+    """Run every conflict detector for one condominium. Idempotent."""
+    return await reconcile(
+        session, condo_id, await _find(session, condo_id), {DataIssueKind.CONFLITO_DOCUMENTOS}
+    )
 
 
 def _reason(reason: str) -> str:
@@ -328,18 +354,24 @@ async def resolve(
     issue: DataIssue,
     *,
     user_id: uuid.UUID,
-    prevailing_index: int,
+    prevailing_index: int | None,
     reason: str,
 ) -> DataIssue:
     """Record which side prevails, why and who decided. The contract is not edited here."""
     if issue.status != DataIssueStatus.ABERTO.value:
         raise DataIssueError("Só uma divergência aberta pode ser resolvida.", 409)
     text = _reason(reason)
-    if not 0 <= prevailing_index < len(issue.evidence):
-        raise DataIssueError("Escolha uma das versões mostradas.")
-    side = issue.evidence[prevailing_index]
-    issue.status = DataIssueStatus.RESOLVIDO.value
-    issue.resolution = {"prevailing": side, "reason": text}
+    if issue.kind != DataIssueKind.CONFLITO_DOCUMENTOS.value:
+        # A health alert (D110) has no sides: resolving records what was done and why.
+        prevailing_index = None
+        issue.status = DataIssueStatus.RESOLVIDO.value
+        issue.resolution = {"reason": text}
+    else:
+        if prevailing_index is None or not 0 <= prevailing_index < len(issue.evidence):
+            raise DataIssueError("Escolha uma das versões mostradas.")
+        side = issue.evidence[prevailing_index]
+        issue.status = DataIssueStatus.RESOLVIDO.value
+        issue.resolution = {"prevailing": side, "reason": text}
     issue.resolved_by_user_id, issue.resolved_at = user_id, utcnow()
     await _event(
         session, issue, DataIssueEventKind.RESOLVIDO, user_id, {"prevailing": prevailing_index}
@@ -400,8 +432,12 @@ async def reopen(
 async def open_issues(
     session: AsyncSession, condo_id: uuid.UUID, *, supplier_id: uuid.UUID | None = None
 ) -> list[DataIssue]:
+    # Conflicts between documents only: health alerts (D110) never make a capability partial,
+    # mark a field as conflicting or refuse an action.
     stmt = select(DataIssue).where(
-        DataIssue.condominium_id == condo_id, DataIssue.status == DataIssueStatus.ABERTO.value
+        DataIssue.condominium_id == condo_id,
+        DataIssue.status == DataIssueStatus.ABERTO.value,
+        DataIssue.kind == DataIssueKind.CONFLITO_DOCUMENTOS.value,
     )
     if supplier_id is not None:
         stmt = stmt.where(DataIssue.supplier_id == supplier_id)
@@ -424,6 +460,7 @@ def as_dict(issue: DataIssue) -> dict[str, Any]:
         "id": str(issue.id),
         "condominium_id": str(issue.condominium_id),
         "kind": issue.kind,
+        "audiencia": issue.audiencia,
         "status": issue.status,
         "subject_type": issue.subject_type,
         "subject_id": str(issue.subject_id),

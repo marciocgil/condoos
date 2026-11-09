@@ -43,6 +43,20 @@ test("troca de síndico: acesso removido, capacidade rebaixada e histórico", as
     expect(hist.some((h) => h.key === "C7" && h.to === "supervisionada")).toBeTruthy();
   }).toPass({ timeout: 30_000 });
 
+  // LF6-b (D110): the same check ran the monitors. No management company and no CondoOS
+  // reviewer: the team sees the alert in the Validation Centre and handles it.
+  await page.goto(`/admin/validacao?condominio=${id}`);
+  const alert = page.getByTestId("alert-revisor_ausente");
+  await expect(alert).toContainText("Sem revisora CondoOS atribuída");
+  await expect(alert).toContainText("Só equipe");
+  // While it is open, the síndica does not see the team's alerts in her Ajustes.
+  await sindica.goto(`/condominio/${id}/ajustes`);
+  await expect(sindica.getByRole("heading", { name: "Ajustes" })).toBeVisible();
+  await expect(sindica.getByTestId("alert-revisor_ausente")).toHaveCount(0);
+  await alert.getByLabel("O que foi feito").fill("Revisora será atribuída na próxima reunião.");
+  await alert.getByRole("button", { name: "Marcar como tratado" }).click();
+  await expect(page.getByTestId("alert-revisor_ausente")).toHaveCount(0);
+
   // The admin removes her access from Configurações.
   await page.goto(`/admin/configuracoes?condominio=${id}`);
   page.once("dialog", (d) => void d.accept());

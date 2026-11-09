@@ -23,7 +23,7 @@ Data: 07/11/2026. Atualizar ao fim de cada fatia (CLAUDE.md, item 6). "Entrega" 
 | FR-019 | — | `reports/pdf.py`, `reports/xlsx.py`, `routers/reports.py` | `test_reports.py` | Marco 5 |
 | FR-020 | — | `core/retention.py` | `test_retention.py` | Marco 6 |
 | FR-021..025 | CB-020..027, CB-023 (filtros, D84) | `app/cases/__init__.py` (regras), `routers/cases.py` (API), `db/models.py` (`CaseRecord`, `CaseEvent`, `CaseLink`, `CaseTask`), migração 0013; telas `web/app/(sindico)/condominio/[id]/assuntos/`, `web/app/(admin)/admin/assuntos/`, `components/condoos/Case*.tsx` | `test_cases.py` (9), `test_isolation.py`, e2e `cases.spec.ts` (2) | D80 |
-| FR-026 | CB-023 | `agenda.py` (em atraso, sem alerta) | `test_agenda.py` | D71 |
+| FR-026 | CB-023, LB-060, LB-062 | `agenda.py` (em atraso, sem alerta); alertas internos de prazo e saúde em `data_issues/monitors.py` (acesso do síndico terminando, ação parada, canal parado), tela `HealthAlertCard.tsx`, Central de Validação | `test_agenda.py`, `test_lf6b_monitors.py` (7), e2e `health.spec.ts` | D71, D110 |
 | FR-027, FR-028 | CB-024, CB-026, CB-028 | `app/cases/__init__.py` (vínculos, duplicidade), `routers/cases.py::link_candidates`, `CaseDetailView.tsx`, `CaseLinkPicker.tsx` | `test_cases.py`, `test_case_queue.py`, e2e `backlog.spec.ts` | D80, D84 |
 | FR-029, FR-030 | — | — | — | — |
 | FR-031 | CB-040 | `chat/agent.py`, `chat/tools.py`, `chat/service.py`, `prompts/chat_system.md` | `test_chat.py`, `tests/chat_eval/` (ao vivo não rodado) | Marco 5 |

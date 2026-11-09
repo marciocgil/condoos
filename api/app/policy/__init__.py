@@ -157,6 +157,7 @@ async def _open_conflict(
             DataIssue.condominium_id == condominium_id,
             DataIssue.supplier_id == supplier_id,
             DataIssue.status == "aberto",
+            DataIssue.kind == "conflito_documentos",  # health alerts never refuse (D110)
         )
         .limit(1)
     )

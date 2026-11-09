@@ -319,7 +319,11 @@ async def board(
         await db.scalar(
             select(func.count())
             .select_from(DataIssue)
-            .where(DataIssue.condominium_id == access.condominium_id, DataIssue.status == "aberto")
+            .where(
+                DataIssue.condominium_id == access.condominium_id,
+                DataIssue.status == "aberto",
+                DataIssue.kind == "conflito_documentos",  # not the team's health alerts
+            )
         )
         or 0
     )
