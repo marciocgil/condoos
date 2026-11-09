@@ -18,6 +18,7 @@ from app.auth.rbac import CondoAccess, Permission
 from app.core.time import local_today
 from app.db.models import Condominium, Document
 from app.db.session import DbSession
+from app.launch.health import history as capability_history
 from app.launch.month import month_routine
 from app.launch.state import (
     first_value_seen,
@@ -66,6 +67,14 @@ async def get_month(condominium_id: uuid.UUID, access: CanView, db: DbSession) -
     """The síndico's month on "Hoje" (LB-082, D108); active only after LM3."""
     condo = await _condo(db, access)
     return await month_routine(db, condo.id, access, local_today(condo.timezone))
+
+
+@router.get("/condominiums/{condominium_id}/launch/history")
+async def get_history(
+    condominium_id: uuid.UUID, access: CanView, db: DbSession
+) -> list[dict[str, Any]]:
+    """Changes of capability state, newest first (LB-064, D109)."""
+    return await capability_history(db, access.condominium_id)
 
 
 @router.put("/condominiums/{condominium_id}/launch/goal")

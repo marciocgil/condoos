@@ -108,7 +108,8 @@ Proposta em `11-proposta-experiencia-piloto.md`, aprovada com Q-L07..Q-L10 nas r
 
 ## LF6 — Saúde contínua (P1)
 
-- **LB-060** Monitores diários (job) de canal parado, contrato aditado, revisor revogado · M. **LB-061** Troca de síndico (F06): suspende aprovações pendentes e rebaixa C7 · M. **LB-062** Alertas como `data_issue` interno, sem poluir o síndico · P. **LB-063** Centro de Evolução (sugestões quando surge demanda) · M. **LB-064** Histórico de estados de capacidade · P. **LB-065** Rollback testado de capacidade · P.
+- **LF6-a ✅ (D109):** LB-061, LB-064, LB-065. **LF6-b:** LB-060, LB-062, LB-063 (proposta).
+- **LB-060** Monitores diários (job) de canal parado, contrato aditado, revisor revogado · M. **LB-061** Troca de síndico (F06): suspende aprovações pendentes e rebaixa C7 · M · ✅ (D109: aprovações de quem saiu voltam para aprovação; C7 espera o síndico ativo entrar). **LB-062** Alertas como `data_issue` interno, sem poluir o síndico · P. **LB-063** Centro de Evolução (sugestões quando surge demanda) · M. **LB-064** Histórico de estados de capacidade · P · ✅ (D109: `audit_log`, sem migração). **LB-065** Rollback testado de capacidade · P · ✅ (D109).
 - **Gate LG6:** troca de síndico, contrato substituído, contato incorreto, alteração bancária (sempre negada), credencial revogada.
 
 ## LF7 — Pilotos (depende de B5)

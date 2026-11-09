@@ -98,7 +98,9 @@ async def test_new_condominium_journey_from_facts(admin_engine: AsyncEngine) -> 
         assert not any(m.done for m in ms.values())  # the síndico has not logged in yet
         ready = _by_key(await readiness(s, condo.id))
         assert {ready[k].state for k in ("C1", "C2", "C3")} == {"nao_configurado"}
-        assert ready["C7"].state == "supervisionada"  # registered with an approval limit
+        # Registered with an approval limit, but nobody can approve until the síndico enters
+        # (D109): C7 waits for her.
+        assert ready["C7"].state == "analise_parcial"
 
         # LM1: the síndico's first login accepts the access.
         await s.execute(
@@ -108,6 +110,7 @@ async def test_new_condominium_journey_from_facts(admin_engine: AsyncEngine) -> 
         )
         ms = _by_key(await milestones(s, condo.id))
         assert ms["LM1"].done and ms["LM1"].ref and ms["LM1"].ref["kind"] == "membership"
+        assert _by_key(await readiness(s, condo.id))["C7"].state == "supervisionada"
         assert not ms["LM2"].done
 
         # LM2: a contract read in full, with its text.

@@ -13,6 +13,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { apiGet } from "@/lib/api";
 import type {
   AutomationPauses,
+  CapabilityChange,
   InboundChannel,
   Launch,
   Me,
@@ -40,12 +41,13 @@ export default async function ConfiguracoesPage({
     );
   }
   const current = condos.find((c) => c.id === condominio) ?? condos[0]!;
-  const [settings, policy, pauses, launch, inbound] = await Promise.all([
+  const [settings, policy, pauses, launch, inbound, history] = await Promise.all([
     apiGet<Settings>(`/condominiums/${current.id}/settings`),
     apiGet<ReviewPolicy>(`/condominiums/${current.id}/review-policy`),
     apiGet<AutomationPauses>(`/condominiums/${current.id}/automation-pauses`),
     apiGet<Launch>(`/condominiums/${current.id}/launch`),
     apiGet<InboundChannel>(`/condominiums/${current.id}/inbound`),
+    apiGet<CapabilityChange[]>(`/condominiums/${current.id}/launch/history`),
   ]);
   const staff = current.permissions.includes("manage_platform")
     ? await apiGet<StaffAssignment[]>(`/condominiums/${current.id}/assignments`)
@@ -76,7 +78,11 @@ export default async function ConfiguracoesPage({
       <div className="grid gap-6 xl:grid-cols-[1fr_360px]">
         <SettingsForm key={current.id} condominiumId={current.id} settings={settings} />
         <div className="space-y-6">
-          <CapabilityReadinessCard key={`c-${current.id}`} items={launch.readiness} />
+          <CapabilityReadinessCard
+            key={`c-${current.id}`}
+            items={launch.readiness}
+            history={history}
+          />
           <InboundEmailCard key={`e-${current.id}`} condominiumId={current.id} channel={inbound} />
           <ProfileCard
             key={`p-${current.id}`}

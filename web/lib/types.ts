@@ -804,6 +804,19 @@ export interface Launch {
   };
 }
 
+// A change of capability state (LB-064, D109), newest first.
+export interface CapabilityChange {
+  at: string;
+  key: string;
+  title: string;
+  from: ReadinessState | null;
+  to: ReadinessState;
+  from_label: string | null;
+  to_label: string;
+  missing: string[];
+  reason: string;
+}
+
 // The síndico's month on "Hoje" (LB-082, D108).
 export interface LaunchMonth {
   active: boolean;

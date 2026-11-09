@@ -20,6 +20,7 @@ from app.extraction.pipeline import process_document
 from app.findings.explain import explain_job
 from app.ingestion.documents import PROCESS_JOB
 from app.ingestion.email import poll_provider, provider_from_settings
+from app.launch.health import HEALTH_JOB, health_job
 from app.matching.bank import match_bank_job
 from app.matching.documents import match_document_job
 from app.policy import job_paused
@@ -47,6 +48,7 @@ HANDLERS: dict[str, Handler] = {
     INDEX_JOB: index_job,
     RETENTION_JOB: purge_job,
     DISPATCH_JOB: dispatch_job,
+    HEALTH_JOB: health_job,
 }
 
 
@@ -69,6 +71,13 @@ async def _schedule_daily(maker: Any) -> None:
             RETENTION_JOB,
             {},
             dedupe_key=f"retention:{date.today().isoformat()}",
+        )
+        # LF6-a (D109): capability history and the approvals of who left.
+        await enqueue(
+            session,
+            HEALTH_JOB,
+            {},
+            dedupe_key=f"health:{date.today().isoformat()}",
         )
 
 
