@@ -17,6 +17,10 @@ from app.rules.base import FindingDraft, Rule, RuleContext, expense_evidence
 class ApprovalLimit(Rule):
     code = "R12"
     name = "Despesa acima da alçada sem aprovação"
+    description = (
+        "Despesa avulsa acima da alçada da categoria sem aprovação registrada (contratos e "
+        "categorias isentas não entram)."
+    )
     default_severity = Severity.MEDIA
     default_params: ClassVar[dict[str, Any]] = {
         "exempt_categories": ["energia", "agua", "gas", "tributos"]

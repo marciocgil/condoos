@@ -25,6 +25,10 @@ POSITION = {
 class ConflictOfInterest(Rule):
     code = "R08"
     name = "Sócio do fornecedor é membro do corpo diretivo"
+    description = (
+        "Sócio do fornecedor com o mesmo nome completo de um membro do corpo diretivo em "
+        "mandato."
+    )
     default_severity = Severity.ALTA
 
     async def evaluate(self, ctx: RuleContext) -> list[FindingDraft]:

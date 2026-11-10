@@ -2,6 +2,7 @@
 
 import {
   BarChart3,
+  BookOpenCheck,
   CheckSquare,
   Building2,
   CalendarDays,
@@ -113,6 +114,12 @@ const GROUPS: Group[] = [
         label: "Conflitos de dados",
         icon: GitCompare,
         show: can("correct_extraction"),
+      },
+      {
+        href: "/admin/regras",
+        label: "Regras e prompts",
+        icon: BookOpenCheck,
+        show: (a) => a.platform,
       },
     ],
   },

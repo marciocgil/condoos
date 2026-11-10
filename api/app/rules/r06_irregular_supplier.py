@@ -13,6 +13,9 @@ from app.rules.base import Evidence, FindingDraft, Rule, RuleContext, expense_ev
 class IrregularSupplier(Rule):
     code = "R06"
     name = "Fornecedor com situação cadastral irregular"
+    description = (
+        "Fornecedor com situação cadastral na Receita diferente de ATIVA na data da despesa."
+    )
     default_severity = Severity.ALTA
 
     async def evaluate(self, ctx: RuleContext) -> list[FindingDraft]:

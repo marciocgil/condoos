@@ -35,6 +35,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import get_settings
 from app.db.models import LlmCall
 from app.llm.pricing import estimate_cost_usd
+from app.llm.prompts import prompt_fingerprint
 from app.llm.schema import strict_json_schema
 
 logger = logging.getLogger(__name__)
@@ -252,6 +253,7 @@ async def _log_call(
     session.add(
         LlmCall(
             purpose=req.purpose,
+            prompt_sha256=prompt_fingerprint(req.system),
             model=model,
             input_tokens=input_tokens,
             output_tokens=output_tokens,

@@ -25,7 +25,7 @@ Código: uma classe por regra em `api/app/rules/rNN_*.py`. Cada uma tem `code`, 
 | R09 | Pago sem nota | Débito do mês sem despesa casada, ou casado com despesa sem número de nota e sem documento fiscal ou recibo, passados `grace_days` dias. Ignora tarifas, IOF, juros, aplicações e resgates. Conta de concessionária (energia, água, gás) casada com a despesa vale como documento fiscal (D62). | `grace_days=10` | média | Valor do débito |
 | R10 | Nota sem pagamento | Despesa do mês vencida há mais de `grace_days` dias sem débito casado. | `grace_days=10` | baixa | Valor da despesa |
 | R11 | Variação anômala | Gasto da categoria no mês > média + `sigma` × desvio-padrão dos meses anteriores (até 12, só meses com gasto, mínimo `min_months`). **Despesas de contrato ficam fora**: contratos são auditados por R02, R03 e R05. | `sigma=2`, `min_months=6` | baixa | Gasto acima do limite |
-| R12 | Quebra de alçada | Despesa acima do limite de `approval_limits` (por categoria, senão o padrão) sem linha em `approval`. Despesas de contrato (aprovadas na assinatura) e categorias isentas não são verificadas. | `exempt_categories=["energia","agua","gas"]` | média | Valor da despesa |
+| R12 | Quebra de alçada | Despesa acima do limite de `approval_limits` (por categoria, senão o padrão) sem linha em `approval`. Despesas de contrato (aprovadas na assinatura) e categorias isentas não são verificadas. | `exempt_categories=["energia","agua","gas","tributos"]` | média | Valor da despesa |
 
 ## Notas de cálculo
 

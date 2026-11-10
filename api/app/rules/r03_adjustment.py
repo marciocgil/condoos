@@ -22,6 +22,10 @@ INDEX_LABEL = {"IPCA": "IPCA", "IGPM": "IGP-M", "INPC": "INPC"}
 class AdjustmentAboveIndex(Rule):
     code = "R03"
     name = "Reajuste acima do índice"
+    description = (
+        "No mês de reajuste, aumento aplicado maior que o índice acumulado nos 12 meses "
+        "(IPCA, IGP-M ou INPC)."
+    )
     default_severity = Severity.MEDIA
     default_params: ClassVar[dict[str, Any]] = {"tolerance_pp": 0.5}
 

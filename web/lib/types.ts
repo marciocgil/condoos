@@ -1186,3 +1186,62 @@ export interface ComplianceDetail extends ComplianceObligationSummary {
   documents: { id: string; filename: string; doc_type: string; created_at: string }[];
   suppliers: { id: string; name: string }[];
 }
+
+// "Regras e prompts" (D121): what runs in the CondoOS, read only, CondoOS team only.
+export interface CatalogRule {
+  code: string;
+  name: string;
+  description: string;
+  severity: string;
+  ai_assisted: boolean;
+  default_params: Record<string, unknown>;
+  condo_params: Record<string, Record<string, unknown>>;
+  findings_this_month: number;
+}
+
+export interface CatalogPrompt {
+  code: string;
+  label: string;
+  where: string;
+  model: string;
+  files: string[];
+  text: string;
+  sha256: string;
+  calls_this_month: number;
+  cost_usd_this_month: string;
+  failures_this_month: number;
+  versions: {
+    sha256: string;
+    first_at: string;
+    last_at: string;
+    calls: number;
+    current: boolean;
+  }[];
+}
+
+export interface Catalog {
+  rules: CatalogRule[];
+  prompts: CatalogPrompt[];
+  reading: {
+    threshold: number;
+    confirmed: number;
+    written_floor: number;
+    rules: string[];
+    types: { code: string; label: string; required: string[]; optional: string[] }[];
+    text_only: string[];
+    refused: string[];
+  };
+  detectors: { code: string; group: string; what: string; open: number }[];
+  policy: {
+    version: number;
+    actions: {
+      code: string;
+      label: string;
+      level: string;
+      always_denied: boolean;
+      zero_cost_only: boolean;
+      sends_email: boolean;
+    }[];
+    rules: string[];
+  };
+}

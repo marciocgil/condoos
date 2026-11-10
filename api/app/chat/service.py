@@ -28,7 +28,7 @@ from app.db.enums import ChatRole
 from app.db.models import ChatMessage, LlmCall
 from app.findings.explain import _MACHINE, _cnpj_as_digits, invalid_numbers, numbers_in
 from app.llm.client import month_spend_usd
-from app.llm.prompts import load_prompt
+from app.llm.prompts import load_prompt, prompt_fingerprint
 from app.rules.engine import FORBIDDEN_WORDS
 
 logger = logging.getLogger(__name__)
@@ -121,6 +121,7 @@ async def _log(session: AsyncSession, access: CondoAccess, reply: AgentReply | N
     session.add(
         LlmCall(
             purpose="chat",
+            prompt_sha256=prompt_fingerprint(load_prompt("chat_system")),
             model=reply.model if reply else get_settings().claude_model_reasoning,
             input_tokens=reply.input_tokens if reply else 0,
             output_tokens=reply.output_tokens if reply else 0,

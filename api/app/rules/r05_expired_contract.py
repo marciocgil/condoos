@@ -12,6 +12,7 @@ from app.rules.base import FindingDraft, Rule, RuleContext, contract_evidence, e
 class ExpiredContract(Rule):
     code = "R05"
     name = "Pagamento após o fim do contrato"
+    description = "Pagamento feito depois do fim da vigência do contrato."
     default_severity = Severity.MEDIA
 
     async def evaluate(self, ctx: RuleContext) -> list[FindingDraft]:

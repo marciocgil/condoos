@@ -21,6 +21,10 @@ from app.rules.base import FindingDraft, Rule, RuleContext, expense_evidence
 class AnomalousVariation(Rule):
     code = "R11"
     name = "Variação anômala de gasto"
+    description = (
+        "Gasto da categoria no mês acima da média mais a variação típica dos meses anteriores "
+        "(contratos ficam fora)."
+    )
     default_severity = Severity.BAIXA
     default_params: ClassVar[dict[str, Any]] = {"sigma": 2, "min_months": 6}
 

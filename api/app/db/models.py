@@ -687,8 +687,11 @@ class Job(IdTimestampMixin, Base):
 
 class LlmCall(IdTimestampMixin, Base):
     __tablename__ = "llm_calls"
+    __table_args__ = (Index("ix_llm_calls_purpose_prompt", "purpose", "prompt_sha256"),)
 
     purpose: Mapped[str] = mapped_column(String(60))
+    # SHA-256 of the system prompt sent (D121): which prompt version produced this call.
+    prompt_sha256: Mapped[str | None] = mapped_column(String(64), nullable=True)
     model: Mapped[str] = mapped_column(String(60))
     input_tokens: Mapped[int] = mapped_column(Integer, default=0)
     output_tokens: Mapped[int] = mapped_column(Integer, default=0)

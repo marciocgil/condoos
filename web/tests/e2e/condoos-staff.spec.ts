@@ -74,3 +74,15 @@ test("admin vê a razão social e a situação do CNPJ antes de cadastrar", asyn
     "RUA DAS FLORES, 100 - SAO PAULO/SP",
   );
 });
+
+test("equipe CondoOS vê as regras e os prompts (D121)", async ({ page }) => {
+  test.skip(test.info().project.name !== "admin-desktop", "fluxo do desktop");
+  await loginAs(page, ADMIN);
+  await page.goto("/admin/regras");
+  await expect(page.getByRole("heading", { name: "Regras e prompts" })).toBeVisible();
+  await expect(page.getByTestId("rule-R01")).toContainText("Pagamento duplicado");
+  const chat = page.getByTestId("prompt-chat");
+  await chat.getByText("Ver o texto do prompt").click();
+  await expect(chat.locator("pre")).toBeVisible();
+  await expect(page.getByText("Negada sempre").first()).toBeVisible();
+});

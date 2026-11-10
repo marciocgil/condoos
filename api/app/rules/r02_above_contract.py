@@ -17,6 +17,10 @@ from app.rules.contracts import INDEXED, contract_value_at, is_anniversary, term
 class AboveContract(Rule):
     code = "R02"
     name = "Valor acima do contrato"
+    description = (
+        "Valor pago acima do valor mensal do contrato reajustado pelo índice até a "
+        "competência, além da tolerância."
+    )
     default_severity = Severity.MEDIA
     default_params: ClassVar[dict[str, Any]] = {"tolerance_pct": 2}
 

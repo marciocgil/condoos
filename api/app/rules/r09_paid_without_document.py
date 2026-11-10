@@ -27,6 +27,7 @@ UTILITY_CATEGORIES = {"energia", "agua", "gas"}
 class PaidWithoutDocument(Rule):
     code = "R09"
     name = "Débito sem nota fiscal"
+    description = "Débito no extrato sem despesa com nota fiscal ou recibo, passada a carência."
     default_severity = Severity.MEDIA
     default_params: ClassVar[dict[str, Any]] = {"grace_days": 10}
 

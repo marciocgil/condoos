@@ -131,6 +131,8 @@ def expense_evidence(ctx: RuleContext, e: Expense) -> list[Evidence]:
 class Rule:
     code: ClassVar[str]
     name: ClassVar[str]
+    # What the rule checks, in Portuguese, for the "Regras e prompts" screen (D121).
+    description: ClassVar[str] = ""
     default_severity: ClassVar[Severity]
     default_params: ClassVar[dict[str, Any]] = {}
     ai_assisted: ClassVar[bool] = False

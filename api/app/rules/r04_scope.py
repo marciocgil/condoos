@@ -22,6 +22,10 @@ IN_SCOPE_OVERLAP = 0.5
 class OutOfScope(Rule):
     code = "R04"
     name = "Serviço fora do escopo do contrato"
+    description = (
+        "Serviço cobrado que não aparece no objeto nem no escopo do contrato; a IA só julga "
+        "quando a conferência por palavras não decide."
+    )
     default_severity = Severity.MEDIA
     default_params: ClassVar[dict[str, Any]] = {"min_confidence": 0.8}
     ai_assisted = True

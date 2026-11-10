@@ -23,6 +23,10 @@ from app.rules.judge import judge_cnae
 class IncompatibleCnae(Rule):
     code = "R07"
     name = "Atividade do fornecedor incompatível com o serviço"
+    description = (
+        "Atividade (CNAE) do fornecedor sem relação com o serviço; a IA só julga categorias "
+        "sem mapa de CNAE."
+    )
     default_severity = Severity.BAIXA
     default_params: ClassVar[dict[str, Any]] = {"min_confidence": 0.8}
     ai_assisted = True

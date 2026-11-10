@@ -14,6 +14,7 @@ from app.rules.base import FindingDraft, Rule, RuleContext, expense_evidence
 class UnpaidDocument(Rule):
     code = "R10"
     name = "Nota sem pagamento registrado"
+    description = "Despesa vencida há mais que a carência sem débito correspondente no extrato."
     default_severity = Severity.BAIXA
     default_params: ClassVar[dict[str, Any]] = {"grace_days": 10}
 

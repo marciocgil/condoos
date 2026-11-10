@@ -17,6 +17,10 @@ from app.rules.base import FindingDraft, Rule, RuleContext, expense_evidence
 class DuplicatePayment(Rule):
     code = "R01"
     name = "Pagamento duplicado"
+    description = (
+        "Duas despesas do mesmo fornecedor com valores quase iguais na mesma competência, ou "
+        "o mesmo número de nota pago duas vezes."
+    )
     default_severity = Severity.ALTA
     default_params: ClassVar[dict[str, Any]] = {"tolerance_pct": 1, "window_days": 45}
 
