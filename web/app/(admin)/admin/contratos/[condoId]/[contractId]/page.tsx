@@ -5,6 +5,7 @@ import { ContractForm } from "@/components/condoos/ContractForm";
 import { DocumentNewVersion } from "@/components/condoos/DocumentNewVersion";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { apiGet } from "@/lib/api";
+import { contractValue, formatBRL } from "@/lib/format";
 import type { Contract } from "@/lib/types";
 
 export default async function EditarContratoPage({
@@ -22,6 +23,14 @@ export default async function EditarContratoPage({
         title="Editar contrato"
         subtitle={`${c.supplier_name ?? ""} · ${c.object}${c.amendments ? ` · ${c.amendments} aditivo(s): aqui ficam os termos originais; os aditivos valem a partir das datas deles` : ""}`}
       />
+      {(c.nature === "pontual" || !c.supplier_id) && (
+        <p className="mb-4 max-w-2xl text-sm text-fg-2" data-testid="contract-reading-note">
+          {c.nature === "pontual" &&
+            `Contrato pontual: ${contractValue(c)}${c.billed_total ? `, faturado até agora ${formatBRL(c.billed_total)}` : ""}. Sem reajuste e sem nota esperada todo mês. `}
+          {!c.supplier_id &&
+            "O contrato não traz o CNPJ da contratada: informe o CNPJ abaixo quando tiver, ou ele é preenchido pela primeira nota do fornecedor."}
+        </p>
+      )}
       <ContractForm
         condominiumId={condoId}
         contractId={contractId}
@@ -30,7 +39,7 @@ export default async function EditarContratoPage({
           supplier_name: c.supplier_name ?? "",
           object: c.object,
           scope: (c.scope_items ?? []).join("\n"),
-          monthly_value: c.original_monthly_value ?? c.monthly_value,
+          monthly_value: c.original_monthly_value ?? c.monthly_value ?? c.total_value ?? "",
           adjustment_index: c.adjustment_index,
           adjustment_index_other: c.adjustment_index_other ?? "",
           adjustment_base_month: c.adjustment_base_month ? String(c.adjustment_base_month) : "",

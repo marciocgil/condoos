@@ -108,7 +108,8 @@ def test_values_filled_by_a_rule_are_inferred_never_read() -> None:
         condominium_cnpj=condo,
         today=date(2026, 11, 7),
     )
-    assert set(result.inferred) == {"data_inicio", "mes_base_reajuste"}
+    # D120: the nature is presumed too (a monthly value: continuous).
+    assert set(result.inferred) == {"data_inicio", "mes_base_reajuste", "natureza"}
     text = f"CONTRATANTE CNPJ {format_cnpj(condo)}. São Paulo, 10/03/2025."
     prov = build(
         DocumentType.CONTRATO, result.values, {k: "texto" for k in raw}, text, result.inferred

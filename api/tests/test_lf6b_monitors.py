@@ -61,7 +61,7 @@ async def _supplier_id(s: AsyncSession, cid: uuid.UUID) -> uuid.UUID:
     acacias = await s.scalar(select(Condominium).where(Condominium.slug == "jardim-das-acacias"))
     assert acacias is not None
     contract = await s.scalar(select(Contract).where(Contract.condominium_id == acacias.id))
-    assert contract is not None
+    assert contract is not None and contract.supplier_id is not None
     return contract.supplier_id
 
 

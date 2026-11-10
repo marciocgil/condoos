@@ -36,12 +36,15 @@ from app.core.time import utcnow
 from app.db.enums import DataIssueAudience, DataIssueEventKind, DataIssueKind, DataIssueStatus
 from app.db.models import Contract, ContractAmendment, DataIssue, DataIssueEvent, Document
 from app.matching.text import overlap
+from app.rules.contracts import value_label
 
 CAPABILITIES = ["C2", "C3"]
 SAME_SERVICE = 0.6  # share of the shorter object's words found in the other
 SUPERSEDED = "Superado por novos dados: o conflito não aparece mais nos documentos."
 ALERT_SUPERSEDED = "Superado: a condição do alerta não aparece mais nos dados."
 MIN_REASON = 10
+
+ZERO = Decimal("0")
 
 
 class DataIssueError(ValueError):
@@ -164,7 +167,13 @@ async def _find(session: AsyncSession, condo_id: uuid.UUID) -> list[Found]:
     # 2. Two contracts of the same supplier for the same service, periods crossing.
     for i, ca in enumerate(contracts):
         for cb in contracts[i + 1 :]:
-            if ca.supplier_id != cb.supplier_id or overlap(ca.object, cb.object) < SAME_SERVICE:
+            if (
+                ca.supplier_id is None
+                or ca.supplier_id != cb.supplier_id
+                or ca.monthly_value is None
+                or cb.monthly_value is None
+                or overlap(ca.object, cb.object) < SAME_SERVICE
+            ):
                 continue
             a_end, b_end = ca.end_date or date.max, cb.end_date or date.max
             if ca.start_date > b_end or cb.start_date > a_end:
@@ -174,7 +183,7 @@ async def _find(session: AsyncSession, condo_id: uuid.UUID) -> list[Found]:
             if da and db and (da.supersedes_id == db.id or db.supersedes_id == da.id):
                 continue  # a new version of the same document (D85), not a conflict
             first, second = sorted((ca, cb), key=lambda k: (k.start_date, str(k.id)))
-            diff = abs(first.monthly_value - second.monthly_value)
+            diff = abs((first.monthly_value or ZERO) - (second.monthly_value or ZERO))
             found.append(
                 Found(
                     dedupe_key=f"contratos_sobrepostos:{first.id}:{second.id}",
@@ -191,7 +200,7 @@ async def _find(session: AsyncSession, condo_id: uuid.UUID) -> list[Found]:
                         _side(
                             docs.get(k.source_document_id) if k.source_document_id else None,
                             f"Contrato de {_br(k.start_date)}",
-                            f"{brl(k.monthly_value)} por mês, de {_br(k.start_date)} a "
+                            f"{value_label(k)}, de {_br(k.start_date)} a "
                             f"{_br(k.end_date) if k.end_date else 'prazo indeterminado'}",
                             k.id,
                             "valor_mensal",

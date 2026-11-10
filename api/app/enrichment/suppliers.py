@@ -205,6 +205,11 @@ async def enrich_supplier(
         # Keep what we had (e.g. data read from the document) and remember the problem.
         supplier.enrichment_error = "nao_encontrado"
         return False
+    apply_record(supplier, record)
+    return True
+
+
+def apply_record(supplier: Supplier, record: SupplierRecord) -> None:
     supplier.legal_name = record.legal_name or supplier.legal_name
     supplier.trade_name = record.trade_name
     supplier.cnae_main = record.cnae_main
@@ -214,7 +219,7 @@ async def enrich_supplier(
     supplier.partners = record.partners
     supplier.enrichment_source = "brasilapi"
     supplier.enrichment_error = None
-    return True
+    supplier.enriched_at = utcnow()
 
 
 async def get_or_create_supplier(

@@ -1,6 +1,6 @@
 # Proposta: correções na leitura e na conferência de documentos
 
-Data: 10/11/2026. **Aguardando decisão do Marcio.** Nada foi implementado. Origem: os testes do Marcio com vários documentos (contratos 1024_5, 1025_6, 1054_7, 1058_11, 1060_13, 1061_14, comprovante p056 e outros).
+Data: 10/11/2026. **Aprovada pelo Marcio (1 a 4: sim; 5: recusar) e implementada (D120).** Origem: os testes do Marcio com vários documentos (contratos 1024_5, 1025_6, 1054_7, 1058_11, 1060_13, 1061_14, comprovante p056 e outros).
 
 ## 1. Diagnóstico
 

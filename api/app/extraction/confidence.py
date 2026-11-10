@@ -12,12 +12,15 @@ from typing import Any
 
 from app.core.br import format_cnpj, is_valid_cnpj, is_valid_cpf
 from app.db.enums import DocumentType
+from app.extraction import evidence as ev
 from app.extraction.fields import (
+    CONTINUO,
+    PONTUAL,
     REVIEW_THRESHOLD,
     InvalidValue,
     as_decimal,
     normalize,
-    required_fields,
+    required_for,
     specs_for,
 )
 
@@ -34,6 +37,10 @@ class Assessment:
     reasons: list[str] = field(default_factory=list)
     # Fields filled by a rule, not read in the document (LB-036, D94): field -> the rule.
     inferred: dict[str, str] = field(default_factory=dict)
+    # Fields raised to confirmed by a proof checked by code (D120): field -> the proof.
+    evidence: dict[str, str] = field(default_factory=dict)
+    # Facts worth a note that do not block (D120, A5): field -> the observation.
+    observations: dict[str, str] = field(default_factory=dict)
 
     @property
     def needs_review(self) -> bool:
@@ -51,7 +58,14 @@ def assess(
     *,
     condominium_cnpj: str,
     today: date,
+    text: str | None = None,
+    registry_names: dict[str, str] | None = None,
+    counterparty_absent: bool = False,
 ) -> Assessment:
+    """``text``: the document text, to check that a value is written in it. ``registry_names``:
+    CNPJ -> legal name at the Receita, for the counterparty CNPJs read (D120).
+    ``counterparty_absent``: the text shows no CNPJ besides the condominium's and the
+    management company's, so a contract without the contracted party's CNPJ is not blocked."""
     labels = {s.name: s.label for s in specs_for(doc_type)}
     if doc_type == DocumentType.CONTRATO:
         raw_values, source_confidence = _contract_inputs(raw_values, source_confidence)
@@ -59,6 +73,7 @@ def assess(
     conf: dict[str, float] = {}
     notes: dict[str, str] = {}
     inferred: dict[str, str] = {}
+    observations: dict[str, str] = {}
 
     for spec in specs_for(doc_type):
         raw = raw_values.get(spec.name)
@@ -102,6 +117,17 @@ def assess(
                 _cap(conf, spec.name, 0.3)
                 notes[spec.name] = f"{spec.label} inválido"
 
+    proofs = ev.apply(
+        values=values,
+        conf=conf,
+        notes=notes,
+        kinds={s.name: s.kind for s in specs_for(doc_type)},
+        text=text,
+        registry_names=registry_names or {},
+        condominium_cnpj=condominium_cnpj,
+        own_fields=OWN_CNPJ,
+        inferred=inferred,
+    )
     if doc_type == DocumentType.NFSE:
         _check_nfse_totals(values, conf, notes)
     if doc_type == DocumentType.CONTRATO:
@@ -111,9 +137,15 @@ def assess(
             for name in ("data_inicio", "data_fim"):
                 _cap(conf, name, 0.3)
             notes["data_fim"] = "Fim da vigência antes do início"
+        signed = values.get("data_assinatura")
+        if signed and start and signed > start and "data_inicio" not in inferred:
+            observations["data_assinatura"] = (
+                f"Assinado em {_br(signed)}, depois do início da vigência em {_br(start)}."
+            )
 
+    required = required_for(doc_type, values, counterparty_absent=counterparty_absent)
     reasons: list[str] = []
-    for name in required_fields(doc_type):
+    for name in required:
         if values.get(name) is None:
             reasons.append(notes.get(name) or f"{labels[name]}: não encontrado")
         elif conf.get(name, 0.0) < REVIEW_THRESHOLD:
@@ -121,7 +153,7 @@ def assess(
     # Problems on optional fields that were filled are also shown (but alone do not block).
     for name, note in notes.items():
         if (
-            name not in required_fields(doc_type)
+            name not in required
             and values.get(name) is not None
             and note not in reasons
             and reasons
@@ -132,11 +164,23 @@ def assess(
         # dropped rather than stored as if it were reliable. (In a document that goes to the
         # queue, it stays as a suggestion for the analyst.)
         for spec in specs_for(doc_type):
-            if not spec.required and conf.get(spec.name, 0.0) < REVIEW_THRESHOLD:
+            if spec.name not in required and conf.get(spec.name, 0.0) < REVIEW_THRESHOLD:
                 values[spec.name] = None
                 conf[spec.name] = 0.0
     inferred = {k: v for k, v in inferred.items() if values.get(k) is not None}
-    return Assessment(values=values, confidence=conf, reasons=reasons, inferred=inferred)
+    proofs = {k: v for k, v in proofs.items() if conf.get(k, 0.0) >= ev.CONFIRMED}
+    return Assessment(
+        values=values,
+        confidence=conf,
+        reasons=reasons,
+        inferred=inferred,
+        evidence=proofs,
+        observations=observations,
+    )
+
+
+def _br(iso: str) -> str:
+    return date.fromisoformat(iso).strftime("%d/%m/%Y")
 
 
 KNOWN_INDEXES = {"IPCA", "IGPM", "IGP", "INPC", "FIXO", "SEMREAJUSTE", "NENHUM", "OUTRO"}
@@ -181,6 +225,24 @@ def _contract_defaults(
             inferred["mes_base_reajuste"] = (
                 "Sem mês de reajuste no contrato: assumido o mês do início da vigência."
             )
+    if values.get("natureza") is None:
+        # D120: a contract with a total value and no monthly value is one-off; otherwise it is
+        # continuous (monthly fee), as every contract was before.
+        one_off = values.get("valor_total") is not None and values.get("valor_mensal") is None
+        values["natureza"] = PONTUAL if one_off else CONTINUO
+        conf["natureza"] = conf.get("valor_total" if one_off else "valor_mensal", 0.0)
+        if inferred is not None:
+            inferred["natureza"] = (
+                "Valor total sem valor mensal: tratado como contrato pontual."
+                if one_off
+                else "Contrato com valor mensal: tratado como contínuo."
+            )
+    if values.get("natureza") == PONTUAL:
+        # No index and no adjustment month for a one-off contract.
+        for name in ("indice_reajuste", "mes_base_reajuste"):
+            if values.get(name) is None:
+                notes.pop(name, None)
+        return
     if index == "OUTRO" and not values.get("indice_reajuste_outro"):
         conf["indice_reajuste"] = min(conf.get("indice_reajuste", 0.0), 0.3)
         notes["indice_reajuste"] = "Índice de reajuste: informe qual é o índice"

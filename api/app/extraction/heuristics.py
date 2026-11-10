@@ -72,6 +72,22 @@ class Classification:
     doc_type: DocumentType | None
     confidence: float
     signals: list[str] = field(default_factory=list)
+    # Set when the document must not enter the CondoOS at all (D120, B5): the reason.
+    refused: str | None = None
+
+
+REFUSED_DEBTORS = (
+    "Relação de devedores tem nomes e unidades de moradores e não entra no piloto. "
+    "O arquivo foi apagado; se precisar, envie só o total da inadimplência."
+)
+
+
+_UNIT_ROW = re.compile(r"\b(?:apto|apartamento|unidade|unid|casa|sala|lote)\.?\s*n?o?\s*\d{1,4}\b")
+
+
+def _lists_units(folded: str) -> bool:
+    """A list of residents' units (one row per unit): at least five unit references."""
+    return len(_UNIT_ROW.findall(folded)) >= 5
 
 
 def classify_text(text: str, reference: date) -> Classification:
@@ -102,6 +118,44 @@ def classify_text(text: str, reference: date) -> Classification:
     ):
         signals.append("título de NFS-e")
         return Classification(DocumentType.NFSE, 0.95, signals)
+    # D120: checked before the boleto, because a payment receipt and a tax slip also carry a
+    # bar code. The debtor list is refused: it holds residents' names and units (B5).
+    top = t[:400]
+    debtor_title = any(
+        k in top
+        for k in ("relacao de devedores", "relacao de inadimplentes", "lista de inadimplentes")
+    )
+    if debtor_title or ("inadimpl" in top and "balancete" not in top and _lists_units(t)):
+        signals.append("relação de devedores")
+        return Classification(None, 0.0, signals, refused=REFUSED_DEBTORS)
+    if any(
+        k in top
+        for k in (
+            "comprovante de pagamento",
+            "comprovante de transferencia",
+            "comprovante de pix",
+            "comprovante pix",
+            "comprovante de transacao",
+        )
+    ) or ("comprovante" in top and "autenticacao" in t):
+        signals.append("título de comprovante de pagamento")
+        return Classification(DocumentType.COMPROVANTE, 0.92, signals)
+    if any(
+        k in top
+        for k in (
+            "documento de arrecadacao de receitas federais",
+            "darf",
+            "guia da previdencia social",
+            "dctfweb",
+            "guia do fgts",
+            "guia de recolhimento do fgts",
+            "fgts digital",
+            "guia de recolhimento do iss",
+            "documento de arrecadacao municipal",
+        )
+    ):
+        signals.append("título de guia de tributo")
+        return Classification(DocumentType.GUIA_TRIBUTO, 0.92, signals)
     if boleto.find_in_text(text, reference) is not None:
         signals.append("linha digitável válida")
         return Classification(DocumentType.BOLETO, 0.97, signals)
@@ -111,6 +165,28 @@ def classify_text(text: str, reference: date) -> Classification:
     # Governing and technical documents by their title (LB-020): checked before the loose
     # "contratante/contratada" rule, since a maintenance plan or a report may name the parties.
     top = t[:300]
+    if any(
+        k in top
+        for k in (
+            "relatorio da administradora",
+            "relatorio de gestao",
+            "relatorio mensal de gestao",
+            "relatorio da administracao",
+        )
+    ):
+        signals.append("título de relatório da administradora")
+        return Classification(DocumentType.RELATORIO_ADM, 0.9, signals)
+    if any(
+        k in top
+        for k in (
+            "informe de rendimentos",
+            "extrato de rendimento",
+            "extrato de investimento",
+            "extrato de aplicacao",
+        )
+    ):
+        signals.append("título de extrato de rendimento")
+        return Classification(DocumentType.EXTRATO_RENDIMENTO, 0.9, signals)
     if "regimento interno" in top:
         signals.append("título de regimento interno")
         return Classification(DocumentType.REGIMENTO, 0.92, signals)

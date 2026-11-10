@@ -27,7 +27,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.jobs import enqueue
 from app.core.time import utcnow
-from app.db.enums import AdjustmentIndex, DocumentType, ExtractionStatus
+from app.db.enums import AdjustmentIndex, ContractNature, DocumentType, ExtractionStatus
 from app.db.models import (
     Condominium,
     Contract,
@@ -36,6 +36,7 @@ from app.db.models import (
     Expense,
     ExpenseDocument,
     MatchIssue,
+    Supplier,
 )
 from app.enrichment.suppliers import get_or_create_supplier
 from app.extraction.clauses import apply_clauses
@@ -46,6 +47,12 @@ MATCH_JOB = "document.match"
 BOLETO_WINDOW_BEFORE = timedelta(days=60)
 BOLETO_WINDOW_AFTER = timedelta(days=10)
 CENT = Decimal("0.01")
+# A second file of a note already received (D120): linked to the same expense, no new expense.
+COPY_ROLE = "copia"
+MIN_FINGERPRINT_CHARS = 200
+RECEIPT_ROLE = "pagamento"
+RECEIPT_WINDOW = timedelta(days=60)  # a payment up to 60 days after the note or boleto
+TAX_CATEGORY = "tributos"
 
 
 @dataclass(frozen=True)
@@ -142,11 +149,18 @@ async def match_document(session: AsyncSession, doc: Document) -> MatchOutcome:
         text, number, role = v.get("descricao") or "", None, "recibo"
     elif doc_type == DocumentType.BOLETO:
         return await _match_boleto(session, doc)
+    elif doc_type == DocumentType.COMPROVANTE:
+        return await _match_receipt(session, doc)
+    elif doc_type == DocumentType.GUIA_TRIBUTO:
+        return await _match_tax_slip(session, doc)
     elif doc_type == DocumentType.CONTRATO:
         await register_contract(session, doc)
         from app.data_issues import detect  # conflicts between documents (D93)
 
         await detect(session, doc.condominium_id)
+        from app.data_issues.contracts import detect_contracts  # contract alerts (D120)
+
+        await detect_contracts(session, doc.condominium_id)
         return MatchOutcome(None)
     else:
         return MatchOutcome(None)
@@ -154,17 +168,20 @@ async def match_document(session: AsyncSession, doc: Document) -> MatchOutcome:
         return MatchOutcome(None)
 
     supplier = await get_or_create_supplier(session, cnpj, name) if cnpj else None
-    if supplier is not None and number:
-        existing = await session.scalar(
-            select(Expense).where(
-                Expense.condominium_id == doc.condominium_id,
-                Expense.supplier_id == supplier.id,
-                Expense.invoice_number == str(number),
+    if supplier is not None and role == "fiscal":
+        await fill_contract_supplier(session, doc.condominium_id, supplier)
+    # The same note in another file (downloaded twice, a photo of the PDF): it joins the
+    # expense of the first one as a copy, never a new expense (D120, A4).
+    if role == "fiscal":
+        original = await _same_note(session, doc, supplier, number, amount, issue)
+        if original is not None:
+            fiscal = await session.scalar(
+                select(ExpenseDocument.id).where(
+                    ExpenseDocument.expense_id == original.id, ExpenseDocument.role == "fiscal"
+                )
             )
-        )
-        if existing is not None:
-            await _attach(session, existing, doc, role)
-            return MatchOutcome(existing.id)
+            await _attach(session, original, doc, COPY_ROLE if fiscal else role)
+            return MatchOutcome(original.id)
 
     # A boleto received earlier may already have created the expense: attach the note to it.
     if supplier is not None:
@@ -226,6 +243,190 @@ async def match_document(session: AsyncSession, doc: Document) -> MatchOutcome:
             {"cnpj": supplier.cnpj},
             dedupe_key=f"supplier:{supplier.cnpj}:enrich",
         )
+    return MatchOutcome(expense.id, created=True)
+
+
+def invoice_key(number: Any) -> str | None:
+    """A note number without series and leading zeros: "Série 1 - 000123", "2024/123" and
+    "123" are the same note number 123. None when there is no number."""
+    raw = str(number or "").strip()
+    if not raw:
+        return None
+    bare = re.sub(r"(?i)\b(s[eé]rie|n[ºo°]?|num(ero)?|nota)\b\.?", " ", raw)
+    if re.search(r"[A-Za-z]", bare):
+        # Letters in the number itself: compared as written, without leading zeros only.
+        return re.sub(r"[^0-9A-Za-z]", "", bare).upper().lstrip("0") or "0"
+    groups = re.findall(r"\d+", bare)
+    if not groups:
+        return None
+    return groups[-1].lstrip("0") or "0"
+
+
+def text_fingerprint(text: str | None) -> str | None:
+    """Same text read from two files is the same document. Short texts prove nothing."""
+    compact = re.sub(r"\s+", "", text or "").lower()
+    return compact if len(compact) >= MIN_FINGERPRINT_CHARS else None
+
+
+async def _same_note(
+    session: AsyncSession,
+    doc: Document,
+    supplier: Supplier | None,
+    number: Any,
+    amount: Decimal,
+    issue: date,
+) -> Expense | None:
+    """The expense of a note already received, when ``doc`` is another file of it:
+    1. the same text; 2. the same supplier and note number (no series, no leading zeros);
+    3. a number missing in one of the copies: same supplier, amount and issue date."""
+    fingerprint = text_fingerprint(doc.text_content)
+    if fingerprint is not None:
+        same_text = await session.scalar(
+            select(ExpenseDocument.expense_id)
+            .join(Document, Document.id == ExpenseDocument.document_id)
+            .where(
+                ExpenseDocument.condominium_id == doc.condominium_id,
+                Document.id != doc.id,
+                Document.doc_type == doc.doc_type,
+                func.lower(func.regexp_replace(Document.text_content, r"\s+", "", "g"))
+                == fingerprint,
+            )
+            .limit(1)
+        )
+        if same_text is not None:
+            return await _expense(session, same_text)
+    if supplier is None:
+        return None
+    same_supplier = list(
+        await session.scalars(
+            select(Expense).where(
+                Expense.condominium_id == doc.condominium_id,
+                Expense.supplier_id == supplier.id,
+            )
+        )
+    )
+    key = invoice_key(number)
+    if key is not None:
+        by_number = [e for e in same_supplier if invoice_key(e.invoice_number) == key]
+        if by_number:
+            return by_number[0]
+    candidates = [
+        e
+        for e in same_supplier
+        if (key is None or e.invoice_number is None)
+        and e.issue_date == issue
+        and abs(e.amount - amount) <= CENT
+    ]
+    if len(candidates) != 1:
+        return None
+    # Only an expense created from a note: a boleto-first expense keeps its own path below.
+    has_note = await session.scalar(
+        select(ExpenseDocument.id).where(
+            ExpenseDocument.expense_id == candidates[0].id, ExpenseDocument.role == "fiscal"
+        )
+    )
+    return candidates[0] if has_note else None
+
+
+def _digits(value: Any) -> str:
+    return "".join(ch for ch in str(value or "") if ch.isdigit())
+
+
+async def _match_receipt(session: AsyncSession, doc: Document) -> MatchOutcome:
+    """A payment receipt is the proof of an expense already known, never a new expense
+    (D120): by the bar code paid, else by the final beneficiary, amount and date."""
+    v = doc.extracted
+    amount, paid = _money(v.get("valor")), _d(v.get("data_pagamento"))
+    if amount is None or paid is None:
+        return MatchOutcome(None)
+    code = _digits(v.get("linha_digitavel"))
+    if code:
+        for field_name in ("linha_digitavel", "codigo_barras"):
+            same = await session.scalar(
+                select(ExpenseDocument.expense_id)
+                .join(Document, Document.id == ExpenseDocument.document_id)
+                .where(
+                    ExpenseDocument.condominium_id == doc.condominium_id,
+                    Document.id != doc.id,
+                    func.regexp_replace(
+                        Document.extracted[field_name].as_string(), "[^0-9]", "", "g"
+                    )
+                    == code,
+                )
+                .limit(1)
+            )
+            if same is not None:
+                await _attach(session, await _expense(session, same), doc, RECEIPT_ROLE)
+                return MatchOutcome(same)
+    beneficiary = _digits(v.get("documento_beneficiario"))
+    if len(beneficiary) != 14:
+        return MatchOutcome(None)
+    supplier = await session.scalar(select(Supplier).where(Supplier.cnpj == beneficiary))
+    if supplier is None:
+        return MatchOutcome(None)
+    candidates = list(
+        await session.scalars(
+            select(Expense).where(
+                Expense.condominium_id == doc.condominium_id,
+                Expense.supplier_id == supplier.id,
+                Expense.amount.between(amount - CENT, amount + CENT),
+                Expense.issue_date.between(paid - RECEIPT_WINDOW, paid + timedelta(days=10)),
+            )
+        )
+    )
+    if len(candidates) != 1:
+        return MatchOutcome(None)  # none or several: the receipt stays as a document
+    await _attach(session, candidates[0], doc, RECEIPT_ROLE)
+    return MatchOutcome(candidates[0].id)
+
+
+async def _match_tax_slip(session: AsyncSession, doc: Document) -> MatchOutcome:
+    """A tax slip is an expense of the "tributos" category without supplier (D120), so a
+    tax paid in the bank statement is not "paid without a document". The same slip sent
+    again (same bar code) joins the first one."""
+    v = doc.extracted
+    amount, due = _money(v.get("valor")), _d(v.get("vencimento"))
+    month = v.get("competencia")
+    if amount is None or due is None or not month:
+        return MatchOutcome(None)
+    code = _digits(v.get("codigo_barras"))
+    if code:
+        same = await session.scalar(
+            select(ExpenseDocument.expense_id)
+            .join(Document, Document.id == ExpenseDocument.document_id)
+            .where(
+                ExpenseDocument.condominium_id == doc.condominium_id,
+                Document.id != doc.id,
+                Document.doc_type == DocumentType.GUIA_TRIBUTO.value,
+                func.regexp_replace(
+                    Document.extracted["codigo_barras"].as_string(), "[^0-9]", "", "g"
+                )
+                == code,
+            )
+            .limit(1)
+        )
+        if same is not None:
+            await _attach(session, await _expense(session, same), doc, COPY_ROLE)
+            return MatchOutcome(same)
+    tax = str(v.get("tributo") or "Tributo").strip()
+    expense = Expense(
+        id=uuid.uuid4(),
+        condominium_id=doc.condominium_id,
+        supplier_id=None,
+        contract_id=None,
+        document_id=doc.id,
+        competence=date.fromisoformat(f"{month}-01"),
+        issue_date=due,
+        due_date=due,
+        amount=amount,
+        category=TAX_CATEGORY,
+        description=f"Guia de tributo: {tax} ({month[5:]}/{month[:4]})"[:500],
+        invoice_number=None,
+        origin="documento",
+    )
+    session.add(expense)
+    await session.flush()
+    await _attach(session, expense, doc, "fiscal")
     return MatchOutcome(expense.id, created=True)
 
 
@@ -335,15 +536,19 @@ async def _match_boleto(session: AsyncSession, doc: Document) -> MatchOutcome:
 
 
 async def register_contract(session: AsyncSession, doc: Document) -> Contract | None:
-    """A validated contract document becomes a contract of the condominium (idempotent)."""
+    """A validated contract document becomes a contract of the condominium (idempotent).
+
+    D120: a one-off contract keeps its total value and installments (no index, no monthly
+    note); a contract without the contracted party's CNPJ is registered by its legal name
+    and the gap becomes an alert (and, when needed, a case to adjust the contract)."""
     v = doc.extracted
     condo = await session.get(Condominium, doc.condominium_id)
-    cnpj, start, value = (
-        v.get("cnpj_contratada"),
-        _d(v.get("data_inicio")),
-        _money(v.get("valor_mensal")),
-    )
-    if condo is None or not cnpj or start is None or value is None:
+    cnpj, name = v.get("cnpj_contratada"), str(v.get("razao_social_contratada") or "").strip()
+    start = _d(v.get("data_inicio"))
+    nature = v.get("natureza") or ContractNature.CONTINUO.value
+    monthly, total = _money(v.get("valor_mensal")), _money(v.get("valor_total"))
+    value_ok = total is not None if nature == ContractNature.PONTUAL.value else monthly is not None
+    if condo is None or not (cnpj or name) or start is None or not value_ok:
         return None
     if v.get("cnpj_contratante") and v["cnpj_contratante"] != condo.cnpj:
         # Back to the extraction queue: the analyst corrects the CNPJ or discards the file.
@@ -353,14 +558,19 @@ async def register_contract(session: AsyncSession, doc: Document) -> Contract | 
             "Contrato em nome de outro CNPJ: confira se o documento é deste condomínio."
         ]
         return None
-    supplier = await get_or_create_supplier(session, cnpj, v.get("razao_social_contratada"))
-    if is_amendment(doc):
-        await register_amendment(session, doc, supplier.id, start, value)
+    supplier = await get_or_create_supplier(session, cnpj, name) if cnpj else None
+    if is_amendment(doc) and supplier is not None:
+        await register_amendment(session, doc, supplier.id, start, monthly)
         return None
+    same_party = (
+        Contract.supplier_id == supplier.id
+        if supplier is not None
+        else (Contract.supplier_id.is_(None) & (Contract.supplier_name == name[:200]))
+    )
     existing = await session.scalar(
         select(Contract).where(
             Contract.condominium_id == doc.condominium_id,
-            Contract.supplier_id == supplier.id,
+            same_party,
             Contract.start_date == start,
         )
     )
@@ -368,28 +578,35 @@ async def register_contract(session: AsyncSession, doc: Document) -> Contract | 
         existing.source_document_id = existing.source_document_id or doc.id
         apply_clauses(existing, doc.text_content)
         return existing
+    one_off = nature == ContractNature.PONTUAL.value
     index = str(v.get("indice_reajuste") or AdjustmentIndex.NENHUM.value)
-    if index not in {i.value for i in AdjustmentIndex}:
-        index = AdjustmentIndex.OUTRO.value
+    if index not in {i.value for i in AdjustmentIndex} or (one_off and index == "OUTRO"):
+        index = AdjustmentIndex.NENHUM.value if one_off else AdjustmentIndex.OUTRO.value
     base = v.get("mes_base_reajuste")
     base_month = int(base) if base and 1 <= int(base) <= 12 else None
     if base_month is None and index not in (AdjustmentIndex.FIXO, AdjustmentIndex.NENHUM):
         base_month = start.month  # D68: the adjustment happens in the month the term started
+    installments = v.get("parcelas")
     contract = Contract(
         id=uuid.uuid4(),
         condominium_id=doc.condominium_id,
-        supplier_id=supplier.id,
+        supplier_id=supplier.id if supplier is not None else None,
+        supplier_name=None if supplier is not None else name[:200],
+        nature=nature,
         object=str(v.get("objeto") or "Contrato")[:300],
         scope_items=[str(x) for x in (v.get("itens_escopo") or [])],
-        monthly_value=value,
+        monthly_value=None if one_off else monthly,
+        total_value=total,
+        installments=int(installments) if installments and int(installments) >= 1 else None,
         adjustment_index=index,
         adjustment_index_other=(
             str(v.get("indice_reajuste_outro") or "")[:120] or None
             if index == AdjustmentIndex.OUTRO
             else None
         ),
-        adjustment_base_month=base_month,
-        billing_frequency_months=billing_frequency(str(v.get("objeto") or "")),
+        adjustment_base_month=None if one_off else base_month,
+        # A one-off contract expects no note every month (D120): on demand.
+        billing_frequency_months=0 if one_off else billing_frequency(str(v.get("objeto") or "")),
         start_date=start,
         end_date=_d(v.get("data_fim")),
         source_document_id=doc.id,
@@ -397,7 +614,11 @@ async def register_contract(session: AsyncSession, doc: Document) -> Contract | 
     apply_clauses(contract, doc.text_content)  # notice period, renewal, penalty (CB-060)
     session.add(contract)
     await session.flush()
-    if supplier.enriched_at is None:
+    if supplier is None:
+        from app.data_issues.contracts import open_adjust_case  # B2 (D120)
+
+        await open_adjust_case(session, condo, contract)
+    elif supplier.enriched_at is None:
         await enqueue(
             session,
             "supplier.enrich",
@@ -405,6 +626,25 @@ async def register_contract(session: AsyncSession, doc: Document) -> Contract | 
             dedupe_key=f"supplier:{supplier.cnpj}:enrich",
         )
     return contract
+
+
+async def fill_contract_supplier(
+    session: AsyncSession, condominium_id: uuid.UUID, supplier: Supplier
+) -> list[Contract]:
+    """The first note of a supplier fills the CNPJ of its contracts registered by legal name
+    only (D120, B2): same legal name, ignoring accents and the legal suffix."""
+    from app.extraction.evidence import same_legal_name
+
+    filled = []
+    for contract in await session.scalars(
+        select(Contract).where(
+            Contract.condominium_id == condominium_id, Contract.supplier_id.is_(None)
+        )
+    ):
+        if same_legal_name(contract.supplier_name, supplier.legal_name):
+            contract.supplier_id = supplier.id
+            filled.append(contract)
+    return filled
 
 
 AMENDMENT = re.compile(r"\b(termo\s+)?aditivo\b", re.IGNORECASE)

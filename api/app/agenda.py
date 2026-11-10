@@ -34,7 +34,7 @@ from app.db.models import (
 )
 from app.enrichment.indices import load_index_table
 from app.pending import GRACE_DAYS, arrivals, billing_expected, month_end
-from app.rules.contracts import anniversaries, contract_value_at, terms_at
+from app.rules.contracts import anniversaries, contract_value_at, supplier_label, terms_at
 
 KINDS = ("vencimento", "nf_prevista", "reajuste", "aviso_previo", "fim_contrato", "validade")
 ADJUSTING = {
@@ -138,7 +138,11 @@ async def condominium_agenda(
     def expected(c: Contract, month: date) -> Decimal:
         """Value due in the month: amendments and index adjustments applied (D66, D68)."""
         mine = amendments.get(c.id, [])
-        return contract_value_at(c, mine, month, table) or terms_at(c, mine, month)[0]
+        return (
+            contract_value_at(c, mine, month, table)
+            or terms_at(c, mine, month)[0]
+            or Decimal("0")  # one-off contracts have no monthly value (D120)
+        )
 
     events: list[Event] = []
 
@@ -171,7 +175,7 @@ async def condominium_agenda(
         )
 
     for c in contracts:
-        name = names.get(c.supplier_id, "")
+        name = supplier_label(c, names)
         history = sorted((e for e in expenses if e.contract_id == c.id), key=lambda e: e.competence)
         usual_day = int(statistics.median(e.issue_date.day for e in history[-6:])) if history else 1
         # Expected invoices.
@@ -185,7 +189,7 @@ async def condominium_agenda(
             invoiced = next((e for e in mine if e.invoice_number or e.id in fiscal), None)
             if invoiced is not None:
                 status = "recebida"
-            elif (await arrived(month)).get(cnpjs.get(c.supplier_id, "")):
+            elif c.supplier_id and (await arrived(month)).get(cnpjs.get(c.supplier_id, "")):
                 status = "em_conferencia"
             elif today > month_end(month) + timedelta(days=GRACE_DAYS):
                 status = "nao_chegou"

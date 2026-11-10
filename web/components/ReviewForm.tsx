@@ -106,6 +106,125 @@ export function ReviewForm({ review }: { review: Review }) {
     }
   }
 
+  const confOf = (spec: FieldSpec) => (sameType ? review.confidence[spec.name] : undefined);
+  const isLow = (spec: FieldSpec) => {
+    const conf = confOf(spec);
+    return conf === undefined || conf < review.threshold;
+  };
+  // Why a field is pending: the reason the reading gave for it (D120, A2).
+  const reasonOf = (spec: FieldSpec) =>
+    sameType
+      ? review.reasons.find((r) => r.startsWith(`${spec.label}:`) || r.startsWith(`${spec.label} `))
+      : undefined;
+  const hasValue = (spec: FieldSpec) => (values[spec.name] ?? "").trim() !== "";
+  // D120: a one-off contract needs the total instead of the monthly value and the index.
+  const oneOff = (values.natureza ?? "") === "pontual";
+  const isRequired = (spec: FieldSpec) => {
+    if (docType !== "contrato") return spec.required;
+    if (oneOff && (spec.name === "valor_mensal" || spec.name === "indice_reajuste")) return false;
+    if (oneOff && spec.name === "valor_total") return true;
+    return spec.required;
+  };
+  const groups: { key: string; title: string; specs: FieldSpec[] }[] = [
+    {
+      key: "pendentes",
+      title: "A conferir",
+      specs: specs.filter((s) => isRequired(s) && (isLow(s) || errors[s.name])),
+    },
+    {
+      key: "conferidos",
+      title: "Lidos com confiança",
+      specs: specs.filter((s) => isRequired(s) && !isLow(s) && !errors[s.name]),
+    },
+    { key: "opcionais", title: "Opcionais", specs: specs.filter((s) => !isRequired(s)) },
+  ];
+
+  function renderField(spec: FieldSpec, group: string) {
+    const conf = confOf(spec);
+    const optional = group === "opcionais";
+    const emptyOptional = optional && !hasValue(spec) && !errors[spec.name];
+    const low = !emptyOptional && isLow(spec);
+    const reason = reasonOf(spec);
+    const id = `f-${spec.name}`;
+    const common = {
+      id,
+      name: spec.name,
+      value: values[spec.name] ?? "",
+      "aria-invalid": Boolean(errors[spec.name]),
+      className: `mt-1 w-full rounded-[var(--radius-control)] border bg-bg-2 px-3 py-2 text-fg ${
+        errors[spec.name]
+          ? "border-danger"
+          : low
+            ? "border-warning/60 bg-warning/10"
+            : "border-control"
+      }`,
+    };
+    const onChange = (v: string) => setValues((prev) => ({ ...prev, [spec.name]: v }));
+    return (
+      <div key={spec.name}>
+        <label htmlFor={id} className="flex items-baseline justify-between text-sm font-medium">
+          <span>
+            {spec.label}
+            {isRequired(spec) && <span className="text-danger"> *</span>}
+          </span>
+          {emptyOptional ? (
+            <span className="text-xs font-normal text-muted" data-testid={`opt-${spec.name}`}>
+              opcional, não encontrado
+            </span>
+          ) : (
+            low && (
+              <span className="text-xs font-normal text-warning" data-testid={`low-${spec.name}`}>
+                {conf === undefined || conf === 0
+                  ? "não encontrado"
+                  : `confiança ${Math.round(conf * 100)}%`}
+              </span>
+            )
+          )}
+        </label>
+        {spec.kind === "list" || spec.name === "discriminacao" || spec.name === "objeto" ? (
+          <textarea {...common} rows={3} onChange={(e) => onChange(e.target.value)} />
+        ) : spec.kind === "nature" ? (
+          <select {...common} onChange={(e) => onChange(e.target.value)}>
+            <option value="">—</option>
+            <option value="continuo">Contínuo (mensalidade)</option>
+            <option value="pontual">Pontual (valor total)</option>
+          </select>
+        ) : spec.kind === "index" ? (
+          <select {...common} onChange={(e) => onChange(e.target.value)}>
+            <option value="">—</option>
+            {INDEXES.map(([v, l]) => (
+              <option key={v} value={v}>
+                {l}
+              </option>
+            ))}
+          </select>
+        ) : (
+          <input
+            {...common}
+            type={spec.kind === "date" ? "date" : spec.kind === "month" ? "month" : "text"}
+            inputMode={
+              spec.kind === "money" || spec.kind === "cnpj" || spec.kind === "doc"
+                ? "decimal"
+                : undefined
+            }
+            onChange={(e) => onChange(e.target.value)}
+          />
+        )}
+        {low && reason && !errors[spec.name] && (
+          <p className="mt-1 text-xs text-warning" data-testid={`motivo-${spec.name}`}>
+            Por que conferir: {reason.slice(spec.label.length).replace(/^[:\s]+/, "")}
+          </p>
+        )}
+        {sameType && <Provenance item={review.provenance?.[spec.name]} />}
+        {errors[spec.name] && (
+          <p className="mt-1 text-xs text-danger" role="alert">
+            {errors[spec.name]}
+          </p>
+        )}
+      </div>
+    );
+  }
+
   return (
     <form
       onSubmit={save}
@@ -127,71 +246,17 @@ export function ReviewForm({ review }: { review: Review }) {
         </select>
       </label>
 
-      {specs.map((spec) => {
-        const conf = sameType ? review.confidence[spec.name] : undefined;
-        const low = conf === undefined || conf < review.threshold;
-        const id = `f-${spec.name}`;
-        const common = {
-          id,
-          name: spec.name,
-          value: values[spec.name] ?? "",
-          "aria-invalid": Boolean(errors[spec.name]),
-          className: `mt-1 w-full rounded-[var(--radius-control)] border bg-bg-2 px-3 py-2 text-fg ${
-            errors[spec.name]
-              ? "border-danger"
-              : low
-                ? "border-warning/60 bg-warning/10"
-                : "border-control"
-          }`,
-        };
-        const onChange = (v: string) => setValues((prev) => ({ ...prev, [spec.name]: v }));
-        return (
-          <div key={spec.name}>
-            <label htmlFor={id} className="flex items-baseline justify-between text-sm font-medium">
-              <span>
-                {spec.label}
-                {spec.required && <span className="text-danger"> *</span>}
-              </span>
-              {low && (
-                <span className="text-xs font-normal text-warning" data-testid={`low-${spec.name}`}>
-                  {conf === undefined || conf === 0
-                    ? "não encontrado"
-                    : `confiança ${Math.round(conf * 100)}%`}
-                </span>
-              )}
-            </label>
-            {spec.kind === "list" || spec.name === "discriminacao" || spec.name === "objeto" ? (
-              <textarea {...common} rows={3} onChange={(e) => onChange(e.target.value)} />
-            ) : spec.kind === "index" ? (
-              <select {...common} onChange={(e) => onChange(e.target.value)}>
-                <option value="">—</option>
-                {INDEXES.map(([v, l]) => (
-                  <option key={v} value={v}>
-                    {l}
-                  </option>
-                ))}
-              </select>
-            ) : (
-              <input
-                {...common}
-                type={spec.kind === "date" ? "date" : spec.kind === "month" ? "month" : "text"}
-                inputMode={
-                  spec.kind === "money" || spec.kind === "cnpj" || spec.kind === "doc"
-                    ? "decimal"
-                    : undefined
-                }
-                onChange={(e) => onChange(e.target.value)}
-              />
-            )}
-            {sameType && <Provenance item={review.provenance?.[spec.name]} />}
-            {errors[spec.name] && (
-              <p className="mt-1 text-xs text-danger" role="alert">
-                {errors[spec.name]}
-              </p>
-            )}
-          </div>
-        );
-      })}
+      {groups.map(
+        (group) =>
+          group.specs.length > 0 && (
+            <fieldset key={group.key} className="space-y-4" data-testid={`grupo-${group.key}`}>
+              <legend className="mb-2 text-xs font-semibold tracking-wide text-fg-2 uppercase">
+                {group.title}
+              </legend>
+              {group.specs.map((spec) => renderField(spec, group.key))}
+            </fieldset>
+          ),
+      )}
 
       {message && (
         <p role="status" className="text-sm text-danger">
@@ -250,6 +315,7 @@ function Provenance({ item }: { item?: ProvenanceItem }) {
     <p className="mt-1 text-xs text-fg-2">
       {item.status === "confirmado" ? "Confirmado" : "Origem"}:{" "}
       {SOURCE_LABEL[item.source] ?? item.source}
+      {item.evidence ? ` · confirmado: ${item.evidence}` : ""}
       {item.page ? ` · pág. ${item.page}` : ""}
       {item.excerpt ? (
         <>

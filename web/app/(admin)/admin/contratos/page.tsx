@@ -9,7 +9,7 @@ import { DataTable } from "@/components/ui/DataTable";
 import { KpiCard } from "@/components/ui/KpiCard";
 import { apiGet } from "@/lib/api";
 import { indexLabel } from "@/lib/labels";
-import { formatBRL, formatBRLShort, formatDate } from "@/lib/format";
+import { contractValue, formatBRL, formatBRLShort, formatDate } from "@/lib/format";
 import type { Portfolio, PortfolioContract } from "@/lib/types";
 
 function days(iso: string | null): number | null {
@@ -34,7 +34,7 @@ export default async function ContratosPage({
     const d = days(r.end_date);
     return d !== null && d >= 0 && d <= 60;
   });
-  const annual = active.reduce((s, r) => s + Number(r.monthly_value) * 12, 0);
+  const annual = active.reduce((s, r) => s + Number(r.monthly_value ?? 0) * 12, 0);
   return (
     <>
       <PageHeader
@@ -87,8 +87,11 @@ export default async function ContratosPage({
           { key: "condo", header: "Condomínio", cell: (r) => r.condominium_name },
           {
             key: "value",
-            header: "Valor mensal",
-            cell: (r) => formatBRL(r.monthly_value),
+            header: "Valor",
+            cell: (r) =>
+              r.nature === "pontual"
+                ? `${contractValue(r)}${r.billed_total ? ` · faturado ${formatBRL(r.billed_total)}` : ""}`
+                : formatBRL(r.monthly_value ?? 0),
             align: "right",
           },
           {

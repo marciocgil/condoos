@@ -25,6 +25,8 @@ PROMPT_FILES = {
     DocumentType.BOLETO: "extract_boleto",
     DocumentType.RECIBO: "extract_recibo",
     DocumentType.CONTRATO: "extract_contrato",
+    DocumentType.COMPROVANTE: "extract_comprovante",
+    DocumentType.GUIA_TRIBUTO: "extract_guia_tributo",
 }
 
 
@@ -42,6 +44,8 @@ ClassifiableType = Literal[
     "nfse",
     "nfe",
     "boleto",
+    "comprovante",
+    "guia_tributo",
     "recibo",
     "extrato",
     "contrato",
@@ -52,6 +56,9 @@ ClassifiableType = Literal[
     "balancete",
     "laudo",
     "plano_manutencao",
+    "relatorio_adm",
+    "extrato_rendimento",
+    "relacao_devedores",  # refused, never stored (D120, B5)
     "outro",
 ]
 

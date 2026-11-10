@@ -74,12 +74,16 @@ class ExpenseOut(ORM):
 
 class ContractOut(ORM):
     id: uuid.UUID
-    supplier_id: uuid.UUID
+    supplier_id: uuid.UUID | None  # None: contract without the contracted party's CNPJ (D120)
     supplier_name: str | None = None
     supplier_cnpj: str | None = None
     object: str
     scope_items: list[str]
-    monthly_value: Decimal
+    nature: str = "continuo"  # continuo | pontual (D120)
+    monthly_value: Decimal | None  # None for a one-off contract
+    total_value: Decimal | None = None
+    installments: int | None = None
+    billed_total: Decimal | None = None  # one-off contracts: billed so far (D120)
     adjustment_index: str
     adjustment_index_other: str | None = None
     adjustment_base_month: int | None

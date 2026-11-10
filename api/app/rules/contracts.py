@@ -71,11 +71,32 @@ def value_at(
     return value
 
 
+def supplier_label(contract: "Contract", names: "dict[uuid.UUID, str]") -> str:
+    """The contracted party: the supplier's name, or the legal name the contract shows when
+    it has no CNPJ (D120)."""
+    if contract.supplier_id is not None and contract.supplier_id in names:
+        return names[contract.supplier_id]
+    return contract.supplier_name or ""
+
+
+def value_label(contract: "Contract") -> str:
+    """How the contract's value is said: per month (continuous) or in total (one-off)."""
+    from app.core.money import brl
+
+    if contract.monthly_value is not None:
+        return f"{brl(contract.monthly_value)} por mês"
+    if contract.total_value is not None:
+        parts = f" em {contract.installments} parcelas" if (contract.installments or 1) > 1 else ""
+        return f"{brl(contract.total_value)} no total{parts}"
+    return "valor não informado"
+
+
 def terms_at(
     contract: "Contract", amendments: list["ContractAmendment"], month: date
-) -> tuple[Decimal, date | None]:
+) -> tuple[Decimal | None, date | None]:
     """(monthly value, since) in force in ``month``: the latest amendment with a value
-    effective on or before the month, else the original contract value (D66)."""
+    effective on or before the month, else the original contract value (D66). A one-off
+    contract has no monthly value (D120)."""
     valued = [
         a
         for a in amendments
@@ -95,6 +116,8 @@ def contract_value_at(
     index_table: dict[str, dict[date, Decimal]],
 ) -> Decimal | None:
     base, since = terms_at(contract, amendments, month)
+    if base is None:
+        return None
     return value_at(
         base,
         contract.adjustment_index,
@@ -104,6 +127,25 @@ def contract_value_at(
         index_table,
         since,
     )
+
+
+async def billed_totals(
+    session: "AsyncSession", contract_ids: list["uuid.UUID"]
+) -> dict["uuid.UUID", Decimal]:
+    """Sum of the expenses linked to each contract: how a one-off contract is checked, by the
+    total billed against its total value (D120)."""
+    from sqlalchemy import func, select
+
+    from app.db.models import Expense
+
+    if not contract_ids:
+        return {}
+    rows = await session.execute(
+        select(Expense.contract_id, func.sum(Expense.amount))
+        .where(Expense.contract_id.in_(contract_ids))
+        .group_by(Expense.contract_id)
+    )
+    return {cid: total for cid, total in rows.all() if cid is not None}
 
 
 async def amendments_by_contract(

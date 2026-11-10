@@ -54,10 +54,14 @@ export interface Expense {
 
 export interface Contract {
   id: string;
-  supplier_id: string;
+  supplier_id: string | null; // null: contract without the contracted party's CNPJ (D120)
   supplier_name: string | null;
   object: string;
-  monthly_value: string;
+  monthly_value: string | null; // null for a one-off contract
+  nature?: "continuo" | "pontual"; // D120
+  total_value?: string | null;
+  installments?: number | null;
+  billed_total?: string | null;
   adjustment_index: string;
   adjustment_index_other?: string | null;
   adjustment_base_month: number | null;
@@ -196,7 +200,11 @@ export interface PortfolioContract {
   condominium_name: string;
   supplier_name: string;
   object: string;
-  monthly_value: string;
+  monthly_value: string | null;
+  nature?: "continuo" | "pontual"; // D120
+  total_value?: string | null;
+  installments?: number | null;
+  billed_total?: string | null;
   adjustment_index: string;
   adjustment_index_other?: string | null;
   next_adjustment: string | null;
@@ -279,7 +287,7 @@ export interface MatchIssue {
 export interface FieldSpec {
   name: string;
   label: string;
-  kind: "cnpj" | "doc" | "date" | "month" | "money" | "text" | "list" | "int" | "index";
+  kind: "cnpj" | "doc" | "date" | "month" | "money" | "text" | "list" | "int" | "index" | "nature";
   required: boolean;
 }
 
@@ -756,6 +764,7 @@ export interface ProvenanceItem {
   status?: string;
   confirmed_by?: string;
   rule?: string;
+  evidence?: string; // proof that confirmed the value (D120)
 }
 
 // CondoOS Launch (D89): journey, readiness per capability and the first-value card.
@@ -835,6 +844,14 @@ export const ALERT_KINDS = new Set([
   "acao_parada",
 ]);
 
+// Contract alerts from the reading (D120): what the document says, kept after a correction.
+export const CONTRACT_ALERT_KINDS = new Set([
+  "contrato_assinado_depois",
+  "contrato_contratante",
+  "contrato_cnpj_condominio",
+  "contrato_sem_cnpj",
+]);
+
 // Centro de Evolução (LB-063, D110): a suggestion from observed demand.
 export interface EvolutionSuggestion {
   key: string;
@@ -869,7 +886,7 @@ export interface FirstValue {
   document_id: string;
   filename: string;
   doc_type: string;
-  state: "lendo" | "falhou" | "memoria" | "outro_tipo" | "lido" | "parcial";
+  state: "lendo" | "falhou" | "memoria" | "outro_tipo" | "lido" | "parcial" | "recusado";
   message: string;
   fields?: FirstValueField[];
   clauses?: { label: string; value: string; evidence?: { excerpt: string } | null }[];

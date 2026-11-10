@@ -39,10 +39,10 @@ from app.db.models import (
     Supplier,
 )
 from app.enrichment.indices import load_index_table
-from app.rules.contracts import contract_value_at, terms_at
+from app.rules.contracts import contract_value_at, supplier_label, terms_at
 
 GRACE_DAYS = 10
-UTILITIES = ["energia", "agua", "gas"]
+UTILITIES = ["energia", "agua", "gas", "tributos"]
 # Where the supplier and the month of a fiscal document are read (LB-052).
 SUPPLIER_FIELDS = ("cnpj_prestador", "cnpj_emitente", "cnpj_beneficiario", "documento_recebedor")
 MONTH_FIELDS = ("competencia", "data_emissao", "vencimento", "data")
@@ -224,7 +224,9 @@ async def month_pending(
     cnpjs = {
         s.id: s.cnpj
         for s in await session.scalars(
-            select(Supplier).where(Supplier.id.in_([c.supplier_id for c in contracts]))
+            select(Supplier).where(
+                Supplier.id.in_([c.supplier_id for c in contracts if c.supplier_id])
+            )
         )
     }
     arrived_by_cnpj, unread = await arrivals(session, condominium_id, month)
@@ -232,13 +234,14 @@ async def month_pending(
     table = await load_index_table(session)  # expected value with index adjustments
     waiting = today <= month_end(month) + timedelta(days=GRACE_DAYS)
     billing: list[ContractBilling] = []
-    for c in sorted(contracts, key=lambda c: suppliers.get(c.supplier_id, "")):
+    for c in sorted(contracts, key=lambda c: supplier_label(c, suppliers)):
         if not billing_expected(c, month):
             continue
         mine = [e for e in expenses if e.contract_id == c.id]
         invoiced = next((e for e in mine if has_invoice(e)), None)
         charged = invoiced or (mine[0] if mine else None)
-        arrived = arrived_by_cnpj.get(cnpjs.get(c.supplier_id, ""), [])
+        cnpj = cnpjs.get(c.supplier_id) if c.supplier_id else None
+        arrived = arrived_by_cnpj.get(cnpj, []) if cnpj else []
         if invoiced is not None:
             status = "faturado"
         elif arrived:
@@ -252,11 +255,12 @@ async def month_pending(
         billing.append(
             ContractBilling(
                 contract_id=c.id,
-                supplier=suppliers.get(c.supplier_id, ""),
+                supplier=supplier_label(c, suppliers),
                 object=c.object,
                 expected_value=(
                     contract_value_at(c, amendments.get(c.id, []), month, table)
                     or terms_at(c, amendments.get(c.id, []), month)[0]
+                    or Decimal("0")  # one-off contracts expect no monthly note (D120)
                 ),
                 status=status,
                 expense_id=charged.id if charged else None,

@@ -30,7 +30,7 @@ from app.db.session import DbSession
 from app.metrics import Bucket as MetricBucket
 from app.metrics import compute as compute_metrics
 from app.pending import month_pending
-from app.rules.contracts import amendments_by_contract, anniversaries, terms_at
+from app.rules.contracts import amendments_by_contract, anniversaries, billed_totals, terms_at
 
 router = APIRouter(prefix="/portfolio", tags=["portfolio"])
 
@@ -81,7 +81,10 @@ class ContractRow(BaseModel):
     condominium_name: str
     supplier_name: str
     object: str
-    monthly_value: Decimal
+    monthly_value: Decimal | None  # None for a one-off contract (D120)
+    nature: str = "continuo"
+    total_value: Decimal | None = None
+    billed_total: Decimal | None = None  # one-off contracts: billed so far
     adjustment_index: str
     adjustment_index_other: str | None = None
     next_adjustment: date | None
@@ -234,12 +237,13 @@ async def contracts(db: DbSession, principal: CurrentPrincipal) -> list[Contract
     rows = (
         await db.execute(
             select(Contract, Supplier.legal_name)
-            .join(Supplier, Supplier.id == Contract.supplier_id)
+            .outerjoin(Supplier, Supplier.id == Contract.supplier_id)
             .where(Contract.condominium_id.in_(condos))
         )
     ).all()
     today = date.today()
     amendments = await amendments_by_contract(db, [c.id for c, _ in rows])
+    billed = await billed_totals(db, [c.id for c, _ in rows if c.nature == "pontual"])
     out = []
     for c, supplier_name in rows:
         mine = amendments.get(c.id, [])
@@ -255,9 +259,12 @@ async def contracts(db: DbSession, principal: CurrentPrincipal) -> list[Contract
                 id=c.id,
                 condominium_id=c.condominium_id,
                 condominium_name=condos[c.condominium_id],
-                supplier_name=supplier_name,
+                supplier_name=supplier_name or c.supplier_name or "",
                 object=c.object,
                 monthly_value=terms_at(c, mine, today.replace(day=1))[0],  # in force (D66)
+                nature=c.nature,
+                total_value=c.total_value,
+                billed_total=billed.get(c.id),
                 adjustment_index=c.adjustment_index,
                 adjustment_index_other=c.adjustment_index_other,
                 next_adjustment=(

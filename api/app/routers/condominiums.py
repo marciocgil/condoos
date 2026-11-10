@@ -20,7 +20,7 @@ from app.routers.schemas import (
     ContractOut,
     ExpenseOut,
 )
-from app.rules.contracts import amendments_by_contract, terms_at
+from app.rules.contracts import amendments_by_contract, billed_totals, terms_at
 
 router = APIRouter(prefix="/condominiums", tags=["condominiums"])
 
@@ -89,21 +89,23 @@ async def list_expenses(
 async def list_contracts(condominium_id: uuid.UUID, access: CanView, db: Db) -> list[ContractOut]:
     rows = await db.execute(
         select(Contract, Supplier.legal_name, Supplier.cnpj)
-        .join(Supplier, Supplier.id == Contract.supplier_id)
+        .outerjoin(Supplier, Supplier.id == Contract.supplier_id)
         .where(Contract.condominium_id == access.condominium_id)
         .order_by(Contract.end_date.nulls_last(), Contract.object)
     )
     rows_list = list(rows)
     amendments = await amendments_by_contract(db, [c.id for c, _, _ in rows_list])
+    billed = await billed_totals(db, [c.id for c, _, _ in rows_list if c.nature == "pontual"])
     today = date.today().replace(day=1)
     out = []
     for contract, supplier_name, supplier_cnpj in rows_list:
         item = ContractOut.model_validate(contract)
-        item.supplier_name = supplier_name
+        item.supplier_name = supplier_name or contract.supplier_name
         item.supplier_cnpj = supplier_cnpj
         mine = amendments.get(contract.id, [])
         item.original_monthly_value = contract.monthly_value
         item.monthly_value, _ = terms_at(contract, mine, today)  # value in force (D66)
         item.amendments = len(mine)
+        item.billed_total = billed.get(contract.id)
         out.append(item)
     return out

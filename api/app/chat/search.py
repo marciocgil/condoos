@@ -31,6 +31,8 @@ INDEXED_TYPES = {
     DocumentType.BALANCETE.value,
     DocumentType.LAUDO.value,
     DocumentType.PLANO_MANUTENCAO.value,
+    DocumentType.RELATORIO_ADM.value,
+    DocumentType.EXTRATO_RENDIMENTO.value,
 }
 INDEX_JOB = "document.index"
 CHUNK_CHARS = 900

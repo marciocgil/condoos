@@ -150,12 +150,24 @@ def month_report_xlsx(r: MonthReport) -> bytes:
             "Mês do reajuste",
             "Início",
             "Fim",
+            "Valor total (pontual)",
         ],
-        [34, 44, 20, 10, 14, 12, 12],
+        [34, 44, 20, 10, 14, 12, 12, 20],
     )
     for c in r.contracts:
-        ws.append([c.supplier, c.object, c.monthly_value, c.index, c.base_month, c.start, c.end])
-    _format(ws, [3], [6, 7])
+        ws.append(
+            [
+                c.supplier,
+                c.object,
+                c.monthly_value,
+                c.index,
+                c.base_month,
+                c.start,
+                c.end,
+                c.total_value,
+            ]
+        )
+    _format(ws, [3, 8], [6, 7])
 
     ws = wb.create_sheet("Cobertura")
     _sheet(ws, title, ["O que este relatório cobre"], [100])

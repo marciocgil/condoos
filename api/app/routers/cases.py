@@ -64,6 +64,7 @@ from app.db.models import (
 )
 from app.db.session import DbSession
 from app.ingestion.documents import ingest_file
+from app.rules.contracts import value_label
 
 router = APIRouter(tags=["cases"])
 CanView = Annotated[CondoAccess, Depends(require(Permission.VIEW))]
@@ -1029,19 +1030,19 @@ async def link_candidates(
     if tipo == CaseLinkTarget.CONTRACT:
         q_contract = (
             select(Contract, Supplier)
-            .join(Supplier, Supplier.id == Contract.supplier_id)
+            .outerjoin(Supplier, Supplier.id == Contract.supplier_id)
             .where(Contract.condominium_id == cid)
         )
         if text:
             q_contract = q_contract.where(
                 Contract.object.ilike(like)
                 | Supplier.legal_name.ilike(like)
+                | Contract.supplier_name.ilike(like)
                 | Supplier.trade_name.ilike(like)
             )
         for c, s in await db.execute(q_contract.order_by(Contract.start_date.desc()).limit(limit)):
-            found.append(
-                (c.id, c.object, f"{s.trade_name or s.legal_name} · {brl(c.monthly_value)}")
-            )
+            who = (s.trade_name or s.legal_name) if s is not None else (c.supplier_name or "")
+            found.append((c.id, c.object, f"{who} · {value_label(c)}"))
     elif tipo == CaseLinkTarget.SUPPLIER:
         used = (
             select(Contract.supplier_id)

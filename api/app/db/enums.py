@@ -69,6 +69,13 @@ class DocumentType(StrEnum):
     BALANCETE = "balancete"
     LAUDO = "laudo"
     PLANO_MANUTENCAO = "plano_manutencao"
+    # D120: payment receipt (proof of payment, linked to an expense, never a new expense);
+    # tax slip (an expense of the "tributos" category without supplier); management company
+    # report and investment statement (text only, searchable).
+    COMPROVANTE = "comprovante"
+    GUIA_TRIBUTO = "guia_tributo"
+    RELATORIO_ADM = "relatorio_adm"
+    EXTRATO_RENDIMENTO = "extrato_rendimento"
     OUTRO = "outro"
 
 
@@ -366,6 +373,11 @@ class DataIssueKind(StrEnum):
     REVISOR_AUSENTE = "revisor_ausente"
     SINDICO_SEM_ACESSO = "sindico_sem_acesso"
     ACAO_PARADA = "acao_parada"
+    # Contract alerts from the reading (D120): what the document says is kept as evidence.
+    CONTRATO_ASSINADO_DEPOIS = "contrato_assinado_depois"
+    CONTRATO_CONTRATANTE = "contrato_contratante"
+    CONTRATO_CNPJ_CONDOMINIO = "contrato_cnpj_condominio"
+    CONTRATO_SEM_CNPJ = "contrato_sem_cnpj"
 
 
 ALERT_KINDS: frozenset[DataIssueKind] = frozenset(
@@ -377,6 +389,22 @@ ALERT_KINDS: frozenset[DataIssueKind] = frozenset(
         DataIssueKind.ACAO_PARADA,
     }
 )
+CONTRACT_ALERT_KINDS: frozenset[DataIssueKind] = frozenset(
+    {
+        DataIssueKind.CONTRATO_ASSINADO_DEPOIS,
+        DataIssueKind.CONTRATO_CONTRATANTE,
+        DataIssueKind.CONTRATO_CNPJ_CONDOMINIO,
+        DataIssueKind.CONTRATO_SEM_CNPJ,
+    }
+)
+
+
+class ContractNature(StrEnum):
+    """D120: a continuous contract has a monthly fee, a term and an adjustment; a one-off
+    contract (works, repair, report) has a total value and installments."""
+
+    CONTINUO = "continuo"
+    PONTUAL = "pontual"
 
 
 class DataIssueAudience(StrEnum):

@@ -74,6 +74,8 @@ Política mínima e kill switch entregues com a VS-05 (D83); o produto continua 
 
 ## 6. Histórico desta página
 
+- 10/11/2026 — Correções na leitura (D120, migração 0027 aprovada): confiança por evidência (valor escrito no texto, razão social da Receita, CNPJ do condomínio), CNPJ procurado no texto, tela de correção com pendentes e opcionais separados, cópia da mesma nota sem despesa nova, alertas de contrato (assinatura depois do início, contratante que não é o condomínio, CNPJ do condomínio errado, sem CNPJ da contratada), contrato sem CNPJ pela razão social com assunto "Ajustar contrato" quando essencial ou acima da alçada, contrato pontual, comprovante de pagamento, guia de tributo, relatório da administradora, extrato de rendimento e recusa da relação de devedores. Verificação: 425 testes do backend, lint e tipos. Falta `make e2e` no docker e refazer as gravações da IA (`LLM_MODE=record make accuracy`).
+
 - 09/11/2026 — FR-057, segundo corte (D113, migração 0026 aprovada): perfil do prédio que só sugere, dossiê em PDF por obrigação e resumo semanal por e-mail ao síndico (segundo envio do sistema, aprovado pelo Marcio). Verificação local: 381 testes do backend, lint, migração ida e volta, E2E `compliance.spec.ts` e `launch.spec.ts`.
 
 - 09/11/2026 — FR-057 conformidade e vencimentos, primeiro corte (D112, migração 0025 aprovada): obrigações com aplicabilidade decidida por pessoa, catálogo de 14 candidatas, documento e validade com leitura pela IA confirmada por pessoa, situação calculada, avisos na Agenda, no Hoje e no chat. Verificação local: 378 testes do backend, lint, migração ida e volta, E2E `compliance.spec.ts` e os fluxos de agenda, pedidos, assuntos e Hoje.

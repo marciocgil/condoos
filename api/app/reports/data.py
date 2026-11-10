@@ -67,6 +67,10 @@ DOC_TYPE_LABEL = {
     "balancete": "Balancete",
     "laudo": "Laudo técnico",
     "plano_manutencao": "Plano de manutenção",
+    "comprovante": "Comprovante de pagamento",
+    "guia_tributo": "Guia de tributo",
+    "relatorio_adm": "Relatório da administradora",
+    "extrato_rendimento": "Extrato de rendimento",
     "outro": "Outro",
 }
 
@@ -122,11 +126,12 @@ class SupplierRow:
 class ContractRow:
     supplier: str
     object: str
-    monthly_value: Decimal
+    monthly_value: Decimal | None  # None for a one-off contract (D120)
     index: str
     base_month: int | None
     start: date
     end: date | None
+    total_value: Decimal | None = None
 
 
 @dataclass
@@ -324,9 +329,14 @@ async def build_month_report(
     )
     contract_rows = [
         ContractRow(
-            supplier=suppliers[c.supplier_id].legal_name if c.supplier_id in suppliers else "",
+            supplier=(
+                suppliers[c.supplier_id].legal_name
+                if c.supplier_id in suppliers
+                else (c.supplier_name or "")
+            ),
             object=c.object,
             monthly_value=c.monthly_value,
+            total_value=c.total_value,
             index=c.adjustment_index,
             base_month=c.adjustment_base_month,
             start=c.start_date,

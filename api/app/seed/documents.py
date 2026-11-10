@@ -130,6 +130,7 @@ Nada mais havendo a tratar, a sessão foi encerrada e lavrada esta ata.
 
 def contract_text(condo: Condominium, contract: Contract, supplier: Supplier) -> str:
     fine_months, notice_days = _terms(contract.object)
+    assert contract.monthly_value is not None  # the seed has continuous contracts only
     fine = brl(contract.monthly_value * fine_months)
     base_month = (
         MONTHS[contract.adjustment_base_month - 1] if contract.adjustment_base_month else "—"

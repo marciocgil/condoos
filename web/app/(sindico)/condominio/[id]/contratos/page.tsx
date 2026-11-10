@@ -6,7 +6,7 @@ import { buttonClass } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { apiGet } from "@/lib/api";
 import { indexLabel } from "@/lib/labels";
-import { formatBRL, formatDate } from "@/lib/format";
+import { contractValue, formatBRL, formatDate } from "@/lib/format";
 import type { Contract, Launch } from "@/lib/types";
 
 function nextAdjustment(baseMonth: number | null, index: string, today: Date): string | null {
@@ -93,8 +93,15 @@ export default async function ContratosPage({ params }: { params: Promise<{ id: 
               </div>
               <dl className="tabular mt-3 grid grid-cols-2 gap-x-3 gap-y-2 text-[13px]">
                 <div>
-                  <dt className="text-muted">Valor mensal</dt>
-                  <dd>{formatBRL(c.monthly_value)}</dd>
+                  <dt className="text-muted">
+                    {c.nature === "pontual" ? "Valor total" : "Valor mensal"}
+                  </dt>
+                  <dd>
+                    {c.nature === "pontual" ? contractValue(c) : formatBRL(c.monthly_value ?? 0)}
+                    {c.nature === "pontual" && c.billed_total
+                      ? ` · faturado ${formatBRL(c.billed_total)}`
+                      : ""}
+                  </dd>
                 </div>
                 <div>
                   <dt className="text-muted">Índice</dt>

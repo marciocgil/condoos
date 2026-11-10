@@ -15,7 +15,7 @@ from app.core.br import only_digits
 from app.core.money import parse_brl
 from app.db.enums import AdjustmentIndex, DocumentType
 
-Kind = Literal["cnpj", "doc", "date", "month", "money", "text", "list", "int", "index"]
+Kind = Literal["cnpj", "doc", "date", "month", "money", "text", "list", "int", "index", "nature"]
 
 REVIEW_THRESHOLD = 0.9
 
@@ -82,8 +82,53 @@ SPECS: dict[DocumentType, list[FieldSpec]] = {
         FieldSpec("data_inicio", "date", True, "Início da vigência"),
         FieldSpec("data_assinatura", "date", False, "Data da assinatura"),
         FieldSpec("data_fim", "date", False, "Fim da vigência (em branco: indeterminado)"),
+        # D120: one-off contracts (works, repair, report) have a total value and installments.
+        FieldSpec("natureza", "nature", False, "Natureza (contínuo ou pontual)"),
+        FieldSpec("valor_total", "money", False, "Valor total (contrato pontual)"),
+        FieldSpec("parcelas", "int", False, "Número de parcelas (contrato pontual)"),
+    ],
+    # D120: proof of payment. The final beneficiary is who received the money (never the
+    # bank that processed it); linked to the expense, never a new expense.
+    DocumentType.COMPROVANTE: [
+        FieldSpec("data_pagamento", "date", True, "Data do pagamento"),
+        FieldSpec("valor", "money", True, "Valor pago"),
+        FieldSpec("nome_beneficiario", "text", True, "Beneficiário final"),
+        FieldSpec("documento_beneficiario", "doc", False, "CPF/CNPJ do beneficiário final"),
+        FieldSpec("banco_pagador", "text", False, "Banco pagador"),
+        FieldSpec("autenticacao", "text", False, "Autenticação"),
+        FieldSpec("linha_digitavel", "text", False, "Código de barras pago"),
+    ],
+    # D120: tax slip (DARF, GPS/DCTFWeb, FGTS, ISS): an expense of "tributos", no supplier.
+    DocumentType.GUIA_TRIBUTO: [
+        FieldSpec("tributo", "text", True, "Tributo"),
+        FieldSpec("competencia", "month", True, "Competência"),
+        FieldSpec("vencimento", "date", True, "Vencimento"),
+        FieldSpec("valor", "money", True, "Valor"),
+        FieldSpec("codigo_barras", "text", False, "Código de barras"),
+        FieldSpec("cnpj_contribuinte", "cnpj", False, "CNPJ do contribuinte"),
     ],
 }
+
+# Contract natures (D120).
+CONTINUO, PONTUAL = "continuo", "pontual"
+
+
+def required_for(
+    doc_type: DocumentType, values: dict[str, Any], *, counterparty_absent: bool = False
+) -> list[str]:
+    """Required fields of this document, given what it is (D120): a one-off contract needs
+    the total value instead of the monthly value and index; a contract whose text shows no
+    CNPJ of the contracted party is registered by its legal name."""
+    names = required_fields(doc_type)
+    if doc_type != DocumentType.CONTRATO:
+        return names
+    if values.get("natureza") == PONTUAL:
+        names = [n for n in names if n not in ("valor_mensal", "indice_reajuste")]
+        names.append("valor_total")
+    if counterparty_absent and not values.get("cnpj_contratada"):
+        names = [n for n in names if n != "cnpj_contratada"]
+    return names
+
 
 # Types whose content is kept as text only in this milestone (chat search in milestone 5).
 TEXT_ONLY_TYPES = {
@@ -94,6 +139,8 @@ TEXT_ONLY_TYPES = {
     DocumentType.BALANCETE,
     DocumentType.LAUDO,
     DocumentType.PLANO_MANUTENCAO,
+    DocumentType.RELATORIO_ADM,
+    DocumentType.EXTRATO_RENDIMENTO,
 }
 BANK_TYPES = {DocumentType.EXTRATO, DocumentType.CNAB_RETORNO}
 
@@ -166,6 +213,13 @@ def normalize(kind: Kind, value: Any) -> Any:
         # Any other index (IGP-DI, IPC-Fipe, collective agreement...) is OUTRO; the text is
         # kept in indice_reajuste_outro by the contract step (D68).
         return AdjustmentIndex(aliases.get(key, "OUTRO")).value
+    if kind == "nature":
+        key = str(value).strip().lower()
+        if key.startswith(("pont", "unic", "único", "avuls", "empreit")):
+            return PONTUAL
+        if key.startswith(("cont", "mens", "recorr")):
+            return CONTINUO
+        raise InvalidValue("natureza: contínuo ou pontual")
     if kind == "list":
         if isinstance(value, list):
             return [str(v).strip() for v in value if str(v).strip()]

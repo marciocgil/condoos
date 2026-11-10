@@ -7,6 +7,7 @@ import { ReviewPolicyCard } from "@/components/condoos/ReviewPolicyCard";
 import { apiGet } from "@/lib/api";
 import {
   ALERT_KINDS,
+  CONTRACT_ALERT_KINDS,
   type AutomationPauses,
   type CapabilityChange,
   type DataIssue,
@@ -32,12 +33,12 @@ export default async function AjustesPage({ params }: { params: Promise<{ id: st
     apiGet<DataIssue[]>(`/condominiums/${id}/data-issues?status=aberto`),
   ]);
   // The health alerts this síndico may see (D110): only those for the condominium.
-  const alerts = issues.filter((i) => ALERT_KINDS.has(i.kind));
+  const alerts = issues.filter((i) => ALERT_KINDS.has(i.kind) || CONTRACT_ALERT_KINDS.has(i.kind));
   return (
     <>
       <h1 className="text-xl font-semibold">Ajustes</h1>
       {alerts.map((a) => (
-        <HealthAlertCard key={a.id} issue={a} />
+        <HealthAlertCard key={a.id} issue={a} linkBase={`/condominio/${id}`} />
       ))}
       <EvolutionCard
         condominiumId={id}

@@ -13,6 +13,10 @@ export const DOC_TYPE_LABEL: Record<string, string> = {
   balancete: "Balancete",
   laudo: "Laudo técnico",
   plano_manutencao: "Plano de manutenção",
+  comprovante: "Comprovante de pagamento",
+  guia_tributo: "Guia de tributo",
+  relatorio_adm: "Relatório da administradora",
+  extrato_rendimento: "Extrato de rendimento",
   outro: "Outro",
 };
 

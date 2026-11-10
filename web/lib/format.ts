@@ -43,6 +43,20 @@ export function competenceParam(iso: string): string {
 }
 
 /** Whole reais for highlights, as in the mockups: "R$ 6.200". */
+/** A contract's value as people say it: per month, or in total for a one-off contract. */
+export function contractValue(c: {
+  monthly_value: string | null;
+  total_value?: string | null;
+  installments?: number | null;
+}): string {
+  if (c.monthly_value !== null) return `${formatBRL(c.monthly_value)} por mês`;
+  if (c.total_value) {
+    const parts = c.installments && c.installments > 1 ? ` em ${c.installments} parcelas` : "";
+    return `${formatBRL(c.total_value)} no total${parts}`;
+  }
+  return "—";
+}
+
 export function formatBRLShort(value: string | number): string {
   const n = typeof value === "string" ? Number(value) : value;
   return new Intl.NumberFormat("pt-BR", {

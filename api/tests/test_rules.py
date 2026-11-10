@@ -206,6 +206,7 @@ async def test_r01_negatives() -> None:
 async def test_r02_value_above_adjusted_contract() -> None:
     s = supplier()
     k = contract(s)
+    assert k.monthly_value is not None
     expected = value_at(k.monthly_value, "IPCA", 1, k.start_date, OCT, INDEX)
     assert expected is not None
     ok = expense(s, str(expected), contract_id=k.id)
@@ -498,6 +499,8 @@ async def test_r12_approval_limit() -> None:
     big = expense(s, "6000.00", category="obras")
     approved = expense(s, "7000.00", category="obras")
     utility = expense(s, "12000.00", category="agua")
+    tax = expense(s, "15000.00", category="tributos")  # a tax slip needs no approval (D120)
+    other = expense(s, "15000.00", category="outros")
     k = contract(s)
     contracted = expense(s, "9200.00", contract_id=k.id)
     approvals = {
@@ -510,14 +513,14 @@ async def test_r12_approval_limit() -> None:
     found = await run(
         "R12",
         ctx(
-            [big, approved, utility, contracted],
+            [big, approved, utility, tax, other, contracted],
             suppliers=[s],
             contracts=[k],
             approvals=approvals,
             c=c,
         ),
     )
-    assert [f.subject_key for f in found] == [f"R12:{big.id}"]
+    assert sorted(f.subject_key for f in found) == sorted([f"R12:{big.id}", f"R12:{other.id}"])
 
 
 # --------------------------------------------------------------------------- language

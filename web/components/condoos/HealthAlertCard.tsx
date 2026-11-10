@@ -1,22 +1,31 @@
 "use client";
 
-import { Activity, CheckCircle2, Users, XCircle } from "lucide-react";
+import { Activity, CheckCircle2, FilePen, FolderPlus, Users, XCircle } from "lucide-react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import { Badge } from "@/components/ui/Badge";
-import { Button } from "@/components/ui/Button";
+import { Button, buttonClass } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Field, textareaClass } from "@/components/ui/Field";
 import { send } from "@/lib/client";
 import { formatDateTime } from "@/lib/format";
-import type { DataIssue } from "@/lib/types";
+import { CONTRACT_ALERT_KINDS, type DataIssue } from "@/lib/types";
 
 const MIN_REASON = 10;
 
 /** One health alert from the daily monitors (D110): what was observed and, for whoever
  * resolves data issues, "tratado" or "não procede" with a reason. No sides to choose. */
-export function HealthAlertCard({ issue }: { issue: DataIssue }) {
+export function HealthAlertCard({
+  issue,
+  linkBase = "/admin",
+}: {
+  issue: DataIssue;
+  /** Where the request and case forms live: "/admin" (desktop) or the síndico's condo path. */
+  linkBase?: string;
+}) {
+  const desktop = linkBase === "/admin";
   const router = useRouter();
   const [reason, setReason] = useState("");
   const [busy, setBusy] = useState(false);
@@ -56,6 +65,29 @@ export function HealthAlertCard({ issue }: { issue: DataIssue }) {
           </Badge>
         )}
       </div>
+      {CONTRACT_ALERT_KINDS.has(issue.kind) && (
+        <div className="mt-3 flex flex-wrap gap-2" data-testid="contract-alert-actions">
+          <Link
+            className={buttonClass("secondary", "sm")}
+            href={`${linkBase}/pedidos/novo?${new URLSearchParams({
+              ...(desktop ? { condominio: issue.condominium_id } : {}),
+              item: `Contrato corrigido: ${issue.title.toLowerCase()}`,
+              papel: issue.kind === "contrato_contratante" ? "administradora" : "fornecedor",
+            })}`}
+          >
+            <FilePen size={14} aria-hidden /> Pedir correção do contrato
+          </Link>
+          <Link
+            className={buttonClass("secondary", "sm")}
+            href={`${linkBase}/assuntos/novo?${new URLSearchParams({
+              ...(desktop ? { condominio: issue.condominium_id } : {}),
+              titulo: `Ajustar contrato: ${issue.title.toLowerCase()}`,
+            })}`}
+          >
+            <FolderPlus size={14} aria-hidden /> Criar assunto
+          </Link>
+        </div>
+      )}
       {issue.can_resolve && (
         <div className="mt-4 space-y-3">
           <Field

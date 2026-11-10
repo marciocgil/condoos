@@ -291,4 +291,10 @@ async def run_monitors(session: AsyncSession, condo_id: uuid.UUID, today: date) 
         *await _sindico_access(session, condo),
         *await _stalled_actions(session, condo),
     ]
-    return await reconcile(session, condo_id, found, {k.value for k in ALERT_KINDS})
+    result = await reconcile(session, condo_id, found, {k.value for k in ALERT_KINDS})
+    from app.data_issues.contracts import detect_contracts  # e.g. a CNPJ filled by a note
+
+    contracts = await detect_contracts(session, condo_id)
+    result.opened += contracts.opened
+    result.superseded += contracts.superseded
+    return result

@@ -52,6 +52,7 @@ from app.db.enums import (
     ComplianceApplicability,
     ComplianceCategory,
     ComplianceEventKind,
+    ContractNature,
     DataIssueAudience,
     DataIssueEventKind,
     DataIssueKind,
@@ -306,13 +307,32 @@ class Contract(IdTimestampMixin, Base):
         CheckConstraint(
             "billing_frequency_months IN (0, 1, 2, 3, 6, 12)", name="billing_frequency_valid"
         ),
+        _enum_check("nature", ContractNature),
+        CheckConstraint(
+            "supplier_id IS NOT NULL OR supplier_name IS NOT NULL", name="supplier_or_name"
+        ),
+        CheckConstraint(
+            "(nature = 'continuo' AND monthly_value IS NOT NULL) "
+            "OR (nature = 'pontual' AND total_value IS NOT NULL)",
+            name="value_by_nature",
+        ),
+        CheckConstraint("installments IS NULL OR installments >= 1", name="installments_positive"),
     )
 
     condominium_id: Mapped[uuid.UUID] = _uuid_fk("condominium.id")
-    supplier_id: Mapped[uuid.UUID] = _uuid_fk("supplier.id")
+    # Empty when the contract has no CNPJ of the contracted party (D120): the legal name is
+    # in ``supplier_name`` until the first note of that supplier fills the CNPJ.
+    supplier_id: Mapped[uuid.UUID | None] = _uuid_fk("supplier.id", nullable=True)
+    supplier_name: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    nature: Mapped[str] = mapped_column(
+        String(10), default=ContractNature.CONTINUO.value, server_default="continuo"
+    )
     object: Mapped[str] = mapped_column(String(300))
     scope_items: Mapped[list[str]] = mapped_column(Json, default=list)
-    monthly_value: Mapped[Decimal] = mapped_column(Money)
+    # Continuous contracts only; a one-off contract has ``total_value`` and ``installments``.
+    monthly_value: Mapped[Decimal | None] = mapped_column(Money, nullable=True)
+    total_value: Mapped[Decimal | None] = mapped_column(Money, nullable=True)
+    installments: Mapped[int | None] = mapped_column(Integer, nullable=True)
     adjustment_index: Mapped[str] = mapped_column(String(10))
     # When adjustment_index is OUTRO: which one, as the contract says (e.g. "IGP-DI").
     adjustment_index_other: Mapped[str | None] = mapped_column(String(120), nullable=True)
@@ -451,7 +471,9 @@ class ExpenseDocument(IdTimestampMixin, Base):
 
     __tablename__ = "expense_document"
     __table_args__ = (
-        CheckConstraint("role IN ('fiscal', 'cobranca', 'recibo')", name="role_valid"),
+        CheckConstraint(
+            "role IN ('fiscal', 'cobranca', 'recibo', 'copia', 'pagamento')", name="role_valid"
+        ),
         UniqueConstraint("document_id"),
     )
 

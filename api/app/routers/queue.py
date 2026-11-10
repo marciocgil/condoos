@@ -32,7 +32,14 @@ from app.db.models import (
 )
 from app.db.session import DbSession
 from app.extraction.confidence import COUNTERPARTY_CNPJ, OWN_CNPJ
-from app.extraction.fields import REVIEW_THRESHOLD, SPECS, InvalidValue, normalize, specs_for
+from app.extraction.fields import (
+    REVIEW_THRESHOLD,
+    SPECS,
+    InvalidValue,
+    normalize,
+    required_for,
+    specs_for,
+)
 from app.extraction.pipeline import enqueue_match
 from app.extraction.provenance import confirmed as confirmed_provenance
 from app.storage.base import get_storage
@@ -236,13 +243,28 @@ async def get_review(
 def _validate(doc_type: DocumentType, raw: dict[str, Any], condo_cnpj: str) -> dict[str, Any]:
     errors: dict[str, str] = {}
     values: dict[str, Any] = {}
+    normalized: dict[str, Any] = {}
+    for spec in specs_for(doc_type):
+        try:
+            normalized[spec.name] = normalize(spec.kind, raw.get(spec.name))
+        except InvalidValue:
+            normalized[spec.name] = None
+    # D120: a one-off contract needs the total instead of the monthly value and index; a
+    # person may confirm a contract without the contracted party's CNPJ (by legal name).
+    required = set(
+        required_for(
+            doc_type,
+            normalized,
+            counterparty_absent=bool(normalized.get("razao_social_contratada")),
+        )
+    )
     for spec in specs_for(doc_type):
         try:
             value = normalize(spec.kind, raw.get(spec.name))
         except InvalidValue as exc:
             errors[spec.name] = str(exc)
             continue
-        if value is None and spec.required:
+        if value is None and spec.name in required:
             errors[spec.name] = "Campo obrigatório."
         elif spec.kind == "cnpj" and value is not None and not is_valid_cnpj(value):
             errors[spec.name] = "CNPJ com dígito verificador inválido."

@@ -18,7 +18,9 @@ class ApprovalLimit(Rule):
     code = "R12"
     name = "Despesa acima da alçada sem aprovação"
     default_severity = Severity.MEDIA
-    default_params: ClassVar[dict[str, Any]] = {"exempt_categories": ["energia", "agua", "gas"]}
+    default_params: ClassVar[dict[str, Any]] = {
+        "exempt_categories": ["energia", "agua", "gas", "tributos"]
+    }
 
     async def evaluate(self, ctx: RuleContext) -> list[FindingDraft]:
         limits = ctx.limits

@@ -95,7 +95,7 @@ export function FirstValueCard({
         </p>
       )}
       <p className="mt-1 flex items-start gap-2 text-sm font-medium">
-        {card.state === "falhou" ? (
+        {card.state === "falhou" || card.state === "recusado" ? (
           <XCircle size={16} aria-hidden className="mt-0.5 shrink-0 text-danger" />
         ) : card.state === "parcial" ? (
           <AlertTriangle size={16} aria-hidden className="mt-0.5 shrink-0 text-warning" />

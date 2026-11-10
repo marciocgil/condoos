@@ -6,7 +6,13 @@ import { HealthAlertCard } from "@/components/condoos/HealthAlertCard";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { apiGet } from "@/lib/api";
-import { ALERT_KINDS, type DataIssue, type Portfolio, type QueueItem } from "@/lib/types";
+import {
+  ALERT_KINDS,
+  CONTRACT_ALERT_KINDS,
+  type DataIssue,
+  type Portfolio,
+  type QueueItem,
+} from "@/lib/types";
 
 /** Validation Centre (D93, LB-032): open conflicts between documents, the largest amount in
  * play first. The exception queue (extraction, matching, serious findings) stays in its own
@@ -26,7 +32,11 @@ export default async function ValidacaoPage({
   ]);
   // Health alerts (D110) and conflicts between documents (D93) are listed apart.
   const alerts = issues.filter((i) => ALERT_KINDS.has(i.kind));
-  const conflicts = issues.filter((i) => !ALERT_KINDS.has(i.kind));
+  // Contract alerts from the reading (D120): never block, keep what the document says.
+  const contractAlerts = issues.filter((i) => CONTRACT_ALERT_KINDS.has(i.kind));
+  const conflicts = issues.filter(
+    (i) => !ALERT_KINDS.has(i.kind) && !CONTRACT_ALERT_KINDS.has(i.kind),
+  );
   const n = conflicts.length;
   return (
     <>
@@ -54,6 +64,24 @@ export default async function ValidacaoPage({
           ))}
         </div>
       )}
+      <section className="mt-8 space-y-4" aria-labelledby="alertas-contrato-titulo">
+        <h2 id="alertas-contrato-titulo" className="text-lg font-semibold">
+          Alertas de contrato ({contractAlerts.length})
+        </h2>
+        <p className="text-sm text-fg-2">
+          O que o contrato diz e precisa de correção no próprio documento: assinatura depois do
+          início, contratante que não é o condomínio, CNPJ do condomínio errado e contrato sem o
+          CNPJ da contratada. O cadastro pode ter sido corrigido; o alerta guarda o que estava
+          escrito.
+        </p>
+        {contractAlerts.length === 0 ? (
+          <EmptyState title="Nenhum alerta de contrato">
+            Os contratos lidos não trazem nada a corrigir.
+          </EmptyState>
+        ) : (
+          contractAlerts.map((i) => <HealthAlertCard key={i.id} issue={i} />)
+        )}
+      </section>
       <section className="mt-8 space-y-4" aria-labelledby="alertas-titulo">
         <h2 id="alertas-titulo" className="text-lg font-semibold">
           Alertas de saúde ({alerts.length})

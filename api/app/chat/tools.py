@@ -42,6 +42,7 @@ from app.rules.contracts import (
     amendments_by_contract,
     anniversaries,
     contract_value_at,
+    supplier_label,
     value_at,
 )
 
@@ -377,21 +378,27 @@ class ChatTools:
         contracts = list(await self.session.scalars(stmt.order_by(Contract.start_date)))
         if not contracts:
             return {"encontrado": False, "motivo": "nenhum contrato encontrado neste condomínio"}
-        names = await self._supplier_names({c.supplier_id for c in contracts})
+        names = await self._supplier_names({c.supplier_id for c in contracts if c.supplier_id})
         table = await load_index_table(self.session)
         amendments = await amendments_by_contract(self.session, [c.id for c in contracts])
         today = await self._default_month() or date.today().replace(day=1)
         out = []
         for c in contracts:
-            supplier_name = names.get(c.supplier_id, "")
+            supplier_name = supplier_label(c, names)
             adjustments = []
-            for anniversary in anniversaries(c.start_date, c.adjustment_base_month, today):
+            monthly = c.monthly_value
+            for anniversary in (
+                anniversaries(c.start_date, c.adjustment_base_month, today)
+                if monthly is not None
+                else []
+            ):
+                assert monthly is not None
                 adjustments.append(
                     {
                         "mes": f"{anniversary:%Y-%m}",
                         "valor_apos_reajuste": _money(
                             value_at(
-                                c.monthly_value,
+                                monthly,
                                 c.adjustment_index,
                                 c.adjustment_base_month,
                                 c.start_date,
@@ -409,8 +416,11 @@ class ChatTools:
                 "objeto": c.object,
                 "fornecedor": supplier_name,
                 "escopo": c.scope_items,
+                "natureza": c.nature,
                 "valor_mensal_original": _money(c.monthly_value),
                 "valor_mensal_vigente": _money(current),
+                "valor_total": _money(c.total_value),
+                "parcelas": c.installments,
                 "indice_reajuste": c.adjustment_index,
                 "indice_reajuste_descricao": c.adjustment_index_other,
                 "mes_base_reajuste": c.adjustment_base_month,

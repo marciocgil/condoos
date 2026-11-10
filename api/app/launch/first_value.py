@@ -23,7 +23,7 @@ from app.core.br import format_cnpj
 from app.core.money import brl
 from app.data_issues import documents_of, open_issues
 from app.db.enums import DocumentType, ExtractionStatus
-from app.db.models import Contract, ContractAmendment, Document
+from app.db.models import Contract, ContractAmendment, Document, ExpenseDocument
 from app.extraction.fields import REVIEW_THRESHOLD, SPECS, TEXT_ONLY_TYPES
 
 TYPE_LABEL = {
@@ -41,6 +41,10 @@ TYPE_LABEL = {
     "balancete": "um balancete",
     "laudo": "um laudo técnico",
     "plano_manutencao": "um plano de manutenção",
+    "comprovante": "um comprovante de pagamento",
+    "guia_tributo": "uma guia de tributo",
+    "relatorio_adm": "um relatório da administradora",
+    "extrato_rendimento": "um extrato de rendimento",
     "outro": "um documento que não reconheci",
 }
 INDEX_LABEL = {"IPCA": "IPCA", "IGPM": "IGP-M", "INPC": "INPC", "FIXO": "Valor fixo"}
@@ -179,6 +183,30 @@ async def first_value(session: AsyncSession, doc: Document) -> dict[str, Any]:
             "message": "Não consegui ler este arquivo. Tente o PDF original ou uma foto mais "
             "nítida.",
         }
+    if (doc.extracted or {}).get("recusado"):
+        return {**base, "state": "recusado", "message": str(doc.extracted.get("motivo") or "")}
+    copy_of = await session.scalar(
+        select(ExpenseDocument.expense_id).where(
+            ExpenseDocument.document_id == doc.id, ExpenseDocument.role == "copia"
+        )
+    )
+    original = (
+        await session.scalar(
+            select(Document.original_filename)
+            .join(ExpenseDocument, ExpenseDocument.document_id == Document.id)
+            .where(ExpenseDocument.expense_id == copy_of, ExpenseDocument.role == "fiscal")
+            .limit(1)
+        )
+        if copy_of is not None
+        else None
+    )
+    if original is not None:
+        return {
+            **base,
+            "state": "outro_tipo",
+            "message": f"Esta é uma cópia da nota já recebida ({original}). Guardei junto da "
+            "mesma despesa, sem criar despesa nova.",
+        }
     if doc.doc_type in {t.value for t in TEXT_ONLY_TYPES}:
         pages = doc.page_count or 0
         return {
@@ -228,6 +256,10 @@ async def first_value(session: AsyncSession, doc: Document) -> dict[str, Any]:
     presumed = [f["label"] for f in fields if f["status"] == "inferido"]
     if presumed:
         message += " Presumi, por regra e não pelo texto: " + ", ".join(presumed).lower() + "."
+    # Facts worth a note that do not block (D120): e.g. signed after the term started.
+    for item in (doc.field_provenance or {}).values():
+        if isinstance(item, dict) and item.get("note"):
+            message += f" Observação: {item['note']}"
     return {
         **base,
         "state": "parcial" if parts else "lido",
