@@ -86,6 +86,7 @@ web/            Next.js 15 (App Router) + TypeScript strict + Tailwind 4 + lucid
   app/(admin)/admin/...               telas desktop da administradora
   lib/api.ts      chamadas server-side à API, repassando o cookie de sessão
   tests/e2e/      Playwright (roda contra a stack do docker compose)
+marketing/condoos-motion/  filme de apresentação do Optimize (Remotion, projeto separado, D88)
 docs/           decisions.md, rules.md, deploy.md (implantação), lgpd.md (checklist),
                 pilot/ (cadastro de exemplo e resultado do aceite)
 ```

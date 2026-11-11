@@ -1,0 +1,31 @@
+{
+  "name": "condoos-motion",
+  "version": "1.0.0",
+  "private": true,
+  "description": "CondoOS Optimize hero film (Remotion). Isolated from the product app.",
+  "scripts": {
+    "studio": "remotion studio",
+    "typecheck": "tsc --noEmit",
+    "stills": "node scripts/stills.mjs",
+    "render:60": "remotion render HeroFilm60 out/CondoOS-Hero-Film-60s-9x16.mp4 --codec=h264 --crf=18",
+    "render:15": "remotion render HeroFilm15 out/CondoOS-Hero-Film-15s-9x16.mp4 --codec=h264 --crf=18",
+    "render": "npm run render:60 && npm run render:15"
+  },
+  "dependencies": {
+    "@remotion/bundler": "4.0.538",
+    "@remotion/cli": "4.0.538",
+    "@remotion/fonts": "4.0.538",
+    "@remotion/renderer": "4.0.538",
+    "@remotion/zod-types": "4.0.538",
+    "lucide-react": "1.69.0",
+    "react": "19.3.1",
+    "react-dom": "19.3.1",
+    "remotion": "4.0.538",
+    "zod": "4.5.4"
+  },
+  "devDependencies": {
+    "@fontsource/inter": "5.3.0",
+    "@types/react": "19.3.0",
+    "typescript": "5.9.3"
+  }
+}
