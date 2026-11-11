@@ -57,3 +57,5 @@ Mapeia cada requisito de privacidade (seção 12 da especificação e boas prát
 | Chat (`app/chat`) | a pergunta, as 6 últimas mensagens do mesmo usuário e o que as ferramentas devolvem (só deste condomínio, com CPF mascarado) | dados de outros condomínios; nada é gravado pela ferramenta |
 
 Toda chamada é registrada em `llm_calls` (finalidade, modelo, tokens, custo), sem o conteúdo, e respeita o limite mensal de custo por condomínio.
+
+- [x] **Dados por unidade no Audit (D123):** só código da unidade, títulos e consumo; nome, CPF, e-mail e telefone de morador descartados na importação (nunca guardados, nem no arquivo de origem); retorno CNAB de cobrança sem pagador; visíveis só à equipe interna (`view_audit`).

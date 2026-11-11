@@ -1349,6 +1349,7 @@ export interface ControlDetail {
     | (AuditResult & {
         tests: { teste: string; resultado: string; detalhe: string }[];
         evidence_refs: EvidenceRef[];
+        calculation: CalcLine[];
         produced_by: {
           run_id: string;
           run_number: number | null;
@@ -1398,6 +1399,14 @@ export interface AuditRunDetail {
   }[];
 }
 
+// Calculation memory of a control result (D123).
+export interface CalcLine {
+  label: string;
+  value: string;
+  formula: string;
+  rows?: Record<string, string | boolean | null>[];
+}
+
 export interface ReconLine {
   id: string;
   date: string;
@@ -1408,6 +1417,7 @@ export interface ReconLine {
   strength: string;
   intermediary: boolean;
   paired_with: string | null;
+  allocations?: { expense: string; amount: string; kind: string; method: string }[];
   expense: { id: string; description: string; amount: string } | null;
   levels: Record<
     "a_saldo" | "b_classificado" | "c_comprovante" | "d_favorecido" | "e_obrigacao",

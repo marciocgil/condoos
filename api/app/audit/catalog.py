@@ -23,6 +23,10 @@ OBRIGACOES = "obrigacoes"
 APROVACOES = "aprovacoes"
 
 
+# Controls of cycles up to this one are evaluated; later ones are "Não avaliado".
+CURRENT_CYCLE = 2
+
+
 @dataclass(frozen=True)
 class ControlDef:
     id: str
@@ -38,7 +42,7 @@ class ControlDef:
 
     @property
     def implemented(self) -> bool:
-        return self.cycle == 1
+        return self.cycle <= CURRENT_CYCLE
 
 
 PILLARS = {
@@ -174,11 +178,17 @@ CONTROLS: list[ControlDef] = [
         "BAN",
         "Transferências entre contas",
         ("A4",),
-        ("extratos das duas contas",),
-        ("Origem e destino conferidos nas duas contas.",),
+        ("extratos das contas de origem e destino",),
+        (
+            "Cada transferência tem a contrapartida na outra conta (mesmo valor, sinal oposto, "
+            "até 3 dias).",
+            "Transferência de ou para conta não apresentada fica com ressalva: crédito recebido "
+            "não é origem comprovada.",
+        ),
         (EXTRATO,),
         2,
-        "—",
+        "1.0",
+        {"janela_dias": "3"},
     ),
     ControlDef(
         "BAN-07",
@@ -186,10 +196,14 @@ CONTROLS: list[ControlDef] = [
         "Pagamentos por intermediário",
         ("A4", "A6"),
         ("comprovante de liquidação ao favorecido final",),
-        ("Repasse ao intermediário ligado à liquidação final comprovada.",),
-        (EXTRATO, PAGAMENTOS),
+        (
+            "Todo pagamento feito por intermediário (administradora, plataforma de cobrança) tem "
+            "comprovante cujo beneficiário final é o fornecedor da despesa (CNPJ).",
+            "Saída ao intermediário não é liquidação final comprovada.",
+        ),
+        (EXTRATO, PAGAMENTOS, DOCUMENTOS),
         2,
-        "—",
+        "1.0",
     ),
     ControlDef(
         "BAN-08",
@@ -233,33 +247,51 @@ CONTROLS: list[ControlDef] = [
         "REC",
         "Boletos por unidade",
         ("A5",),
-        ("títulos emitidos, retornos e créditos por unidade",),
-        ("Baixa individual de cada título.",),
-        (UNIDADES, RECEITAS),
+        ("títulos emitidos por unidade", "extrato ou retorno de cobrança"),
+        (
+            "Toda unidade cadastrada tem título na competência.",
+            "Nenhum título repetido (mesma unidade, tipo e competência).",
+            "Todo título pago tem confirmação: liquidação no retorno de cobrança (nosso número) "
+            "ou crédito do extrato cujo valor fecha a soma dos pagamentos do dia.",
+        ),
+        (UNIDADES, RECEITAS, EXTRATO),
         2,
-        "—",
+        "1.0",
+        {"janela_credito_dias": "3"},
     ),
     ControlDef(
         "REC-03",
         "REC",
         "Consumo e rateios",
         ("A5",),
-        ("fatura, medições, tarifa e regra de rateio",),
-        ("Rateio recalculado por unidade.",),
-        (UNIDADES, DESPESAS),
+        ("fatura da concessionária", "rateio por unidade", "leituras por unidade"),
+        (
+            "A soma do rateio por unidade é igual à fatura do consumo, ao centavo.",
+            "Com leituras: cada unidade paga fatura × consumo da unidade ÷ consumo total, com "
+            "diferença de no máximo R$ 0,01 por arredondamento.",
+            "Sem leituras: só a aritmética é validada; a medição fica pendente (ressalva).",
+        ),
+        (UNIDADES, DESPESAS, RECEITAS),
         2,
-        "—",
+        "1.0",
+        {"arredondamento_por_unidade": "R$ 0,01"},
     ),
     ControlDef(
         "REC-04",
         "REC",
         "Inadimplência",
         ("A5",),
-        ("títulos em aberto por unidade",),
-        ("Saldo final por unidade reconciliado.",),
+        ("títulos por unidade com situação de pagamento",),
+        (
+            "Saldo em aberto no início + títulos vencidos no mês − pagamentos − cancelamentos = "
+            "saldo em aberto no fim, por unidade.",
+            "Título marcado como pago tem data e valor pagos; pagamento parcial fica em aberto "
+            "pela diferença.",
+            '"Não há inadimplentes" só depois de reconciliar os títulos em aberto.',
+        ),
         (UNIDADES, RECEITAS),
         2,
-        "—",
+        "1.0",
     ),
     ControlDef(
         "DES-01",
@@ -280,35 +312,50 @@ CONTROLS: list[ControlDef] = [
     ControlDef(
         "DES-02",
         "DES",
-        "DARFs consolidados",
+        "Tributos retidos e guias federais",
         ("A6",),
-        ("retenções das notas e guia paga",),
-        ("Guia confere com a soma das retenções da competência.",),
-        (TRIBUTOS, DOCUMENTOS),
+        ("retenções das notas da competência", "guia federal (DARF) da competência paga"),
+        (
+            "Soma das retenções federais (IR, PIS, COFINS, CSLL) das notas da competência = "
+            "soma das guias federais da competência, ao centavo.",
+            "Cada guia tem débito bancário ligado.",
+            "Alíquotas não são calculadas: só a aritmética entre notas, guia e pagamento.",
+        ),
+        (TRIBUTOS, DOCUMENTOS, PAGAMENTOS),
         2,
-        "—",
+        "1.0",
     ),
     ControlDef(
         "DES-03",
         "DES",
         "Encargos e tributos periódicos",
         ("A6",),
-        ("guias FGTS, INSS, ISS, DCTFWeb",),
-        ("Competência, vencimento e pagamento de cada guia.",),
-        (TRIBUTOS,),
+        ("perfil de auditoria", "guias FGTS, INSS/DCTFWeb e ISS da competência"),
+        (
+            "Com funcionários próprios: guia de FGTS e de INSS/DCTFWeb da competência.",
+            "Com ISS retido nas notas: guia de ISS da competência com o total retido.",
+            "Cada guia vencida tem débito bancário; guias de meses anteriores pagas no mês "
+            "aparecem separadas.",
+        ),
+        (TRIBUTOS, PAGAMENTOS),
         2,
-        "—",
+        "1.0",
     ),
     ControlDef(
         "DES-04",
         "DES",
         "Parcelamento fiscal",
         ("A6",),
-        ("acordo, cronograma e baixas",),
-        ("Sequência de parcelas e saldo devedor.",),
-        (TRIBUTOS,),
+        ("perfil de auditoria", "guias das parcelas"),
+        (
+            "Parcelas numeradas em sequência, com o mesmo total (02/04 depois de 01/04).",
+            "Total diferente entre parcelas (02/02 e depois 03/04) exige documento do novo "
+            "acordo: fica com ressalva até ser apresentado.",
+            "Cada parcela vencida tem débito bancário.",
+        ),
+        (TRIBUTOS, PAGAMENTOS),
         2,
-        "—",
+        "1.0",
     ),
     ControlDef(
         "CON-01",

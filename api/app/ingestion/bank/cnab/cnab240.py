@@ -126,8 +126,6 @@ def parse_febraban_240(lines: list[str]) -> ParsedStatement:
             pending_t = {
                 "our_number": f(line, 38, 57).strip(),
                 "doc_number": f(line, 59, 73).strip(),
-                "payer_doc": _doc(f(line, 134, 148)),
-                "payer_name": f(line, 149, 188).strip(),
                 "movement": f(line, 16, 17),
             }
         elif segment == "U" and pending_t is not None:
@@ -145,8 +143,9 @@ def parse_febraban_240(lines: list[str]) -> ParsedStatement:
                         f"cnab240:{bank}:T:{pending_t['our_number']}:{pending_t['movement']}"
                     )[:120],
                     origin=BankTransactionOrigin.CNAB,
-                    payee_name=str(pending_t["payer_name"] or "") or None,
-                    payee_document=pending_t["payer_doc"],  # type: ignore[arg-type]
+                    # The payer of a collection boleto is a resident: never stored (D123).
+                    payee_name=None,
+                    payee_document=None,
                 )
             )
             pending_t = None

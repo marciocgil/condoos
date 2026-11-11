@@ -6,6 +6,7 @@ import {
   ClipboardCheck,
   Gauge,
   Landmark,
+  ListTodo,
   BookOpenCheck,
   CheckSquare,
   Building2,
@@ -28,6 +29,7 @@ import {
   ShieldAlert,
   ShieldCheck,
   Upload,
+  Users,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
@@ -112,6 +114,18 @@ const GROUPS: Group[] = [
         href: "/admin/audit/conciliacao",
         label: "Conciliação bancária",
         icon: Landmark,
+        show: can("view_audit"),
+      },
+      {
+        href: "/admin/audit/unidades",
+        label: "Unidades e receitas",
+        icon: Users,
+        show: can("view_audit"),
+      },
+      {
+        href: "/admin/audit/pendencias",
+        label: "Pendências da auditoria",
+        icon: ListTodo,
         show: can("view_audit"),
       },
       {

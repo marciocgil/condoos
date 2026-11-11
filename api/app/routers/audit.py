@@ -2,17 +2,27 @@
 were produced, human review, bank reconciliation, inventory and "Agentes & Prompts"."""
 
 import uuid
-from datetime import date
+from datetime import date, timedelta
 from decimal import Decimal
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
 from pydantic import BaseModel, Field
 from sqlalchemy import or_, select
 
 from app.audit import agents as ag
 from app.audit.catalog import CONTROLS, CONTROLS_BY_ID, PILLARS
+from app.audit.controls2 import remaining_balance
 from app.audit.data import CLASSIFICATION_VERSION, CREDIT_RULES, DEBIT_RULES, LABELS, load
+from app.audit.imports import (
+    PROFILE_FIELDS,
+    ImportFileError,
+    import_readings,
+    import_titles,
+    import_units,
+    profile_of,
+    set_profile,
+)
 from app.audit.run import RunError, month_start, run_audit
 from app.auth.deps import CurrentPrincipal, access_for, require
 from app.auth.rbac import CondoAccess, Permission
@@ -26,13 +36,20 @@ from app.db.models import (
     AuditAgentRun,
     AuditControlResult,
     AuditControlReview,
+    AuditIssue,
+    AuditIssueEvent,
     AuditPeriod,
     AuditRun,
     AuditStageRun,
     Condominium,
+    Expense,
     ExpenseDocument,
+    PaymentAllocation,
     PlatformRoleGrant,
     PromptTestRun,
+    ReceivableTitle,
+    Unit,
+    UtilityReading,
 )
 from app.db.session import DbSession
 
@@ -363,6 +380,7 @@ async def get_control(
                 **_result_out(current),
                 "tests": current.tests,
                 "evidence_refs": current.evidence_refs,
+                "calculation": current.calculation,
                 # "Como este resultado foi produzido?": agents, prompt versions and hashes, rule.
                 "produced_by": {
                     "run_id": str(current.run_id),
@@ -524,11 +542,28 @@ async def reconciliation(
             )
         )
     )
+    alloc: dict[uuid.UUID, list[dict[str, Any]]] = {}
+    for pa, desc in (
+        await db.execute(
+            select(PaymentAllocation, Expense.description)
+            .join(Expense, Expense.id == PaymentAllocation.expense_id)
+            .where(
+                PaymentAllocation.condominium_id == condo.id,
+                PaymentAllocation.bank_transaction_id.in_(
+                    [ln.trn.id for ln in data.lines] or [uuid.uuid4()]
+                ),
+            )
+        )
+    ).all():
+        alloc.setdefault(pa.bank_transaction_id, []).append(
+            {"expense": desc, "amount": str(pa.amount), "kind": pa.kind, "method": pa.method}
+        )
     accounts = []
     for a in data.accounts:
         balance = a.balance_check()
         lines = []
         for ln in a.lines:
+            allocated = alloc.get(ln.trn.id, [])
             e = expenses.get(ln.trn.expense_id) if ln.trn.expense_id else None
             lines.append(
                 {
@@ -541,6 +576,7 @@ async def reconciliation(
                     "strength": ln.strength,
                     "intermediary": ln.intermediary,
                     "paired_with": str(ln.paired_with) if ln.paired_with else None,
+                    "allocations": allocated,
                     "expense": (
                         {
                             "id": str(e.expense.id),
@@ -1022,3 +1058,165 @@ async def discard_version(
     except ag.PromptError as exc:
         raise _raise(exc) from exc
     return {"status": v.status}
+
+
+# --------------------------------------------------------------------------- cycle 2 (D123)
+
+
+@router.post("/condominiums/{condominium_id}/audit/imports/{kind}")
+async def import_file(
+    condominium_id: uuid.UUID,
+    kind: str,
+    access: CanRun,
+    db: DbSession,
+    file: Annotated[UploadFile, File()],
+) -> dict[str, Any]:
+    """Units, titles or readings (CSV). Name, document, e-mail and phone columns are dropped
+    before anything is stored; the stored source is a copy with only the allowed columns."""
+    importers = {"unidades": import_units, "titulos": import_titles, "leituras": import_readings}
+    if kind not in importers:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Importação desconhecida.")
+    condo = await _condo(db, access)
+    data = await file.read()
+    if len(data) > 5 * 1024 * 1024:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "Planilha maior que 5 MB.")
+    try:
+        result = await importers[kind](db, condo, data, access.user_id)
+    except ImportFileError as exc:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, str(exc)) from exc
+    return result.as_dict()
+
+
+@router.get("/condominiums/{condominium_id}/audit/profile")
+async def get_profile(condominium_id: uuid.UUID, access: CanView, db: DbSession) -> dict[str, Any]:
+    condo = await _condo(db, access)
+    return {
+        "profile": profile_of(condo.rule_params or {}),
+        "questions": PROFILE_FIELDS,
+        "can_edit": access.can(Permission.RUN_AUDIT),
+    }
+
+
+class ProfileIn(BaseModel):
+    values: dict[str, bool | None]
+    reason: str = Field(max_length=300)
+
+
+@router.put("/condominiums/{condominium_id}/audit/profile")
+async def put_profile(
+    condominium_id: uuid.UUID, body: ProfileIn, access: CanRun, db: DbSession
+) -> dict[str, Any]:
+    if len(body.reason.strip()) < MIN_REASON:
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_CONTENT, "Escreva o motivo (mínimo de 10 caracteres)."
+        )
+    condo = await _condo(db, access)
+    return {
+        "profile": await set_profile(db, condo, body.values, access.user_id, body.reason.strip())
+    }
+
+
+@router.get("/condominiums/{condominium_id}/audit/units")
+async def units(
+    condominium_id: uuid.UUID, access: CanView, db: DbSession, competencia: str | None = None
+) -> dict[str, Any]:
+    """Internal unit view (D123): unit code, titles of the month and open balance. No names."""
+    condo = await _condo(db, access)
+    month = _month(competencia, condo)
+    last = add_months(month, 1) - timedelta(days=1)
+    rows = list(
+        await db.scalars(select(Unit).where(Unit.condominium_id == condo.id).order_by(Unit.code))
+    )
+    titles = list(
+        await db.scalars(
+            select(ReceivableTitle).where(
+                ReceivableTitle.condominium_id == condo.id, ReceivableTitle.due_date <= last
+            )
+        )
+    )
+    readings = list(
+        await db.scalars(
+            select(UtilityReading).where(
+                UtilityReading.condominium_id == condo.id,
+                UtilityReading.competence == add_months(month, -1),
+            )
+        )
+    )
+    out = []
+    for u in rows:
+        mine = [t for t in titles if t.unit_id == u.id]
+        open_ = sum((remaining_balance(t, last) for t in mine), Decimal("0"))
+        out.append(
+            {
+                "id": str(u.id),
+                "code": u.code,
+                "block": u.block,
+                "fraction": str(u.fraction) if u.fraction is not None else None,
+                "titles": [
+                    {
+                        "kind": t.kind,
+                        "amount": str(t.amount),
+                        "due_date": t.due_date,
+                        "status": t.status,
+                        "paid_at": t.paid_at,
+                        "paid_amount": str(t.paid_amount) if t.paid_amount is not None else None,
+                    }
+                    for t in mine
+                    if t.competence == month
+                ],
+                "open_balance": str(open_),
+                "readings": [
+                    {"utility": r.utility, "consumption": str(r.consumption)}
+                    for r in readings
+                    if r.unit_id == u.id
+                ],
+            }
+        )
+    return {
+        "competencia": month.strftime("%Y-%m"),
+        "units": out,
+        "can_import": access.can(Permission.RUN_AUDIT),
+    }
+
+
+@router.get("/condominiums/{condominium_id}/audit/issues")
+async def issues(
+    condominium_id: uuid.UUID,
+    access: CanView,
+    db: DbSession,
+    status_: Annotated[str | None, Query(alias="status")] = None,
+) -> list[dict[str, Any]]:
+    stmt = select(AuditIssue).where(AuditIssue.condominium_id == access.condominium_id)
+    if status_ in ("aberta", "resolvida"):
+        stmt = stmt.where(AuditIssue.status == status_)
+    rows = list(await db.scalars(stmt.order_by(AuditIssue.first_competence, AuditIssue.control_id)))
+    events: dict[uuid.UUID, list[dict[str, Any]]] = {}
+    for e in await db.scalars(
+        select(AuditIssueEvent)
+        .where(AuditIssueEvent.issue_id.in_([i.id for i in rows] or [uuid.uuid4()]))
+        .order_by(AuditIssueEvent.created_at)
+    ):
+        events.setdefault(e.issue_id, []).append(
+            {"kind": e.kind, "competencia": e.competence.strftime("%Y-%m"), "at": e.created_at}
+        )
+    return [
+        {
+            "id": str(i.id),
+            "control_id": i.control_id,
+            "control": (
+                CONTROLS_BY_ID[i.control_id].name
+                if i.control_id in CONTROLS_BY_ID
+                else i.control_id
+            ),
+            "title": i.title,
+            "status": i.status,
+            "first_competence": i.first_competence.strftime("%Y-%m"),
+            "last_competence": i.last_competence.strftime("%Y-%m"),
+            "months_open": (i.last_competence.year - i.first_competence.year) * 12
+            + i.last_competence.month
+            - i.first_competence.month
+            + 1,
+            "events": events.get(i.id, []),
+        }
+        for i in rows
+    ]

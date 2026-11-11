@@ -235,7 +235,8 @@ async def _results(s: AsyncSession, condo: Condominium) -> dict[str, AuditContro
 
 def test_catalog_has_25_stable_controls() -> None:
     assert len(CONTROLS) == 25
-    assert [c.id for c in CONTROLS if c.implemented] == [
+    assert len([c for c in CONTROLS if c.implemented]) == 17  # cycles 1 and 2 (D123)
+    assert [c.id for c in CONTROLS if c.cycle == 1] == [
         "DOC-01",
         "DOC-02",
         "BAN-01",
@@ -357,7 +358,7 @@ async def test_month_end_to_end(admin_engine: AsyncEngine) -> None:
             a.agent_id: a
             for a in await s.scalars(select(AuditAgentRun).where(AuditAgentRun.run_id == run.id))
         }
-        assert set(agents) == {"A0", "A1", "A2", "A3", "A4", "A9"}
+        assert set(agents) == {"A0", "A1", "A2", "A3", "A4", "A5", "A6", "A9"}
         assert agents["A4"].prompt_version_id is not None and agents["A4"].runtime_prompt_sha256
         assert agents["A4"].llm_invoked is False  # no model in tests: recorded, never pretended
         facts = list(await s.scalars(select(AuditFact).where(AuditFact.condominium_id == condo.id)))

@@ -45,6 +45,7 @@ TYPE_LABEL = {
     "guia_tributo": "uma guia de tributo",
     "relatorio_adm": "um relatório da administradora",
     "extrato_rendimento": "um extrato de rendimento",
+    "titulos": "uma planilha de unidades e títulos (sem nomes)",
     "outro": "um documento que não reconheci",
 }
 INDEX_LABEL = {"IPCA": "IPCA", "IGPM": "IGP-M", "INPC": "INPC", "FIXO": "Valor fixo"}

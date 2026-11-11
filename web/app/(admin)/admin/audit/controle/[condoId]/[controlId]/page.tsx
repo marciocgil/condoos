@@ -1,6 +1,7 @@
 import { ChevronLeft, CircleCheck, CircleX, CircleDashed, FileText } from "lucide-react";
 import Link from "next/link";
 
+import { CalculationMemory } from "@/components/audit/CalculationMemory";
 import { ControlReviewForm } from "@/components/audit/ControlReviewForm";
 import { ControlStatusBadge } from "@/components/audit/ControlStatusBadge";
 import { PageHeader } from "@/components/layout/PageHeader";
@@ -141,6 +142,7 @@ export default async function ControlPage({
                 </ul>
               )}
             </Card>
+            <CalculationMemory lines={c.calculation ?? []} />
             <details
               className="rounded-[var(--radius-card)] border border-line bg-surface p-5"
               open

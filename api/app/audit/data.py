@@ -19,6 +19,8 @@ from sqlalchemy.orm import defer
 
 from app.core.time import add_months
 from app.db.models import (
+    AuditControlResult,
+    AuditPeriod,
     BankAccount,
     BankStatement,
     BankTransaction,
@@ -27,7 +29,11 @@ from app.db.models import (
     Expense,
     ExpenseDocument,
     ManagementCompany,
+    PaymentAllocation,
+    ReceivableTitle,
     Supplier,
+    Unit,
+    UtilityReading,
 )
 
 CLASSIFICATION_VERSION = "classificacao_v1"
@@ -72,6 +78,8 @@ LABELS = {
     "arrecadacao": "Arrecadação (cotas e boletos)",
     "nao_identificado": "Não identificado",
 }
+# "parcela 02/04", "parcelamento", "2/4": an installment of a tax agreement.
+INSTALLMENT = re.compile(r"parcel|\b\d{1,3}\s*/\s*\d{1,3}\b")
 NON_REVENUE = {"transferencia", "estorno", "resgate", "emprestimo"}
 
 
@@ -94,10 +102,13 @@ class Line:
         return self.trn.amount
 
 
-def classify(trn: BankTransaction, intermediary_docs: set[str]) -> Line:
+def classify(
+    trn: BankTransaction, intermediary_docs: set[str], allocated: set[uuid.UUID] | None = None
+) -> Line:
+    """``allocated``: lines with a verified allocation to one or more expenses (D123)."""
     text = _fold(f"{trn.description} {trn.payee_name or ''}")
     if trn.amount < 0:
-        if trn.expense_id is not None:
+        if trn.expense_id is not None or (allocated is not None and trn.id in allocated):
             indirect = bool(
                 (trn.payee_document and trn.payee_document in intermediary_docs)
                 or re.search(INTERMEDIARY, text)
@@ -216,6 +227,20 @@ class ExpenseView:
     roles: dict[str, list[uuid.UUID]]  # role -> document ids
     payments: list[BankTransaction]
     supplier: Supplier | None
+    # Verified allocations (D123): line id -> amount allocated to this expense.
+    allocations: dict[uuid.UUID, Decimal] = field(default_factory=dict)
+
+    @property
+    def paid(self) -> Decimal:
+        """Amount paid: the verified allocations plus linked debits outside them."""
+        allocated = sum(self.allocations.values(), ZERO)
+        # A debit linked to the expense that no allocation covers still counts: two debits
+        # for one expense are paid twice (never hidden by the allocation cap).
+        loose = sum(
+            (-t.amount for t in self.payments if t.amount < 0 and t.id not in self.allocations),
+            ZERO,
+        )
+        return allocated + loose
 
     @property
     def has_document(self) -> bool:
@@ -233,6 +258,22 @@ class AuditData:
     copies: int
     superseded: int
     intermediary_docs: set[str]
+    # Cycle 2 (D123): units and titles (internal, no names), readings, collection returns,
+    # notes with withholdings, tax slips and the audit profile.
+    units: list[Unit] = field(default_factory=list)
+    titles: list[ReceivableTitle] = field(default_factory=list)  # every title due up to the month
+    readings: list[UtilityReading] = field(default_factory=list)
+    collection_lines: list[BankTransaction] = field(default_factory=list)  # CNAB returns
+    notes: list[Document] = field(default_factory=list)  # fiscal notes of the month
+    tax_slips: list[tuple[Expense, Document | None]] = field(default_factory=list)
+    utility_bills: list[ExpenseView] = field(default_factory=list)
+    profile: dict[str, bool | None] = field(default_factory=dict)
+    suggested_allocations: list[PaymentAllocation] = field(default_factory=list)
+    previous_tax_slips: list[tuple[Expense, Document | None]] = field(default_factory=list)
+    receipts: dict[uuid.UUID, Document] = field(default_factory=dict)  # role "pagamento"
+    utility_expenses: list[Expense] = field(default_factory=list)  # bills of the last 3 months
+    installment_slips: list[tuple[Expense, Document | None]] = field(default_factory=list)
+    previous_rec04: dict[str, str] = field(default_factory=dict)  # unit -> closing open balance
 
     @property
     def month_end(self) -> date:
@@ -293,6 +334,14 @@ async def load(
     roles: dict[uuid.UUID, dict[str, list[uuid.UUID]]] = {}
     for eid, role, did in links:
         roles.setdefault(eid, {}).setdefault(role, []).append(did)
+    allocations = list(
+        await session.scalars(
+            select(PaymentAllocation).where(
+                PaymentAllocation.condominium_id == condo.id,
+                PaymentAllocation.expense_id.in_([e.id for e in expenses] or [uuid.uuid4()]),
+            )
+        )
+    )
     transactions = list(
         await session.scalars(
             select(BankTransaction)
@@ -301,6 +350,9 @@ async def load(
                 or_(
                     BankTransaction.posted_at.between(first, last),
                     BankTransaction.expense_id.in_([e.id for e in expenses] or [uuid.uuid4()]),
+                    BankTransaction.id.in_(
+                        [a.bank_transaction_id for a in allocations] or [uuid.uuid4()]
+                    ),
                 ),
             )
             .order_by(BankTransaction.posted_at, BankTransaction.id)
@@ -324,8 +376,21 @@ async def load(
         if company is not None:
             intermediary.add(company.cnpj)
 
-    in_month = [t for t in transactions if first <= t.posted_at <= last]
-    lines = [classify(t, intermediary) for t in in_month]
+    # CNAB returns list collected boletos: evidence for the titles, not statement lines.
+    collection = [
+        t
+        for t in transactions
+        if t.origin == "cnab" and t.amount > 0 and first <= t.posted_at <= last
+    ]
+    in_month = [t for t in transactions if first <= t.posted_at <= last and t.origin != "cnab"]
+    verified = [a for a in allocations if a.kind == "verificado"]
+    allocated_ids = {a.bank_transaction_id for a in verified}
+    by_id = {t.id: t for t in transactions}
+    for a in verified:
+        found = by_id.get(a.bank_transaction_id)
+        if found is not None and found not in paid.get(a.expense_id, []):
+            paid.setdefault(a.expense_id, []).append(found)
+    lines = [classify(t, intermediary, allocated_ids) for t in in_month]
     accounts = list(
         await session.scalars(
             select(BankAccount)
@@ -396,22 +461,185 @@ async def load(
             docs.append(d)
     superseded_ids = {d.supersedes_id for d in docs if d.supersedes_id}
     copies = sum(1 for r in roles.values() for d in r.get("copia", []))
+    alloc_by_expense: dict[uuid.UUID, dict[uuid.UUID, Decimal]] = {}
+    for a in verified:
+        alloc_by_expense.setdefault(a.expense_id, {})[a.bank_transaction_id] = a.amount
+    extra = await _cycle2(session, condo, first, last, expenses, roles)
+    views_exp = [
+        ExpenseView(
+            e,
+            roles.get(e.id, {}),
+            paid.get(e.id, []),
+            suppliers.get(e.supplier_id) if e.supplier_id else None,
+            alloc_by_expense.get(e.id, {}),
+        )
+        for e in expenses
+    ]
     return AuditData(
         condo=condo,
         competence=first,
         today=today,
         documents=sorted(docs, key=lambda d: (d.created_at, str(d.id))),
         accounts=views,
-        expenses=[
-            ExpenseView(
-                e,
-                roles.get(e.id, {}),
-                paid.get(e.id, []),
-                suppliers.get(e.supplier_id) if e.supplier_id else None,
-            )
-            for e in expenses
-        ],
+        expenses=views_exp,
+        collection_lines=collection,
+        suggested_allocations=[a for a in allocations if a.kind == "sugerido"],
+        utility_bills=[v for v in views_exp if v.expense.category in ("agua", "gas", "energia")],
+        **extra,
         copies=copies,
         superseded=len(superseded_ids),
         intermediary_docs=intermediary,
     )
+
+
+async def _cycle2(
+    session: AsyncSession,
+    condo: Condominium,
+    first: date,
+    last: date,
+    expenses: list[Expense],
+    roles: dict[uuid.UUID, dict[str, list[uuid.UUID]]],
+) -> dict[str, Any]:
+    """Units, titles, readings, notes with withholdings and tax slips (D123)."""
+    from app.audit.imports import profile_of
+
+    units = list(
+        await session.scalars(
+            select(Unit).where(Unit.condominium_id == condo.id).order_by(Unit.code)
+        )
+    )
+    titles = list(
+        await session.scalars(
+            select(ReceivableTitle)
+            .where(
+                ReceivableTitle.condominium_id == condo.id,
+                or_(ReceivableTitle.due_date <= last, ReceivableTitle.competence <= first),
+            )
+            .order_by(ReceivableTitle.due_date)
+        )
+    )
+    readings = list(
+        await session.scalars(
+            select(UtilityReading).where(
+                UtilityReading.condominium_id == condo.id,
+                UtilityReading.competence.between(add_months(first, -2), first),
+            )
+        )
+    )
+    fiscal_ids = [d for r in roles.values() for d in r.get("fiscal", [])]
+    receipt_ids = [d for r in roles.values() for d in r.get("pagamento", [])]
+    docs = {
+        d.id: d
+        for d in await session.scalars(
+            select(Document)
+            .options(defer(Document.text_content))
+            .where(Document.id.in_(fiscal_ids or [uuid.uuid4()]))
+        )
+    }
+    notes = [d for d in docs.values() if d.doc_type in ("nfse", "nfe")]
+    receipts = {
+        d.id: d
+        for d in await session.scalars(
+            select(Document)
+            .options(defer(Document.text_content))
+            .where(Document.id.in_(receipt_ids or [uuid.uuid4()]))
+        )
+    }
+    utility_expenses = list(
+        await session.scalars(
+            select(Expense).where(
+                Expense.condominium_id == condo.id,
+                Expense.category.in_(["agua", "gas", "energia"]),
+                Expense.competence.between(add_months(first, -3), first),
+            )
+        )
+    )
+
+    async def slips(
+        month: date, *, paid_in: tuple[date, date] | None = None
+    ) -> list[tuple[Expense, Document | None]]:
+        stmt = select(Expense).where(
+            Expense.condominium_id == condo.id, Expense.category == "tributos"
+        )
+        stmt = (
+            stmt.where(Expense.competence == month)
+            if paid_in is None
+            else stmt.where(Expense.competence < month, Expense.due_date.between(*paid_in))
+        )
+        rows = list(await session.scalars(stmt))
+        docs_of = {
+            d.id: d
+            for d in await session.scalars(
+                select(Document)
+                .options(defer(Document.text_content))
+                .where(
+                    Document.id.in_(
+                        [e.document_id for e in rows if e.document_id] or [uuid.uuid4()]
+                    )
+                )
+            )
+        }
+        return [(e, docs_of.get(e.document_id) if e.document_id else None) for e in rows]
+
+    history = list(
+        await session.scalars(
+            select(Expense).where(
+                Expense.condominium_id == condo.id,
+                Expense.category == "tributos",
+                Expense.competence.between(add_months(first, -24), first),
+            )
+        )
+    )
+    hdocs = {
+        d.id: d
+        for d in await session.scalars(
+            select(Document)
+            .options(defer(Document.text_content))
+            .where(
+                Document.id.in_([e.document_id for e in history if e.document_id] or [uuid.uuid4()])
+            )
+        )
+    }
+
+    def _tax_text(e: Expense) -> str:
+        doc = hdocs.get(e.document_id) if e.document_id else None
+        tributo = str((doc.extracted or {}).get("tributo", "")) if doc is not None else ""
+        return _fold(f"{e.description} {tributo}")
+
+    installments = [
+        (e, hdocs.get(e.document_id) if e.document_id else None)
+        for e in history
+        if INSTALLMENT.search(_tax_text(e))
+    ]
+    previous_rec04: dict[str, str] = {}
+    prev = await session.scalar(
+        select(AuditControlResult)
+        .join(AuditPeriod, AuditPeriod.id == AuditControlResult.period_id)
+        .where(
+            AuditPeriod.condominium_id == condo.id,
+            AuditPeriod.competence == add_months(first, -1),
+            AuditControlResult.control_id == "REC-04",
+            AuditControlResult.superseded_by_id.is_(None),
+        )
+    )
+    if prev is not None:
+        for line in prev.calculation or []:
+            for row in line.get("rows") or []:
+                if "unidade" in row and "saldo_final" in row:
+                    previous_rec04[row["unidade"]] = row["saldo_final"]
+    # The audit profile declares how the condominium is (staff, rateio, installments): the
+    # latest declaration applies, and it is part of each control's fingerprint.
+    params = dict(condo.rule_params or {})
+    return {
+        "receipts": receipts,
+        "utility_expenses": utility_expenses,
+        "installment_slips": installments,
+        "previous_rec04": previous_rec04,
+        "units": units,
+        "titles": titles,
+        "readings": readings,
+        "notes": notes,
+        "tax_slips": await slips(first),
+        "previous_tax_slips": await slips(first, paid_in=(first, last)),
+        "profile": profile_of(params),
+    }

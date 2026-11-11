@@ -40,6 +40,7 @@ from app.db.enums import (
     ActionDecisionKind,
     ActionStatus,
     AdjustmentIndex,
+    AuditIssueStatus,
     AuditRunStatus,
     AuditStageStatus,
     BankTransactionOrigin,
@@ -85,6 +86,9 @@ from app.db.enums import (
     SavingsStage,
     Severity,
     TaskStatus,
+    TitleKind,
+    TitleStatus,
+    Utility,
 )
 
 Json = JSON().with_variant(JSONB(), "postgresql")
@@ -1570,6 +1574,10 @@ class AuditControlResult(IdTimestampMixin, Base):
     review_required: Mapped[bool] = mapped_column(Boolean, default=False)
     input_fingerprint: Mapped[str] = mapped_column(String(64))
     agents: Mapped[list[dict[str, Any]]] = mapped_column(Json, default=list)
+    # Calculation memory (D123): {"label", "value", "formula"} lines and per-item rows.
+    calculation: Mapped[list[dict[str, Any]]] = mapped_column(
+        Json, default=list, server_default=sql_text("'[]'")
+    )
     source: Mapped[str] = mapped_column(String(15), default="motor", server_default="motor")
     superseded_by_id: Mapped[uuid.UUID | None] = _uuid_fk(
         "audit_control_result.id", nullable=True, ondelete="SET NULL"
@@ -1647,6 +1655,130 @@ class EvidenceEdge(IdTimestampMixin, Base):
     amount: Mapped[Decimal | None] = mapped_column(Money, nullable=True)
 
 
+class Unit(IdTimestampMixin, Base):
+    """A unit of the condominium (D123): a code and its fraction, never a resident's name.
+    Internal data: gerente, analista and the CondoOS team."""
+
+    __tablename__ = "unit"
+    __table_args__ = (UniqueConstraint("condominium_id", "code", name="uq_unit_code"),)
+
+    condominium_id: Mapped[uuid.UUID] = _uuid_fk("condominium.id")
+    code: Mapped[str] = mapped_column(String(40))
+    block: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    fraction: Mapped[Decimal | None] = mapped_column(Numeric(10, 8), nullable=True)
+    source_document_id: Mapped[uuid.UUID | None] = _uuid_fk(
+        "document.id", nullable=True, ondelete="SET NULL"
+    )
+
+
+class ReceivableTitle(IdTimestampMixin, Base):
+    """A charge to a unit (boleto): competence, kind, amount, due date, payment."""
+
+    __tablename__ = "receivable_title"
+    __table_args__ = (
+        _enum_check("kind", TitleKind),
+        _enum_check("status", TitleStatus),
+        CheckConstraint("amount > 0", name="amount_positive"),
+        UniqueConstraint("condominium_id", "import_key", name="uq_receivable_title_key"),
+    )
+
+    condominium_id: Mapped[uuid.UUID] = _uuid_fk("condominium.id")
+    unit_id: Mapped[uuid.UUID] = _uuid_fk("unit.id")
+    competence: Mapped[date] = mapped_column(Date)
+    # Month of the consumption a utility charge refers to (often the previous month).
+    reference_competence: Mapped[date | None] = mapped_column(Date, nullable=True)
+    kind: Mapped[str] = mapped_column(String(15))
+    amount: Mapped[Decimal] = mapped_column(Money)
+    due_date: Mapped[date] = mapped_column(Date)
+    our_number: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    status: Mapped[str] = mapped_column(String(12))
+    paid_at: Mapped[date | None] = mapped_column(Date, nullable=True)
+    paid_amount: Mapped[Decimal | None] = mapped_column(Money, nullable=True)
+    cancelled_at: Mapped[date | None] = mapped_column(Date, nullable=True)
+    source_document_id: Mapped[uuid.UUID | None] = _uuid_fk(
+        "document.id", nullable=True, ondelete="SET NULL"
+    )
+    import_key: Mapped[str] = mapped_column(String(64))
+
+
+class UtilityReading(IdTimestampMixin, Base):
+    __tablename__ = "utility_reading"
+    __table_args__ = (
+        _enum_check("utility", Utility),
+        CheckConstraint("consumption >= 0", name="consumption_positive"),
+        UniqueConstraint("unit_id", "competence", "utility", name="uq_utility_reading_unit"),
+    )
+
+    condominium_id: Mapped[uuid.UUID] = _uuid_fk("condominium.id")
+    unit_id: Mapped[uuid.UUID] = _uuid_fk("unit.id")
+    competence: Mapped[date] = mapped_column(Date)
+    utility: Mapped[str] = mapped_column(String(10))
+    previous_reading: Mapped[Decimal | None] = mapped_column(Numeric(14, 3), nullable=True)
+    current_reading: Mapped[Decimal | None] = mapped_column(Numeric(14, 3), nullable=True)
+    consumption: Mapped[Decimal] = mapped_column(Numeric(14, 3))
+    source_document_id: Mapped[uuid.UUID | None] = _uuid_fk(
+        "document.id", nullable=True, ondelete="SET NULL"
+    )
+
+
+class PaymentAllocation(IdTimestampMixin, Base):
+    """N:N between bank lines and expenses, with the amount (D123). The engine never lets the
+    allocations exceed the line or the expense."""
+
+    __tablename__ = "payment_allocation"
+    __table_args__ = (
+        _enum_check("kind", EdgeKind),
+        CheckConstraint("amount > 0", name="amount_positive"),
+        UniqueConstraint("bank_transaction_id", "expense_id", name="uq_payment_allocation_pair"),
+    )
+
+    condominium_id: Mapped[uuid.UUID] = _uuid_fk("condominium.id")
+    bank_transaction_id: Mapped[uuid.UUID] = _uuid_fk("bank_transaction.id", ondelete="CASCADE")
+    expense_id: Mapped[uuid.UUID] = _uuid_fk("expense.id", ondelete="CASCADE")
+    amount: Mapped[Decimal] = mapped_column(Money)
+    kind: Mapped[str] = mapped_column(String(12))
+    method: Mapped[str] = mapped_column(String(40))
+    reason: Mapped[str] = mapped_column(String(300))
+
+
+class AuditIssue(IdTimestampMixin, Base):
+    """One open point of the audit, kept across months (same id when it comes back)."""
+
+    __tablename__ = "audit_issue"
+    __table_args__ = (
+        _enum_check("status", AuditIssueStatus),
+        UniqueConstraint(
+            "condominium_id", "control_id", "subject_key", name="uq_audit_issue_subject"
+        ),
+    )
+
+    condominium_id: Mapped[uuid.UUID] = _uuid_fk("condominium.id")
+    control_id: Mapped[str] = mapped_column(String(10))
+    subject_key: Mapped[str] = mapped_column(String(200))
+    title: Mapped[str] = mapped_column(String(300))
+    status: Mapped[str] = mapped_column(String(10))
+    first_competence: Mapped[date] = mapped_column(Date)
+    last_competence: Mapped[date] = mapped_column(Date)
+    amount: Mapped[Decimal | None] = mapped_column(Money, nullable=True)
+    resolved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    case_id: Mapped[uuid.UUID | None] = _uuid_fk(
+        "case_record.id", nullable=True, ondelete="SET NULL"
+    )
+
+
+class AuditIssueEvent(IdTimestampMixin, Base):
+    """History of an audit issue (append only)."""
+
+    __tablename__ = "audit_issue_event"
+
+    condominium_id: Mapped[uuid.UUID] = _uuid_fk("condominium.id")
+    issue_id: Mapped[uuid.UUID] = _uuid_fk("audit_issue.id")
+    kind: Mapped[str] = mapped_column(String(15))
+    competence: Mapped[date] = mapped_column(Date)
+    run_id: Mapped[uuid.UUID | None] = _uuid_fk("audit_run.id", nullable=True, ondelete="SET NULL")
+    detail: Mapped[dict[str, Any]] = mapped_column(Json, default=dict)
+
+
 RLS_TABLES: dict[str, str] = {
     "condominium": "id",
     "board_member": "condominium_id",
@@ -1702,6 +1834,12 @@ RLS_TABLES: dict[str, str] = {
     "audit_control_review": "condominium_id",
     "audit_fact": "condominium_id",
     "evidence_edge": "condominium_id",
+    "unit": "condominium_id",
+    "receivable_title": "condominium_id",
+    "utility_reading": "condominium_id",
+    "payment_allocation": "condominium_id",
+    "audit_issue": "condominium_id",
+    "audit_issue_event": "condominium_id",
 }
 
 # Tables the application role may only read and insert into (never update or delete).
@@ -1724,4 +1862,5 @@ APPEND_ONLY_TABLES: tuple[str, ...] = (
     "audit_fact",
     "agent_prompt_event",
     "prompt_test_run",
+    "audit_issue_event",
 )

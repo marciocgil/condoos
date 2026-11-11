@@ -129,6 +129,15 @@ export default async function ReconciliationPage({
                               → {l.expense.description} ({formatBRL(l.expense.amount)})
                             </span>
                           )}
+                          {(l.allocations ?? []).map((x) => (
+                            <span key={x.expense + x.amount} className="block text-fg-2">
+                              → {x.expense} ({formatBRL(x.amount)},{" "}
+                              {x.kind === "verificado"
+                                ? "alocação verificada"
+                                : "sugestão, a confirmar"}
+                              )
+                            </span>
+                          ))}
                           {l.paired_with && (
                             <span className="block text-fg-2">
                               pareado com estorno/débito original

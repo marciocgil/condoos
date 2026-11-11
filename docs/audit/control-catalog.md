@@ -1,6 +1,6 @@
 # Catálogo dos 25 controles (CondoOS Audit)
 
-Gerado de `api/app/audit/catalog.py` (fonte única). IDs estáveis em todas as competências. Controle sem teste implementado fica **Não avaliado** com o ciclo previsto; nunca vira verde por ausência.
+Gerado de `api/app/audit/catalog.py` (fonte única). IDs estáveis em todas as competências. Ciclo atual: 2. Controle sem teste implementado fica **Não avaliado** com o ciclo previsto; nunca vira verde por ausência.
 
 ## Seis estados
 
@@ -98,19 +98,22 @@ A política da A9 (código) barra "Validado" sem todos os testes passados e sem 
 
 ### BAN-06 — Transferências entre contas
 
-- Ciclo: 2 · versão da regra: — · agentes: A4
-- Fontes obrigatórias: extratos das duas contas
+- Ciclo: 2 · versão da regra: 1.0 · agentes: A4
+- Fontes obrigatórias: extratos das contas de origem e destino
 - Depende de (grafo de reprocessamento): extrato
+- Parâmetros: janela_dias: 3
 - Critérios de Validado:
-  - Origem e destino conferidos nas duas contas.
+  - Cada transferência tem a contrapartida na outra conta (mesmo valor, sinal oposto, até 3 dias).
+  - Transferência de ou para conta não apresentada fica com ressalva: crédito recebido não é origem comprovada.
 
 ### BAN-07 — Pagamentos por intermediário
 
-- Ciclo: 2 · versão da regra: — · agentes: A4, A6
+- Ciclo: 2 · versão da regra: 1.0 · agentes: A4, A6
 - Fontes obrigatórias: comprovante de liquidação ao favorecido final
-- Depende de (grafo de reprocessamento): extrato, pagamentos
+- Depende de (grafo de reprocessamento): extrato, pagamentos, documentos
 - Critérios de Validado:
-  - Repasse ao intermediário ligado à liquidação final comprovada.
+  - Todo pagamento feito por intermediário (administradora, plataforma de cobrança) tem comprovante cujo beneficiário final é o fornecedor da despesa (CNPJ).
+  - Saída ao intermediário não é liquidação final comprovada.
 
 ### BAN-08 — Lastro dos fundos
 
@@ -142,27 +145,35 @@ A política da A9 (código) barra "Validado" sem todos os testes passados e sem 
 
 ### REC-02 — Boletos por unidade
 
-- Ciclo: 2 · versão da regra: — · agentes: A5
-- Fontes obrigatórias: títulos emitidos, retornos e créditos por unidade
-- Depende de (grafo de reprocessamento): unidades, receitas
+- Ciclo: 2 · versão da regra: 1.0 · agentes: A5
+- Fontes obrigatórias: títulos emitidos por unidade; extrato ou retorno de cobrança
+- Depende de (grafo de reprocessamento): unidades, receitas, extrato
+- Parâmetros: janela_credito_dias: 3
 - Critérios de Validado:
-  - Baixa individual de cada título.
+  - Toda unidade cadastrada tem título na competência.
+  - Nenhum título repetido (mesma unidade, tipo e competência).
+  - Todo título pago tem confirmação: liquidação no retorno de cobrança (nosso número) ou crédito do extrato cujo valor fecha a soma dos pagamentos do dia.
 
 ### REC-03 — Consumo e rateios
 
-- Ciclo: 2 · versão da regra: — · agentes: A5
-- Fontes obrigatórias: fatura, medições, tarifa e regra de rateio
-- Depende de (grafo de reprocessamento): unidades, despesas
+- Ciclo: 2 · versão da regra: 1.0 · agentes: A5
+- Fontes obrigatórias: fatura da concessionária; rateio por unidade; leituras por unidade
+- Depende de (grafo de reprocessamento): unidades, despesas, receitas
+- Parâmetros: arredondamento_por_unidade: R$ 0,01
 - Critérios de Validado:
-  - Rateio recalculado por unidade.
+  - A soma do rateio por unidade é igual à fatura do consumo, ao centavo.
+  - Com leituras: cada unidade paga fatura × consumo da unidade ÷ consumo total, com diferença de no máximo R$ 0,01 por arredondamento.
+  - Sem leituras: só a aritmética é validada; a medição fica pendente (ressalva).
 
 ### REC-04 — Inadimplência
 
-- Ciclo: 2 · versão da regra: — · agentes: A5
-- Fontes obrigatórias: títulos em aberto por unidade
+- Ciclo: 2 · versão da regra: 1.0 · agentes: A5
+- Fontes obrigatórias: títulos por unidade com situação de pagamento
 - Depende de (grafo de reprocessamento): unidades, receitas
 - Critérios de Validado:
-  - Saldo final por unidade reconciliado.
+  - Saldo em aberto no início + títulos vencidos no mês − pagamentos − cancelamentos = saldo em aberto no fim, por unidade.
+  - Título marcado como pago tem data e valor pagos; pagamento parcial fica em aberto pela diferença.
+  - "Não há inadimplentes" só depois de reconciliar os títulos em aberto.
 
 ## Despesas e fiscal
 
@@ -177,29 +188,35 @@ A política da A9 (código) barra "Validado" sem todos os testes passados e sem 
   - O valor pago é igual ao valor da despesa, ao centavo.
   - Pagamento a intermediário fica com ressalva até a liquidação final.
 
-### DES-02 — DARFs consolidados
+### DES-02 — Tributos retidos e guias federais
 
-- Ciclo: 2 · versão da regra: — · agentes: A6
-- Fontes obrigatórias: retenções das notas e guia paga
-- Depende de (grafo de reprocessamento): tributos, documentos
+- Ciclo: 2 · versão da regra: 1.0 · agentes: A6
+- Fontes obrigatórias: retenções das notas da competência; guia federal (DARF) da competência paga
+- Depende de (grafo de reprocessamento): tributos, documentos, pagamentos
 - Critérios de Validado:
-  - Guia confere com a soma das retenções da competência.
+  - Soma das retenções federais (IR, PIS, COFINS, CSLL) das notas da competência = soma das guias federais da competência, ao centavo.
+  - Cada guia tem débito bancário ligado.
+  - Alíquotas não são calculadas: só a aritmética entre notas, guia e pagamento.
 
 ### DES-03 — Encargos e tributos periódicos
 
-- Ciclo: 2 · versão da regra: — · agentes: A6
-- Fontes obrigatórias: guias FGTS, INSS, ISS, DCTFWeb
-- Depende de (grafo de reprocessamento): tributos
+- Ciclo: 2 · versão da regra: 1.0 · agentes: A6
+- Fontes obrigatórias: perfil de auditoria; guias FGTS, INSS/DCTFWeb e ISS da competência
+- Depende de (grafo de reprocessamento): tributos, pagamentos
 - Critérios de Validado:
-  - Competência, vencimento e pagamento de cada guia.
+  - Com funcionários próprios: guia de FGTS e de INSS/DCTFWeb da competência.
+  - Com ISS retido nas notas: guia de ISS da competência com o total retido.
+  - Cada guia vencida tem débito bancário; guias de meses anteriores pagas no mês aparecem separadas.
 
 ### DES-04 — Parcelamento fiscal
 
-- Ciclo: 2 · versão da regra: — · agentes: A6
-- Fontes obrigatórias: acordo, cronograma e baixas
-- Depende de (grafo de reprocessamento): tributos
+- Ciclo: 2 · versão da regra: 1.0 · agentes: A6
+- Fontes obrigatórias: perfil de auditoria; guias das parcelas
+- Depende de (grafo de reprocessamento): tributos, pagamentos
 - Critérios de Validado:
-  - Sequência de parcelas e saldo devedor.
+  - Parcelas numeradas em sequência, com o mesmo total (02/04 depois de 01/04).
+  - Total diferente entre parcelas (02/02 e depois 03/04) exige documento do novo acordo: fica com ressalva até ser apresentado.
+  - Cada parcela vencida tem débito bancário.
 
 ## Contratos
 
@@ -247,9 +264,9 @@ A política da A9 (código) barra "Validado" sem todos os testes passados e sem 
 
 ## Classificação de lançamentos (classificacao_v1)
 
-Primeira regra que casa vale. Débito ligado a uma despesa é sempre "Pagamento de despesa". PIX ou depósito sem identificação fica só como indício (BAN-04 com ressalva).
+Primeira regra que casa vale. Débito ligado a uma despesa (direto ou por alocação verificada) é sempre "Pagamento de despesa". PIX ou depósito sem identificação fica só como indício. Linhas de retorno de cobrança (CNAB) não entram como lançamento do extrato: servem de confirmação dos títulos (REC-02).
 
-| Lado | Classificação | Padrão (texto sem acento, minúsculo) |
+| Lado | Classificação | Padrão |
 |---|---|---|
 | débito | Estorno ou devolução | `estorno|devolu` |
 | débito | Tarifa bancária | `tarifa|cesta de servi|pacote de servi|manuten[cç][aã]o de conta` |

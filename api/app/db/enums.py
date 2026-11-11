@@ -76,6 +76,8 @@ class DocumentType(StrEnum):
     GUIA_TRIBUTO = "guia_tributo"
     RELATORIO_ADM = "relatorio_adm"
     EXTRATO_RENDIMENTO = "extrato_rendimento"
+    # D123: the sanitised list of receivable titles (units, never resident names).
+    TITULOS = "titulos"
     OUTRO = "outro"
 
 
@@ -583,3 +585,33 @@ class PromptStatus(StrEnum):
 class EdgeKind(StrEnum):
     SUGERIDO = "sugerido"
     VERIFICADO = "verificado"
+
+
+class TitleKind(StrEnum):
+    ORDINARIA = "ordinaria"
+    RESERVA = "reserva"
+    OBRAS = "obras"
+    AGUA = "agua"
+    GAS = "gas"
+    ENERGIA = "energia"
+    MULTA = "multa"
+    ACORDO = "acordo"
+    OUTRO = "outro"
+
+
+class TitleStatus(StrEnum):
+    ABERTO = "aberto"
+    PAGO = "pago"
+    CANCELADO = "cancelado"
+    ACORDO = "acordo"
+
+
+class Utility(StrEnum):
+    AGUA = "agua"
+    GAS = "gas"
+    ENERGIA = "energia"
+
+
+class AuditIssueStatus(StrEnum):
+    ABERTA = "aberta"
+    RESOLVIDA = "resolvida"

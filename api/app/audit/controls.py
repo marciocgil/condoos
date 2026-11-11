@@ -46,6 +46,8 @@ class Outcome:
     differences: Decimal = ZERO
     severity: str | None = None
     inputs: dict[str, Any] = field(default_factory=dict)  # what the fingerprint covers
+    # Calculation memory (D123): {"label", "value", "formula"} lines; per-item rows in "rows".
+    calculation: list[dict[str, Any]] = field(default_factory=list)
 
 
 def _pct(n: int, total: int) -> Decimal | None:
@@ -654,10 +656,12 @@ def des_01(d: AuditData) -> Outcome:
     ]
     rows, unpaid, no_doc, wrong, indirect, ok = [], [], [], [], [], []
     total_diff = ZERO
+    indirect_lines = {ln.trn.id for ln in d.lines if ln.intermediary}
     for e in due:
-        paid = sum((-t.amount for t in e.payments if t.amount < 0), ZERO)
+        paid = e.paid  # verified allocations (N:N, D123), else the 1:1 debits
         via = any(
-            (t.payee_document and t.payee_document in d.intermediary_docs) for t in e.payments
+            (t.payee_document and t.payee_document in d.intermediary_docs) or t.id in indirect_lines
+            for t in e.payments
         )
         if not e.payments:
             unpaid.append(e)

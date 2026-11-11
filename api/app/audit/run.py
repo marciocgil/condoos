@@ -23,9 +23,12 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.audit import agents as ag
+from app.audit.allocate import allocate
 from app.audit.catalog import CONTROLS, CONTROLS_BY_ID
 from app.audit.controls import EVALUATORS, Outcome, not_implemented
+from app.audit.controls2 import EVALUATORS_2  # noqa: F401  (registers the cycle-2 controls)
 from app.audit.data import CLASSIFICATION_VERSION, LABELS, AuditData, load
+from app.audit.issues import sync_issues
 from app.core.audit import record_audit
 from app.core.time import utcnow
 from app.db.enums import (
@@ -601,6 +604,8 @@ async def run_audit(
         return w
 
     a0 = work("A0", 8)
+    # A3/A4: N:N allocation of payments before the month is loaded (D123).
+    allocation = await allocate(session, condo, competence)
     data = await load(session, condo, competence, today)
 
     w = work("A1", 1)
@@ -617,6 +622,8 @@ async def run_audit(
     await _stage(session, run, 2, AuditStageStatus.CONCLUIDA, w.output)
     w = work("A3", 3)
     await _links(session, data, w)
+    w.output["alocacoes"] = allocation
+    w.output["alocacoes_sugeridas_abertas"] = len(data.suggested_allocations)
     await _stage(
         session,
         run,
@@ -637,13 +644,18 @@ async def run_audit(
     outcomes: dict[str, Outcome] = {}
     for c in CONTROLS:
         outcomes[c.id] = EVALUATORS[c.id](data) if c.implemented else not_implemented(c.id)
+    for agent_id, prefix in (("A5", "REC"), ("A6", "DES")):
+        w = work(agent_id, 5)
+        mine = {cid: o for cid, o in outcomes.items() if cid.startswith(prefix)}
+        w.output = {cid: o.status.value for cid, o in mine.items()}
+        w.unresolved = [m for o in mine.values() for m in o.missing][:200]
     await _stage(
         session,
         run,
         5,
         AuditStageStatus.CONCLUIDA,
         {
-            "regras": "REC-01 e DES-01 avaliados por regras determinísticas; A5, A6 e A7 ainda não ativados (ciclos 2 e 3).",
+            "regras": "A5 (arrecadação) e A6 (despesas e tributos) por regras determinísticas; A7 (contratos) entra no ciclo 3.",
             "controles": {
                 cid: o.status.value
                 for cid, o in outcomes.items()
@@ -716,6 +728,7 @@ async def run_audit(
             review_required=review,
             input_fingerprint=fp,
             agents=[participation[a] for a in ("A0", *c.agents, "A9") if a in participation],
+            calculation=o.calculation,
         )
         session.add(row)
         await session.flush()
@@ -724,6 +737,7 @@ async def run_audit(
             if current.status != row.status:
                 changed.append(f"{c.id}: {current.status} → {row.status}")
         created += 1
+    issues = await sync_issues(session, condo.id, competence, run.id, outcomes)
     counts: dict[str, int] = {}
     for cid in outcomes:
         st = decided[cid][0].value
@@ -733,6 +747,7 @@ async def run_audit(
         "reutilizados": reused,
         "mudancas_de_status": changed,
         "por_status": counts,
+        "pendencias": issues,
     }
     a0.input_refs = [{"tipo": "periodo", "id": str(period.id)}]
     await _stage(session, run, 8, AuditStageStatus.CONCLUIDA, a0.output)

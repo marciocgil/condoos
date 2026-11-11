@@ -19,4 +19,16 @@ Todas as tabelas de condomínio têm `condominium_id`, RLS por condomínio e con
 | `agent_prompt_event` | Histórico da versão (só inclusão) | tipo (rascunho, testada, enviada, aprovada, ativada, arquivada, rollback, descartada), pessoa, detalhe | N por versão |
 | `prompt_test_run` | Teste no sandbox (só inclusão) | passou, resultados por verificação | N por versão |
 
-O que o documento-mestre lista e fica para os ciclos seguintes: unidades e títulos por unidade (depende da decisão C2), fundos, orçamento e plano de contas, obrigações e alocações de pagamento N:N com valor, parcelamentos, tributos agrupados, aprovações formais das contas.
+## Ciclo 2 (migração 0030, D123)
+
+| Tabela | Para quê | Campos principais | Regras |
+|---|---|---|---|
+| `unit` | Unidade (dado interno) | código, bloco, fração, documento de origem | 1 por (condomínio, código); **sem nome de morador** |
+| `receivable_title` | Título (boleto) da unidade | competência, competência do consumo, tipo, valor, vencimento, nosso número, situação, pagamento (data e valor), cancelamento, chave de importação | importar de novo atualiza a situação, não duplica |
+| `utility_reading` | Consumo da unidade | competência, serviço (água, gás, energia), leituras, consumo | 1 por (unidade, competência, serviço) |
+| `payment_allocation` | Lançamento ↔ despesa, com valor | valor, verificada ou sugerida, método, motivo | N:N; soma nunca passa do lançamento nem da despesa |
+| `audit_issue` | Pendência da auditoria | controle, assunto, título, situação, primeira e última competência | 1 por (condomínio, controle, assunto); reabre com o mesmo id |
+| `audit_issue_event` | Histórico da pendência (só inclusão) | aberta, reaberta, resolvida; competência; execução | N por pendência |
+| `audit_control_result.calculation` | Memória de cálculo | linhas (rótulo, valor, fórmula) e linhas por item | — |
+
+O que o documento-mestre lista e fica para os ciclos seguintes: fundos, orçamento e plano de contas, obrigações e alocações de pagamento N:N com valor, parcelamentos, tributos agrupados, aprovações formais das contas.

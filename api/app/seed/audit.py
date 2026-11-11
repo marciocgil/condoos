@@ -3,15 +3,23 @@ Acácias and one statement per month of the seed, with the balances a bank would
 Synthetic: the bank code 999 does not exist; the balances start at a round fictitious
 value and follow the seed's own transactions."""
 
+import hashlib
 import uuid
-from datetime import timedelta
+from datetime import date, timedelta
 from decimal import Decimal
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.time import add_months
-from app.db.models import BankAccount, BankStatement, BankTransaction, Condominium
+from app.db.models import (
+    BankAccount,
+    BankStatement,
+    BankTransaction,
+    Condominium,
+    ReceivableTitle,
+    Unit,
+)
 
 OPENING = Decimal("50000.00")
 
@@ -73,3 +81,77 @@ async def seed_audit(session: AsyncSession) -> None:
             t.bank_account_id, t.statement_id = account.id, st.id
         balance, month = closing, add_months(month, 1)
     await session.flush()
+
+
+async def seed_units(session: AsyncSession) -> None:
+    """Cycle 2 demo (D123): 24 fictitious units of Jardim das Acácias and, for each month of
+    the seed, titles whose payments add up to each collection credit of the statement (as a
+    bank batch). Unit codes only: no names."""
+
+    condo = await session.scalar(
+        select(Condominium).where(Condominium.slug == "jardim-das-acacias")
+    )
+    if condo is None:
+        return
+    if await session.scalar(select(Unit.id).where(Unit.condominium_id == condo.id)) is not None:
+        return
+    units = [
+        Unit(
+            id=uuid.uuid4(),
+            condominium_id=condo.id,
+            code=f"Apto {floor}{n:02d}",
+            fraction=Decimal("0.04166667"),
+        )
+        for floor in range(1, 7)
+        for n in range(1, 5)
+    ]
+    session.add_all(units)
+    await session.flush()
+    credits = list(
+        await session.scalars(
+            select(BankTransaction)
+            .where(
+                BankTransaction.condominium_id == condo.id,
+                BankTransaction.amount > 0,
+                BankTransaction.description.ilike("%taxas condomin%"),
+            )
+            .order_by(BankTransaction.posted_at)
+        )
+    )
+    by_month: dict[date, list[BankTransaction]] = {}
+    for c in credits:
+        by_month.setdefault(c.posted_at.replace(day=1), []).append(c)
+    for month, items in by_month.items():
+        paying = units[:-2]  # the last two units stay open each month
+        chunks = [paying[i :: len(items)] for i in range(len(items))]
+        for credit, group in zip(items, chunks, strict=False):
+            share = (credit.amount / len(group)).quantize(Decimal("0.01"))
+            for i, unit in enumerate(group):
+                amount = share if i < len(group) - 1 else credit.amount - share * (len(group) - 1)
+                session.add(_title(condo.id, unit.id, month, amount, credit.posted_at))
+        for unit in units[-2:]:
+            session.add(_title(condo.id, unit.id, month, Decimal("3200.00"), None))
+    await session.flush()
+
+
+def _title(
+    condo_id: uuid.UUID, unit_id: uuid.UUID, month: object, amount: Decimal, paid: object
+) -> object:
+    from datetime import date as _date
+
+    assert isinstance(month, _date)
+    due = month.replace(day=10)
+    key = hashlib.sha256(f"seed|{unit_id}|{month}|{amount}".encode()).hexdigest()
+    return ReceivableTitle(
+        id=uuid.uuid4(),
+        condominium_id=condo_id,
+        unit_id=unit_id,
+        competence=month,
+        kind="ordinaria",
+        amount=amount,
+        due_date=due,
+        status="pago" if paid else "aberto",
+        paid_at=paid,
+        paid_amount=amount if paid else None,
+        import_key=key,
+    )

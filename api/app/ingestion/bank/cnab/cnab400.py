@@ -103,7 +103,6 @@ def _parse(bank: str, lines: list[str]) -> ParsedStatement:
             continue
         our_number = _span(line, layout.our_number).strip()
         doc_number = _span(line, layout.doc_number).strip()
-        payer = _span(line, layout.payer_name).strip() if layout.payer_name else ""
         statement.transactions.append(
             ParsedTransaction(
                 posted_at=when,
@@ -111,7 +110,7 @@ def _parse(bank: str, lines: list[str]) -> ParsedStatement:
                 description=f"LIQUIDACAO BOLETO {doc_number}".strip()[:300],
                 external_id=f"cnab400:{bank}:{our_number}:{occurrence}"[:120],
                 origin=BankTransactionOrigin.CNAB,
-                payee_name=payer or None,
+                payee_name=None,  # the payer is a resident: never stored (D123)
             )
         )
     return statement

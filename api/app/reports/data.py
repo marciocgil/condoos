@@ -71,6 +71,7 @@ DOC_TYPE_LABEL = {
     "guia_tributo": "Guia de tributo",
     "relatorio_adm": "Relatório da administradora",
     "extrato_rendimento": "Extrato de rendimento",
+    "titulos": "Planilha de unidades e títulos",
     "outro": "Outro",
 }
 

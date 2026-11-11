@@ -17,6 +17,7 @@ export const DOC_TYPE_LABEL: Record<string, string> = {
   guia_tributo: "Guia de tributo",
   relatorio_adm: "Relatório da administradora",
   extrato_rendimento: "Extrato de rendimento",
+  titulos: "Planilha de unidades e títulos (sem nomes)",
   outro: "Outro",
 };
 

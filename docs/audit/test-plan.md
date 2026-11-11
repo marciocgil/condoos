@@ -22,3 +22,23 @@ Testes automatizados em `api/tests/test_audit.py` (18), com dados sintéticos (c
 | Conta e saldos do OFX | `test_statement_import_keeps_account_and_balances` | conta criada, saldo final guardado, saldo inicial vazio |
 
 Ainda não automatizados (ciclos seguintes): regressão de quatro meses com acervo real (não disponível), duplicata de PDF no inventário, duas contas com transferência (BAN-06), repasse sem comprovante (BAN-07), leitura de água ausente (REC-03), contrato vencido e apólice renovada (ciclo 3).
+
+## Ciclo 2 (`api/tests/test_audit_cycle2.py`, 16)
+
+| Caso | Teste | Esperado |
+|---|---|---|
+| Importação descarta nome e CPF; cópia guardada sem nomes; reimportar atualiza | `test_titles_import_drops_names_and_keeps_only_a_clean_copy` | colunas descartadas, nada de nome no arquivo guardado |
+| Retorno de cobrança sem pagador | `test_collection_return_never_keeps_the_payer` | nome e documento vazios |
+| REC-02 confirmado pelo crédito do dia; dia que não fecha; título repetido | `test_rec02_titles_confirmed_by_the_day_credit` | Validado; Pendente; Divergente R$ 500,00 |
+| Sem títulos | `test_rec02_and_rec04_pending_without_titles` | Pendente |
+| REC-04 por unidade e continuidade | `test_rec04_reconstructs_by_unit_and_checks_the_previous_month` | ressalva no primeiro mês; Validado; Divergente quando o título de maio muda depois |
+| REC-03 com e sem leituras | `test_rec03_rateio_with_and_without_readings` | ressalva; Validado; Divergente |
+| REC-03 não aplicável só por declaração | `test_rec03_not_applicable_only_by_declared_profile` | Pendente → Não aplicável |
+| BAN-06 uma e duas contas | `test_ban06_transfer_between_two_accounts` | ressalva → Validado |
+| BAN-07 comprovante final | `test_ban07_intermediary_needs_final_receipt` | Pendente → Validado; DES-01 com ressalva |
+| DES-02 guia = retenções | `test_des02_federal_slip_equals_withholdings`, `test_des02_not_applicable_without_withholdings` | Validado; Divergente por 1 centavo; Pendente sem guia; Não aplicável sem retenção |
+| DES-03 pelo perfil | `test_des03_follows_the_profile` | Pendente; Não aplicável; Pendente sem guias |
+| DES-04 numeração 02/02 → 03/04 | `test_des04_installment_numbering_needs_the_agreement` | Não aplicável declarado; ressalva |
+| Pagamento agrupado | `test_grouped_payment_is_allocated_only_when_unique` | combinação única verificada; ambígua só sugerida |
+| Pendência persistente | `test_issues_persist_resolve_and_reopen_with_the_same_id` | aberta → resolvida → reaberta com o mesmo id |
+| Acesso e API | `test_unit_data_is_internal_and_imports_drop_names` | síndica 403; nada de nome nas respostas |
