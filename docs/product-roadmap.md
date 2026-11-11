@@ -2,6 +2,8 @@
 
 Data: 07/11/2026. Base: Plano Diretor v1.0 §1.2, §4, §9 e o estado real (`docs/01-repo-audit.md`, `docs/02-gap-matrix.md`). Sequência lógica, **não** prazo. Nenhuma data de entrega é prometida.
 
+> **Aviso (11/11/2026, D92):** o Marcio definiu que a dor central é o controle da despesa. Os marcos de operação (M4 e boa parte de M5) deixaram de ser o caminho previsto, e a sequência a partir do ciclo C7 tem uma proposta de substituição em `docs/reconcepcao/fase-6-mvp-roadmap-validacao.md`, ainda não aprovada. Até a aprovação, este arquivo fica como estava.
+
 "Marco 1–6" são os marcos do MVP auditor (concluídos). Os marcos deste roadmap são **M0–M5**.
 
 ## 1. Ponto de partida

@@ -1,6 +1,6 @@
 # Reconcepção do CondoOS — Fase 5: capacidades, módulos e arquitetura
 
-Data: 11/11/2026 · Estado: **aguardando validação do Marcio** (fases 6 e 7 não iniciadas).
+Data: 11/11/2026 · Estado: **respondida pelo Marcio em 11/11/2026 (D92)**: módulos confirmados; próxima capacidade é a comparação de propostas; cláusula de preços aceita; dor central é o controle da despesa.
 
 Parte das respostas à Fase 4 (D91): navegação do síndico em quatro destinos como direção; WhatsApp só para resumo e captura de documento, a testar depois dos primeiros clientes; voz adiada, análise sob demanda por componentes fixos e nenhuma autonomia L4 para ação externa.
 
