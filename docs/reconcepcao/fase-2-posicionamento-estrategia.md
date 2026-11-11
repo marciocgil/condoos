@@ -1,6 +1,6 @@
 # Reconcepção do CondoOS — Fase 2: posicionamento e estratégia
 
-Data: 11/11/2026 · Estado: **aguardando validação do Marcio** (fases 3 a 7 não iniciadas).
+Data: 11/11/2026 · Estado: **respondida pelo Marcio em 11/11/2026 (D89)**: sim, sim, e negócio próprio no nicho.
 
 Parte das respostas do Marcio à Fase 1 (registradas em D88): beachhead em São Paulo capital com o síndico profissional; D73 mantida (condomínio é o cliente, administradora é fonte de dados e canal a testar); validação em campo corre em paralelo.
 
