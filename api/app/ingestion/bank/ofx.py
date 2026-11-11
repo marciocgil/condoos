@@ -90,4 +90,18 @@ def parse_ofx(data: bytes) -> ParsedStatement:
         )
     if not statement.transactions:
         raise BankFileError("Nenhum lançamento encontrado no OFX.")
+    # D122: account and the closing balance as the bank states them (LEDGERBAL). OFX has no
+    # opening balance: it stays empty (the previous month's closing is compared in BAN-02).
+    statement.branch = _tag(text, "BRANCHID")
+    statement.account_number = _tag(text, "ACCTID")
+    start, end = _tag(text, "DTSTART"), _tag(text, "DTEND")
+    statement.period_start = _ofx_date(start) if start else None
+    statement.period_end = _ofx_date(end) if end else None
+    ledger = re.search(r"<LEDGERBAL>(.*?)(?:</LEDGERBAL>|$)", text, re.S | re.I)
+    if ledger:
+        amount, as_of = _tag(ledger.group(1), "BALAMT"), _tag(ledger.group(1), "DTASOF")
+        if amount:
+            statement.closing_balance = _ofx_amount(amount)
+            statement.closing_date = _ofx_date(as_of) if as_of else statement.period_end
+            statement.balance_source = "OFX LEDGERBAL"
     return statement

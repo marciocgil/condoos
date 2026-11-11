@@ -11,6 +11,7 @@ from app.routers import (
     actions,
     agenda,
     approvals,
+    audit,
     auth,
     briefing,
     cases,
@@ -79,6 +80,7 @@ def create_app() -> FastAPI:
     app.include_router(inbound.router)
     app.include_router(compliance.router)
     app.include_router(catalog.router)
+    app.include_router(audit.router)
 
     @app.get("/health", tags=["health"])
     async def health() -> dict[str, str]:

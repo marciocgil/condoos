@@ -30,3 +30,14 @@ class ParsedStatement:
     bank_code: str | None = None
     ignored_records: int = 0
     notes: list[str] = field(default_factory=list)
+    # D122: the account and the balances exactly as the file states them (None = not stated;
+    # a missing balance is never derived nor taken as zero).
+    branch: str | None = None
+    account_number: str | None = None
+    period_start: date | None = None
+    period_end: date | None = None
+    opening_balance: Decimal | None = None
+    opening_date: date | None = None
+    closing_balance: Decimal | None = None
+    closing_date: date | None = None
+    balance_source: str | None = None

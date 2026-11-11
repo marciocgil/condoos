@@ -20,6 +20,7 @@ import httpx
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.audit.agents import runtime_prompt
 from app.chat.search import INDEX_JOB, INDEXED_TYPES
 from app.core.audit import record_audit
 from app.core.br import is_valid_cnpj, only_digits
@@ -37,13 +38,14 @@ from app.extraction.convert import Converted, convert
 from app.extraction.evidence import NAME_PAIRS, cnpjs_in_text, lone_counterparty
 from app.extraction.fields import BANK_TYPES, REVIEW_THRESHOLD, SPECS, TEXT_ONLY_TYPES
 from app.extraction.heuristics import CERTAIN, REFUSED_DEBTORS, classify_text, prefill
-from app.extraction.llm_extract import classify_with_llm, extract_with_llm
+from app.extraction.llm_extract import PROMPT_FILES, classify_with_llm, extract_with_llm
 from app.extraction.provenance import build as build_provenance
 from app.extraction.xml_fiscal import NotFiscalXml, parse_fiscal_xml
 from app.ingestion.bank.base import BankFileError
 from app.ingestion.bank.service import parse_bank_file, store_statement
 from app.ingestion.filetypes import CNAB, CSV, IMAGE_TYPES, OFX, XML
 from app.llm.client import LLMUnavailable
+from app.llm.prompts import load_prompt
 from app.storage.base import get_storage
 
 logger = logging.getLogger(__name__)
@@ -65,6 +67,8 @@ class Analysis:
     complete: bool = False  # True when no human review is needed
     provenance: dict[str, Any] = field(default_factory=dict)  # per field (CB-030)
     refused: str | None = None  # the file must not stay in the CondoOS (D120, B5)
+    # Agent prompts the model really received for this document (D122): A1, A2.
+    agents: dict[str, Any] = field(default_factory=dict)
 
     @property
     def extraction_source(self) -> str:
@@ -86,6 +90,7 @@ async def analyze(
     and the supplier registry cache. ``other_own_cnpjs``: CNPJs that are never the
     counterparty (the management company), for the CNPJ search in the text (D120)."""
     raw: dict[str, Any] = {}
+    agents_used: dict[str, Any] = {}
     origin: dict[str, str] = {}  # where each raw value came from (CB-030)
     source_conf: dict[str, float] = {}
     sources: list[str] = []
@@ -121,13 +126,16 @@ async def analyze(
             doc_type, classification_source = classification.doc_type, "heuristica"
         else:
             try:
+                a1 = await runtime_prompt(session, "A1")
                 out = await classify_with_llm(
                     session,
                     converted=converted,
                     data=data,
                     mime=mime,
                     condominium_id=condominium_id,
+                    agent=a1,
                 )
+                agents_used["A1"] = a1.meta(load_prompt("classify_document"))
                 if out.doc_type == "relacao_devedores" and out.confidence >= 0.8:
                     return Analysis(
                         DocumentType.OUTRO,
@@ -176,6 +184,7 @@ async def analyze(
     missing_certain = [s.name for s in SPECS[doc_type] if source_conf.get(s.name, 0.0) < CERTAIN]
     if converted is not None and missing_certain:
         try:
+            a2 = await runtime_prompt(session, "A2")
             values, model_conf, notes = await extract_with_llm(
                 session,
                 doc_type=doc_type,
@@ -183,6 +192,10 @@ async def analyze(
                 data=data,
                 mime=mime,
                 condominium_id=condominium_id,
+                agent=a2,
+            )
+            agents_used["A2"] = a2.meta(
+                load_prompt("extract_common") + "\n\n" + load_prompt(PROMPT_FILES[doc_type])
             )
             for name in missing_certain:
                 if values.get(name) not in (None, "", []):
@@ -246,6 +259,9 @@ async def analyze(
     for name, note in result.observations.items():
         if name in base.provenance:
             base.provenance[name]["note"] = note
+    if agents_used:
+        base.provenance["_agentes"] = agents_used
+    base.agents = agents_used
     return base
 
 
@@ -431,7 +447,14 @@ async def _import_bank_file(
     try:
         statement = parse_bank_file(doc.original_filename, data)
         imported = await store_statement(
-            session, condominium_id=condo.id, condominium_cnpj=condo.cnpj, statement=statement
+            session,
+            condominium_id=condo.id,
+            condominium_cnpj=condo.cnpj,
+            statement=statement,
+            document_id=doc.id,
+            file_format=(
+                "cnab" if doc.mime_type == CNAB else "ofx" if doc.mime_type == OFX else "csv"
+            ),
         )
     except BankFileError as exc:
         doc.extracted = {"erro": str(exc)}

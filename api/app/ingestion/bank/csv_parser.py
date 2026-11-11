@@ -88,6 +88,14 @@ def parse_csv(data: bytes) -> ParsedStatement:
             continue
         description = cell(i_desc) or "SEM DESCRIÇÃO"
         if _norm(description).startswith("saldo"):
+            # D122: balance lines are kept as stated: "saldo anterior" opens, the last other
+            # balance line closes. Nothing is derived from the transactions.
+            if _norm(description).startswith("saldo anterior"):
+                if statement.opening_balance is None:
+                    statement.opening_balance, statement.opening_date = amount, posted
+            elif statement.closing_date is None or posted >= statement.closing_date:
+                statement.closing_balance, statement.closing_date = amount, posted
+            statement.balance_source = "CSV linhas de saldo"
             statement.ignored_records += 1
             continue
         doc = only_digits(cell(i_doc))

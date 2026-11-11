@@ -336,6 +336,7 @@ async def save_review(
                 )
             )
 
+    agents_used = (doc.field_provenance or {}).get("_agentes")
     doc.field_provenance = confirmed_provenance(
         {} if type_changed else (doc.field_provenance or {}),
         {} if type_changed else (doc.extracted or {}),
@@ -343,6 +344,8 @@ async def save_review(
         str(access.user_id),
         utcnow().isoformat(),
     )
+    if agents_used and not type_changed:
+        doc.field_provenance = {**doc.field_provenance, "_agentes": agents_used}  # D122
     doc.doc_type = doc_type.value
     doc.extracted = values
     doc.field_confidence = {name: 1.0 for name in values}  # verified by a person

@@ -40,6 +40,8 @@ from app.db.enums import (
     ActionDecisionKind,
     ActionStatus,
     AdjustmentIndex,
+    AuditRunStatus,
+    AuditStageStatus,
     BankTransactionOrigin,
     BoardPosition,
     CaseCategory,
@@ -53,6 +55,8 @@ from app.db.enums import (
     ComplianceCategory,
     ComplianceEventKind,
     ContractNature,
+    ControlReviewState,
+    ControlStatus,
     DataIssueAudience,
     DataIssueEventKind,
     DataIssueKind,
@@ -63,6 +67,7 @@ from app.db.enums import (
     DelegationStatus,
     DocumentOrigin,
     DocumentType,
+    EdgeKind,
     EvidenceSource,
     ExtractionStatus,
     FindingStatus,
@@ -74,6 +79,7 @@ from app.db.enums import (
     OutboxStatus,
     PlatformRole,
     PolicyDecision,
+    PromptStatus,
     ReminderStatus,
     ReviewRequirement,
     SavingsStage,
@@ -526,6 +532,13 @@ class BankTransaction(IdTimestampMixin, Base):
     origin: Mapped[str] = mapped_column(String(15))
     # Stable id from the source (FITID, CNAB nosso número, hash of the CSV line) for idempotency.
     external_id: Mapped[str] = mapped_column(String(120))
+    # Account and statement the transaction came from (D122); None for older imports.
+    bank_account_id: Mapped[uuid.UUID | None] = _uuid_fk(
+        "bank_account.id", nullable=True, ondelete="SET NULL"
+    )
+    statement_id: Mapped[uuid.UUID | None] = _uuid_fk(
+        "bank_statement.id", nullable=True, ondelete="SET NULL"
+    )
     expense_id: Mapped[uuid.UUID | None] = _uuid_fk(
         "expense.id", nullable=True, ondelete="SET NULL"
     )
@@ -1338,6 +1351,302 @@ class ComplianceReminder(IdTimestampMixin, Base):
 
 
 # Tables protected by Row-Level Security, with the column holding the tenant id.
+# --------------------------------------------------------------------------- CondoOS Audit
+
+
+class BankAccount(IdTimestampMixin, Base):
+    """A bank account of the condominium, as the statement identifies it (D122)."""
+
+    __tablename__ = "bank_account"
+    __table_args__ = (
+        UniqueConstraint(
+            "condominium_id", "bank_code", "branch", "number", name="uq_bank_account_number"
+        ),
+    )
+
+    condominium_id: Mapped[uuid.UUID] = _uuid_fk("condominium.id")
+    bank_code: Mapped[str] = mapped_column(String(10))
+    branch: Mapped[str] = mapped_column(String(20))
+    number: Mapped[str] = mapped_column(String(30))
+    label: Mapped[str] = mapped_column(String(120))
+    kind: Mapped[str] = mapped_column(String(15), default="corrente", server_default="corrente")
+
+
+class BankStatement(IdTimestampMixin, Base):
+    """One imported statement file. Balances are kept only as the file states them; a balance
+    the file does not show stays empty (never derived, never zero)."""
+
+    __tablename__ = "bank_statement"
+    __table_args__ = (
+        UniqueConstraint("condominium_id", "document_id", name="uq_bank_statement_doc"),
+    )
+
+    condominium_id: Mapped[uuid.UUID] = _uuid_fk("condominium.id")
+    bank_account_id: Mapped[uuid.UUID | None] = _uuid_fk(
+        "bank_account.id", nullable=True, ondelete="SET NULL"
+    )
+    document_id: Mapped[uuid.UUID | None] = _uuid_fk(
+        "document.id", nullable=True, ondelete="SET NULL"
+    )
+    period_start: Mapped[date | None] = mapped_column(Date, nullable=True)
+    period_end: Mapped[date | None] = mapped_column(Date, nullable=True)
+    opening_balance: Mapped[Decimal | None] = mapped_column(Money, nullable=True)
+    opening_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    closing_balance: Mapped[Decimal | None] = mapped_column(Money, nullable=True)
+    closing_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    balance_source: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    transactions: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    format: Mapped[str] = mapped_column(String(10))
+
+
+class AuditPeriod(IdTimestampMixin, Base):
+    __tablename__ = "audit_period"
+    __table_args__ = (
+        UniqueConstraint("condominium_id", "competence", name="uq_audit_period_month"),
+    )
+
+    condominium_id: Mapped[uuid.UUID] = _uuid_fk("condominium.id")
+    competence: Mapped[date] = mapped_column(Date)  # day 1 of the month
+    created_by: Mapped[uuid.UUID | None] = _uuid_fk(
+        "app_user.id", nullable=True, ondelete="SET NULL"
+    )
+
+
+class AuditRun(IdTimestampMixin, Base):
+    __tablename__ = "audit_run"
+    __table_args__ = (
+        _enum_check("status", AuditRunStatus),
+        UniqueConstraint("period_id", "number", name="uq_audit_run_number"),
+    )
+
+    condominium_id: Mapped[uuid.UUID] = _uuid_fk("condominium.id")
+    period_id: Mapped[uuid.UUID] = _uuid_fk("audit_period.id")
+    number: Mapped[int] = mapped_column(Integer)
+    trigger: Mapped[str] = mapped_column(String(20))
+    status: Mapped[str] = mapped_column(String(15))
+    requested_by: Mapped[uuid.UUID | None] = _uuid_fk(
+        "app_user.id", nullable=True, ondelete="SET NULL"
+    )
+    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    summary: Mapped[dict[str, Any]] = mapped_column(Json, default=dict)
+    error: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+
+class AuditStageRun(IdTimestampMixin, Base):
+    __tablename__ = "audit_stage_run"
+    __table_args__ = (
+        _enum_check("status", AuditStageStatus),
+        UniqueConstraint("run_id", "stage", name="uq_audit_stage_run_stage"),
+    )
+
+    condominium_id: Mapped[uuid.UUID] = _uuid_fk("condominium.id")
+    run_id: Mapped[uuid.UUID] = _uuid_fk("audit_run.id", ondelete="CASCADE")
+    stage: Mapped[int] = mapped_column(Integer)
+    name: Mapped[str] = mapped_column(String(80))
+    status: Mapped[str] = mapped_column(String(20))
+    detail: Mapped[dict[str, Any]] = mapped_column(Json, default=dict)
+    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class AgentPromptVersion(IdTimestampMixin, Base):
+    """An immutable version of an agent's prompt (D122). Only the status and the approval
+    and activation stamps change; the text never does."""
+
+    __tablename__ = "agent_prompt_version"
+    __table_args__ = (
+        _enum_check("status", PromptStatus),
+        UniqueConstraint("agent_id", "version", name="uq_agent_prompt_version"),
+        Index(
+            "uq_agent_prompt_active",
+            "agent_id",
+            unique=True,
+            postgresql_where=sql_text("status = 'ACTIVE'"),
+        ),
+    )
+
+    agent_id: Mapped[str] = mapped_column(String(4))
+    version: Mapped[int] = mapped_column(Integer)
+    status: Mapped[str] = mapped_column(String(10))
+    text: Mapped[str] = mapped_column(Text)
+    sha256: Mapped[str] = mapped_column(String(64))
+    model_role: Mapped[str] = mapped_column(String(15))
+    config: Mapped[dict[str, Any]] = mapped_column(Json, default=dict)
+    source: Mapped[str] = mapped_column(String(200))
+    change_note: Mapped[str] = mapped_column(String(500))
+    based_on_id: Mapped[uuid.UUID | None] = _uuid_fk(
+        "agent_prompt_version.id", nullable=True, ondelete="SET NULL"
+    )
+    author_user_id: Mapped[uuid.UUID | None] = _uuid_fk(
+        "app_user.id", nullable=True, ondelete="SET NULL"
+    )
+    approved_by: Mapped[uuid.UUID | None] = _uuid_fk(
+        "app_user.id", nullable=True, ondelete="SET NULL"
+    )
+    approved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    activated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    archived_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class AgentPromptEvent(IdTimestampMixin, Base):
+    """History of a prompt version (append only)."""
+
+    __tablename__ = "agent_prompt_event"
+
+    version_id: Mapped[uuid.UUID] = _uuid_fk("agent_prompt_version.id")
+    kind: Mapped[str] = mapped_column(String(20))
+    user_id: Mapped[uuid.UUID | None] = _uuid_fk("app_user.id", nullable=True, ondelete="SET NULL")
+    detail: Mapped[dict[str, Any]] = mapped_column(Json, default=dict)
+
+
+class PromptTestRun(IdTimestampMixin, Base):
+    """A sandbox test of a prompt version (append only)."""
+
+    __tablename__ = "prompt_test_run"
+
+    version_id: Mapped[uuid.UUID] = _uuid_fk("agent_prompt_version.id")
+    user_id: Mapped[uuid.UUID | None] = _uuid_fk("app_user.id", nullable=True, ondelete="SET NULL")
+    passed: Mapped[bool] = mapped_column(Boolean)
+    results: Mapped[list[dict[str, Any]]] = mapped_column(Json, default=list)
+
+
+class AuditAgentRun(IdTimestampMixin, Base):
+    """One agent's work in an audit run: which prompt version (and its runtime hash) governed
+    it, whether the model was actually called, inputs, outputs and what stayed unresolved."""
+
+    __tablename__ = "audit_agent_run"
+
+    condominium_id: Mapped[uuid.UUID] = _uuid_fk("condominium.id")
+    run_id: Mapped[uuid.UUID] = _uuid_fk("audit_run.id", ondelete="CASCADE")
+    stage: Mapped[int] = mapped_column(Integer)
+    agent_id: Mapped[str] = mapped_column(String(4))
+    prompt_version_id: Mapped[uuid.UUID | None] = _uuid_fk(
+        "agent_prompt_version.id", nullable=True, ondelete="SET NULL"
+    )
+    runtime_prompt_sha256: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    llm_invoked: Mapped[bool] = mapped_column(Boolean, default=False)
+    model: Mapped[str | None] = mapped_column(String(60), nullable=True)
+    status: Mapped[str] = mapped_column(String(20))
+    input_refs: Mapped[list[Any]] = mapped_column(Json, default=list)
+    output: Mapped[dict[str, Any]] = mapped_column(Json, default=dict)
+    unresolved: Mapped[list[Any]] = mapped_column(Json, default=list)
+    warnings: Mapped[list[Any]] = mapped_column(Json, default=list)
+    duration_ms: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    cost_usd: Mapped[Decimal] = mapped_column(Numeric(12, 6), default=Decimal("0"))
+    error: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+
+class AuditControlResult(IdTimestampMixin, Base):
+    """One evaluation of one control in one month. A new evaluation (new run or a person's
+    review) supersedes the previous row; nothing is deleted or rewritten."""
+
+    __tablename__ = "audit_control_result"
+    __table_args__ = (
+        _enum_check("status", ControlStatus),
+        _enum_check("review_state", ControlReviewState),
+        Index(
+            "ix_audit_control_result_current",
+            "period_id",
+            "control_id",
+            postgresql_where=sql_text("superseded_by_id IS NULL"),
+        ),
+    )
+
+    condominium_id: Mapped[uuid.UUID] = _uuid_fk("condominium.id")
+    period_id: Mapped[uuid.UUID] = _uuid_fk("audit_period.id")
+    run_id: Mapped[uuid.UUID] = _uuid_fk("audit_run.id")
+    control_id: Mapped[str] = mapped_column(String(10))
+    rule_version: Mapped[str] = mapped_column(String(20))
+    status: Mapped[str] = mapped_column(String(15))
+    review_state: Mapped[str] = mapped_column(String(30))
+    severity: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    tests: Mapped[list[dict[str, Any]]] = mapped_column(Json, default=list)
+    evidence_refs: Mapped[list[dict[str, Any]]] = mapped_column(Json, default=list)
+    coverage: Mapped[Decimal | None] = mapped_column(Numeric(6, 4), nullable=True)
+    differences: Mapped[Decimal] = mapped_column(Money, default=Decimal("0"))
+    rationale: Mapped[str] = mapped_column(Text)
+    missing: Mapped[list[str]] = mapped_column(Json, default=list)
+    review_required: Mapped[bool] = mapped_column(Boolean, default=False)
+    input_fingerprint: Mapped[str] = mapped_column(String(64))
+    agents: Mapped[list[dict[str, Any]]] = mapped_column(Json, default=list)
+    source: Mapped[str] = mapped_column(String(15), default="motor", server_default="motor")
+    superseded_by_id: Mapped[uuid.UUID | None] = _uuid_fk(
+        "audit_control_result.id", nullable=True, ondelete="SET NULL"
+    )
+
+
+class AuditControlReview(IdTimestampMixin, Base):
+    """A person's review of a control result (append only)."""
+
+    __tablename__ = "audit_control_review"
+
+    condominium_id: Mapped[uuid.UUID] = _uuid_fk("condominium.id")
+    result_id: Mapped[uuid.UUID] = _uuid_fk("audit_control_result.id")
+    user_id: Mapped[uuid.UUID | None] = _uuid_fk("app_user.id", nullable=True, ondelete="SET NULL")
+    decision: Mapped[str] = mapped_column(String(20))
+    reason: Mapped[str] = mapped_column(Text)
+    from_status: Mapped[str] = mapped_column(String(15))
+    to_status: Mapped[str] = mapped_column(String(15))
+
+
+class AuditFact(IdTimestampMixin, Base):
+    """An immutable fact read from a document (A2): raw and normalised value, page, excerpt,
+    method, extractor version and confidence. A new reading is a new row."""
+
+    __tablename__ = "audit_fact"
+    __table_args__ = (
+        UniqueConstraint("condominium_id", "fingerprint", name="uq_audit_fact_fingerprint"),
+    )
+
+    condominium_id: Mapped[uuid.UUID] = _uuid_fk("condominium.id")
+    document_id: Mapped[uuid.UUID] = _uuid_fk("document.id", ondelete="CASCADE")
+    field_name: Mapped[str] = mapped_column(String(60))
+    raw_value: Mapped[str | None] = mapped_column(Text, nullable=True)
+    normalized_value: Mapped[Any] = mapped_column(Json, nullable=True)
+    competence: Mapped[date | None] = mapped_column(Date, nullable=True)
+    page: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    excerpt: Mapped[str | None] = mapped_column(Text, nullable=True)
+    method: Mapped[str] = mapped_column(String(20))
+    extractor_version: Mapped[str] = mapped_column(String(80))
+    confidence: Mapped[Decimal | None] = mapped_column(Numeric(4, 3), nullable=True)
+    verified_status: Mapped[str] = mapped_column(String(15))
+    effective_from: Mapped[date | None] = mapped_column(Date, nullable=True)
+    effective_to: Mapped[date | None] = mapped_column(Date, nullable=True)
+    recorded_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=sql_text("now()")
+    )
+    fingerprint: Mapped[str] = mapped_column(String(64))
+
+
+class EvidenceEdge(IdTimestampMixin, Base):
+    """A link between two records (A3/A4): suggested or verified, with method and reason."""
+
+    __tablename__ = "evidence_edge"
+    __table_args__ = (
+        _enum_check("kind", EdgeKind),
+        UniqueConstraint(
+            "condominium_id",
+            "from_type",
+            "from_id",
+            "to_type",
+            "to_id",
+            name="uq_evidence_edge_pair",
+        ),
+    )
+
+    condominium_id: Mapped[uuid.UUID] = _uuid_fk("condominium.id")
+    from_type: Mapped[str] = mapped_column(String(20))
+    from_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), index=True)
+    to_type: Mapped[str] = mapped_column(String(20))
+    to_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), index=True)
+    kind: Mapped[str] = mapped_column(String(12))
+    method: Mapped[str] = mapped_column(String(40))
+    confidence: Mapped[Decimal | None] = mapped_column(Numeric(4, 3), nullable=True)
+    reason: Mapped[str] = mapped_column(String(300))
+    amount: Mapped[Decimal | None] = mapped_column(Money, nullable=True)
+
+
 RLS_TABLES: dict[str, str] = {
     "condominium": "id",
     "board_member": "condominium_id",
@@ -1383,6 +1692,16 @@ RLS_TABLES: dict[str, str] = {
     "compliance_evidence": "condominium_id",
     "compliance_event": "condominium_id",
     "compliance_reminder": "condominium_id",
+    "bank_account": "condominium_id",
+    "bank_statement": "condominium_id",
+    "audit_period": "condominium_id",
+    "audit_run": "condominium_id",
+    "audit_stage_run": "condominium_id",
+    "audit_agent_run": "condominium_id",
+    "audit_control_result": "condominium_id",
+    "audit_control_review": "condominium_id",
+    "audit_fact": "condominium_id",
+    "evidence_edge": "condominium_id",
 }
 
 # Tables the application role may only read and insert into (never update or delete).
@@ -1401,4 +1720,8 @@ APPEND_ONLY_TABLES: tuple[str, ...] = (
     "compliance_evidence",
     "compliance_event",
     "compliance_reminder",
+    "audit_control_review",
+    "audit_fact",
+    "agent_prompt_event",
+    "prompt_test_run",
 )

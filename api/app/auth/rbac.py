@@ -45,6 +45,10 @@ class Permission(StrEnum):
     VALIDATE_COMPLIANCE = "validate_compliance"
     # Turn the weekly compliance e-mail on or off (D113): the síndico only.
     CONFIGURE_COMPLIANCE_EMAIL = "configure_compliance_email"
+    # CondoOS Audit (D122): the monthly "farol" is internal until published.
+    VIEW_AUDIT = "view_audit"
+    RUN_AUDIT = "run_audit"
+    REVIEW_AUDIT = "review_audit"  # internal human review of a control result
 
 
 P = Permission
@@ -52,7 +56,7 @@ P = Permission
 # Validating and approving are kept apart (D77): no role holds both a review permission and
 # APPROVE_IN_CONDO. ``tests/test_access_model.py`` checks it for every role.
 REVIEW_PERMISSIONS: frozenset[Permission] = frozenset(
-    {P.VALIDATE_FINDING, P.REVIEW_FINDING, P.REVIEW_OPPORTUNITY}
+    {P.VALIDATE_FINDING, P.REVIEW_FINDING, P.REVIEW_OPPORTUNITY, P.REVIEW_AUDIT}
 )
 
 _MANAGEMENT_COMPANY = frozenset(
@@ -65,6 +69,8 @@ _MANAGEMENT_COMPANY = frozenset(
         P.EXPORT,
         P.UPDATE_TASK,
         P.MANAGE_COMPLIANCE,
+        P.VIEW_AUDIT,
+        P.RUN_AUDIT,
     }
 )
 
@@ -101,6 +107,7 @@ ROLE_PERMISSIONS: dict[Role, frozenset[Permission]] = {
         P.CLOSE_COMPETENCE,
         P.DECIDE_FINDING,
         P.VALIDATE_COMPLIANCE,
+        P.REVIEW_AUDIT,
     },
     # Reserved roles (D77): accepted in memberships, no permission until activated.
     Role.ZELADOR: frozenset(),
@@ -122,6 +129,8 @@ ROLE_PERMISSIONS: dict[Role, frozenset[Permission]] = {
             P.MANAGE_LAUNCH,
             P.MANAGE_DELEGATION,
             P.MANAGE_COMPLIANCE,
+            P.VIEW_AUDIT,
+            P.RUN_AUDIT,
         }
     ),
     Role.CONDOOS_REVIEWER: frozenset(
@@ -140,6 +149,9 @@ ROLE_PERMISSIONS: dict[Role, frozenset[Permission]] = {
             P.REVIEW_OPPORTUNITY,
             P.MANAGE_CASES,
             P.UPDATE_TASK,
+            P.VIEW_AUDIT,
+            P.RUN_AUDIT,
+            P.REVIEW_AUDIT,
         }
     ),
 }

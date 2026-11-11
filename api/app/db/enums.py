@@ -535,3 +535,51 @@ class ReminderStatus(StrEnum):
 
     ENVIADO = "enviado"
     FALHOU = "falhou"
+
+
+# --------------------------------------------------------------------------- CondoOS Audit (D122)
+
+
+class ControlStatus(StrEnum):
+    """The six states of a control in the monthly "farol" (exactly these)."""
+
+    VALIDADO = "VALIDADO"
+    COM_RESSALVA = "COM_RESSALVA"
+    PENDENTE = "PENDENTE"
+    DIVERGENTE = "DIVERGENTE"
+    NAO_AVALIADO = "NAO_AVALIADO"
+    NAO_APLICAVEL = "NAO_APLICAVEL"
+
+
+class ControlReviewState(StrEnum):
+    DRAFT = "DRAFT"
+    NEEDS_HUMAN_REVIEW = "NEEDS_HUMAN_REVIEW"
+    REVIEWED = "REVIEWED"
+    APPROVED_FOR_PUBLICATION = "APPROVED_FOR_PUBLICATION"
+
+
+class AuditRunStatus(StrEnum):
+    EM_EXECUCAO = "em_execucao"
+    CONCLUIDA = "concluida"
+    FALHOU = "falhou"
+
+
+class AuditStageStatus(StrEnum):
+    AGUARDANDO = "aguardando"
+    EM_EXECUCAO = "em_execucao"
+    CONCLUIDA = "concluida"
+    COM_PENDENCIAS = "com_pendencias"
+    FALHOU = "falhou"
+    PULADA = "pulada"
+
+
+class PromptStatus(StrEnum):
+    DRAFT = "DRAFT"
+    IN_REVIEW = "IN_REVIEW"
+    ACTIVE = "ACTIVE"
+    ARCHIVED = "ARCHIVED"
+
+
+class EdgeKind(StrEnum):
+    SUGERIDO = "sugerido"
+    VERIFICADO = "verificado"

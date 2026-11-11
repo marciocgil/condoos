@@ -6,7 +6,7 @@ usable text layer; the file itself (PDF or image) only when there is no usable t
 
 import uuid
 from functools import lru_cache
-from typing import Any, Literal
+from typing import TYPE_CHECKING, Any, Literal
 
 from pydantic import BaseModel, Field, create_model
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -18,6 +18,9 @@ from app.extraction.fields import specs_for
 from app.ingestion.filetypes import IMAGE_TYPES, PDF
 from app.llm.client import ImageInput, LLMRequest, PdfInput, call_structured
 from app.llm.prompts import load_prompt
+
+if TYPE_CHECKING:
+    from app.audit.agents import RuntimePrompt
 
 PROMPT_FILES = {
     DocumentType.NFSE: "extract_nfse",
@@ -100,14 +103,17 @@ async def classify_with_llm(
     data: bytes,
     mime: str,
     condominium_id: uuid.UUID | None,
+    agent: "RuntimePrompt | None" = None,
 ) -> ClassificationOut:
+    """``agent``: the active prompt of A1 (D122), composed before the task prompt."""
     user_text, attachments = _inputs(converted, data, mime)
+    task = load_prompt("classify_document")
     result = await call_structured(
         session,
         LLMRequest(
             purpose="document.classify",
             role="fast",
-            system=load_prompt("classify_document"),
+            system=agent.compose(task) if agent else task,
             user_text=user_text,
             attachments=attachments,
             output_model=ClassificationOut,
@@ -127,11 +133,14 @@ async def extract_with_llm(
     data: bytes,
     mime: str,
     condominium_id: uuid.UUID | None,
+    agent: "RuntimePrompt | None" = None,
 ) -> tuple[dict[str, Any], dict[str, float], str]:
-    """Returns (raw values, model confidence per field, model notes)."""
+    """Returns (raw values, model confidence per field, model notes). ``agent``: the active
+    prompt of A2 (D122), composed before the task prompt."""
     model = output_model(doc_type)
     user_text, attachments = _inputs(converted, data, mime)
-    system = load_prompt("extract_common") + "\n\n" + load_prompt(PROMPT_FILES[doc_type])
+    task = load_prompt("extract_common") + "\n\n" + load_prompt(PROMPT_FILES[doc_type])
+    system = agent.compose(task) if agent else task
     result = await call_structured(
         session,
         LLMRequest(
