@@ -1245,3 +1245,270 @@ export interface Catalog {
     rules: string[];
   };
 }
+
+// CondoOS Audit (D122): the monthly farol of 25 controls, runs, agents and prompts.
+export type ControlStatusCode =
+  "VALIDADO" | "COM_RESSALVA" | "PENDENTE" | "DIVERGENTE" | "NAO_AVALIADO" | "NAO_APLICAVEL";
+
+export interface AuditResult {
+  result_id: string;
+  status: ControlStatusCode;
+  status_label: string;
+  review_state: string;
+  review_required: boolean;
+  coverage: string | null;
+  differences: string;
+  rationale: string;
+  missing: string[];
+  severity: string | null;
+  rule_version: string;
+  source: string;
+  run_id: string;
+  created_at: string;
+}
+
+export interface FarolControl extends Partial<AuditResult> {
+  id: string;
+  pillar: string;
+  pillar_label: string;
+  name: string;
+  cycle: number;
+  agents: string[];
+  previous_status: ControlStatusCode | null;
+  status_label: string;
+  status?: ControlStatusCode;
+}
+
+export interface AuditRunSummary {
+  id: string;
+  number: number;
+  status: string;
+  started_at: string;
+  finished_at: string | null;
+  trigger: string;
+  summary: Record<string, unknown>;
+}
+
+export interface Farol {
+  competencia: string;
+  condominium: { id: string; name: string };
+  period_id: string | null;
+  runs: AuditRunSummary[];
+  counts: Record<ControlStatusCode, number>;
+  indicators: {
+    cobertura_documental: string | null;
+    liquidacao_demonstrada: string | null;
+    contas: {
+      conta: string;
+      lancamentos: number;
+      equacao: string;
+      diferenca?: string | null;
+      continuidade: string;
+    }[];
+    aguardando_revisao: number;
+    diferenca_total: string;
+  };
+  controls: FarolControl[];
+  can_run: boolean;
+  can_review: boolean;
+}
+
+export interface AgentParticipation {
+  agent_id: string;
+  prompt_version_id: string | null;
+  version: number | null;
+  agent_sha256: string;
+  runtime_sha256: string;
+  llm_invoked: boolean;
+  model: string | null;
+}
+
+export interface EvidenceRef {
+  tipo: string;
+  id: string;
+  rotulo: string;
+  documento_id?: string | null;
+  classificacao?: string;
+  pago?: string;
+}
+
+export interface ControlDetail {
+  competencia: string;
+  definition: {
+    id: string;
+    name: string;
+    pillar: string;
+    agents: string[];
+    sources: string[];
+    criteria: string[];
+    cycle: number;
+    rule_version: string;
+    parameters: Record<string, string>;
+  };
+  current:
+    | (AuditResult & {
+        tests: { teste: string; resultado: string; detalhe: string }[];
+        evidence_refs: EvidenceRef[];
+        produced_by: {
+          run_id: string;
+          run_number: number | null;
+          rule_version: string;
+          agents: AgentParticipation[];
+          input_fingerprint: string;
+          deterministic: string;
+        };
+      })
+    | null;
+  history: (AuditResult & { run_number: number | null; current: boolean })[];
+  reviews: {
+    decision: string;
+    reason: string;
+    from: string;
+    to: string;
+    user: string | null;
+    at: string;
+  }[];
+  can_review: boolean;
+}
+
+export interface AuditRunDetail {
+  id: string;
+  number: number;
+  competencia: string;
+  status: string;
+  trigger: string;
+  started_at: string;
+  finished_at: string | null;
+  summary: Record<string, unknown>;
+  stages: { stage: number; name: string; status: string; detail: Record<string, unknown> }[];
+  agents: {
+    agent_id: string;
+    name: string;
+    stage: number;
+    prompt_version: number | null;
+    prompt_version_id: string | null;
+    runtime_prompt_sha256: string | null;
+    llm_invoked: boolean;
+    model: string | null;
+    status: string;
+    duration_ms: number;
+    output: Record<string, unknown>;
+    unresolved: string[];
+    warnings: string[];
+  }[];
+}
+
+export interface ReconLine {
+  id: string;
+  date: string;
+  description: string;
+  amount: string;
+  classification: string;
+  kind: string;
+  strength: string;
+  intermediary: boolean;
+  paired_with: string | null;
+  expense: { id: string; description: string; amount: string } | null;
+  levels: Record<
+    "a_saldo" | "b_classificado" | "c_comprovante" | "d_favorecido" | "e_obrigacao",
+    boolean
+  >;
+}
+
+export interface Reconciliation {
+  competencia: string;
+  classification_version: string;
+  accounts: {
+    key: string;
+    label: string;
+    statement: {
+      id: string;
+      document_id: string | null;
+      period_start: string | null;
+      period_end: string | null;
+      opening_balance: string | null;
+      closing_balance: string | null;
+      balance_source: string | null;
+    } | null;
+    balance: Record<string, string>;
+    continuity: Record<string, string>;
+    lines: ReconLine[];
+    classified: number;
+  }[];
+}
+
+export interface AgentSummary {
+  id: string;
+  name: string;
+  purpose: string;
+  stage: string;
+  depends_on: string[];
+  tools: string[];
+  inputs: string;
+  outputs: string;
+  limits: string;
+  owner: string;
+  active: boolean;
+  mode: string;
+  cycle: number;
+  active_version?: number | null;
+  active_sha256?: string | null;
+  open_drafts?: number;
+}
+
+export interface PromptVersion {
+  id: string;
+  agent_id: string;
+  version: number;
+  status: "DRAFT" | "IN_REVIEW" | "ACTIVE" | "ARCHIVED";
+  text: string;
+  sha256: string;
+  model_role: string;
+  config: Record<string, unknown>;
+  source: string;
+  change_note: string;
+  based_on_id: string | null;
+  author: string | null;
+  approved_by: string | null;
+  created_at: string;
+  approved_at: string | null;
+  activated_at: string | null;
+  archived_at: string | null;
+}
+
+export interface AgentDetail extends AgentSummary {
+  can_manage: boolean;
+  can_approve: boolean;
+  runtime_example: string | null;
+  boundaries: { agent: string; safety: string; task: string; safety_rule: string };
+  versions: PromptVersion[];
+  events: {
+    version: number | null;
+    kind: string;
+    user: string | null;
+    detail: Record<string, unknown>;
+    at: string;
+  }[];
+  tests: {
+    version: number | null;
+    passed: boolean;
+    results: { check: string; passed: boolean; detail: string }[];
+    at: string;
+    user: string | null;
+  }[];
+  runs: {
+    run_id: string;
+    run_number: number;
+    condominium: string;
+    competencia: string;
+    prompt_version: number | null;
+    runtime_prompt_sha256: string | null;
+    llm_invoked: boolean;
+    model: string | null;
+    status: string;
+    duration_ms: number;
+    unresolved: number;
+    warnings: string[];
+    at: string;
+  }[];
+}

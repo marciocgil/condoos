@@ -2,6 +2,10 @@
 
 import {
   BarChart3,
+  Bot,
+  ClipboardCheck,
+  Gauge,
+  Landmark,
   BookOpenCheck,
   CheckSquare,
   Building2,
@@ -100,6 +104,31 @@ const GROUPS: Group[] = [
     ],
   },
   {
+    // CondoOS Audit (D122): the monthly farol, internal until reviewed and published.
+    title: "Audit",
+    items: [
+      { href: "/admin/audit", label: "Farol", icon: Gauge, show: can("view_audit") },
+      {
+        href: "/admin/audit/conciliacao",
+        label: "Conciliação bancária",
+        icon: Landmark,
+        show: can("view_audit"),
+      },
+      {
+        href: "/admin/audit/revisao",
+        label: "Revisão da auditoria",
+        icon: ClipboardCheck,
+        show: can("review_audit"),
+      },
+      {
+        href: "/admin/audit/agentes",
+        label: "Agentes & Prompts",
+        icon: Bot,
+        show: (a) => a.platform,
+      },
+    ],
+  },
+  {
     title: "Qualidade dos dados",
     items: [
       {
@@ -158,6 +187,7 @@ export function AdminNav({
     ...g,
     items: g.items.filter((i) => !i.show || i.show(access)),
   })).filter((g) => g.items.length > 0);
+  const allHrefs = groups.flatMap((g) => g.items.map((i) => i.href));
   const pathname = usePathname();
   // The condominium chosen in a screen's filter follows to the other screens.
   const condo = useSearchParams().get("condominio");
@@ -217,7 +247,12 @@ export function AdminNav({
               aria-label={group.title ?? "Principal"}
             >
               {group.items.map((item) => {
-                const active = pathname.startsWith(item.href);
+                // The longest matching item wins (/admin/audit vs /admin/audit/agentes).
+                const active =
+                  pathname.startsWith(item.href) &&
+                  !allHrefs.some(
+                    (h) => h !== item.href && h.startsWith(item.href) && pathname.startsWith(h),
+                  );
                 const Icon = item.icon;
                 return (
                   <li key={item.href}>

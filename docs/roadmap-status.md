@@ -74,6 +74,8 @@ Política mínima e kill switch entregues com a VS-05 (D83); o produto continua 
 
 ## 6. Histórico desta página
 
+- 11/11/2026 — CondoOS Audit, ciclo 1 (D122, migração 0029): farol de 25 controles (9 avaliados por regra, 16 "não avaliado" com o ciclo previsto), conciliação por conta com saldos do extrato, agentes A0–A9 com prompts versionados e governança, "Como este resultado foi produzido?". Verificação: 448 testes do backend, lint, migração ida e volta, telas na stack local. Falta `make e2e` no docker. Próximo: ciclo 2 (decisão sobre dados por unidade antes).
+
 - 10/11/2026 — Tela "Regras e prompts" para a equipe CondoOS (D121, migração 0028 aprovada): regras de auditoria, prompts por propósito com texto, versão, custo e histórico de versões, regras de leitura, verificações automáticas e política das ações, só leitura. Verificação: 430 testes do backend, lint, migração ida e volta e a tela conferida na stack local. Falta `make e2e` no docker.
 
 - 10/11/2026 — Correções na leitura (D120, migração 0027 aprovada): confiança por evidência (valor escrito no texto, razão social da Receita, CNPJ do condomínio), CNPJ procurado no texto, tela de correção com pendentes e opcionais separados, cópia da mesma nota sem despesa nova, alertas de contrato (assinatura depois do início, contratante que não é o condomínio, CNPJ do condomínio errado, sem CNPJ da contratada), contrato sem CNPJ pela razão social com assunto "Ajustar contrato" quando essencial ou acima da alçada, contrato pontual, comprovante de pagamento, guia de tributo, relatório da administradora, extrato de rendimento e recusa da relação de devedores. Verificação: 425 testes do backend, lint e tipos. Falta `make e2e` no docker e refazer as gravações da IA (`LLM_MODE=record make accuracy`).

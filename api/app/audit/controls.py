@@ -459,7 +459,7 @@ def ban_03(d: AuditData) -> Outcome:
         evidence,
         missing,
         _pct(len(debits) - len(unknown), len(debits)),
-        sum((-ln.amount for ln in unknown), ZERO),
+        ZERO,  # an unidentified debit is pending evidence, not a proven difference
         inputs={
             "debitos": sorted((str(ln.trn.id), ln.kind, str(ln.trn.expense_id)) for ln in debits)
         },

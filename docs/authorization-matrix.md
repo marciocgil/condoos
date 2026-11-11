@@ -72,3 +72,14 @@ Notas:
 | Fornecedor | Link autenticado por OS/cotação | G4 + WP-18/21 |
 | Morador | Formulário/canal oficial | WP-20 + política de comunicação |
 | Conselho com aprovação | Aprovação formal registrada | Atribuição formal (ata) + WP-10 |
+
+## CondoOS Audit (D122)
+
+| Ação | Síndico | Conselheiro | Gerente | Analista | Admin CondoOS | Revisora CondoOS |
+|---|---|---|---|---|---|---|
+| Ver o farol, controles, execuções e conciliação (`view_audit`) | — (após publicação, ciclo 3) | — | ✓ | ✓ | ✓ | ✓ |
+| Rodar a auditoria do mês (`run_audit`) | — | — | ✓ | ✓ | ✓ | ✓ |
+| Revisar resultado: confirmar ou reclassificar com motivo (`review_audit`) | — | — | ✓ se o condomínio deixa a administradora revisar | — | — | ✓ |
+| Ler o texto dos prompts dos agentes | — | — | — | — | ✓ | ✓ |
+| Escrever, testar, enviar, descartar rascunho e voltar versão | — | — | — | — | ✓ | — |
+| Aprovar e ativar versão de prompt (nunca a própria) | — | — | — | — | ✓ | ✓ |
