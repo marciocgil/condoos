@@ -1,6 +1,6 @@
 # Reconcepção do CondoOS — Fase 4: experiência e paradigma de interação
 
-Data: 11/11/2026 · Estado: **aguardando validação do Marcio** (fases 5 a 7 não iniciadas).
+Data: 11/11/2026 · Estado: **respondida pelo Marcio em 11/11/2026 (D91)**: as três direções foram aceitas.
 
 Parte das respostas à Fase 3 (D90): finalistas de nome Confere, Ciente e Lastro; agente sem nome próprio; linguagem visual pelas referências em `docs/reconcepcao/referencias/`. Os exemplos abaixo usam "CondoOS" enquanto o nome não muda.
 
