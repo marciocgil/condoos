@@ -1,6 +1,6 @@
 # Reconcepção do CondoOS — Fase 3: marca
 
-Data: 11/11/2026 · Estado: **aguardando validação do Marcio** (fases 4 a 7 não iniciadas).
+Data: 11/11/2026 · Estado: **respondida pelo Marcio em 11/11/2026 (D90)**: finalistas Confere, Ciente e Lastro (Ciente entra no lugar de Prumo); agente sem nome próprio; direção visual pelas duas imagens de referência (seção 7.1).
 
 Parte das respostas à Fase 2 (D89): categoria de entrada "controladoria independente do condomínio", com "assessor inteligente" como destino; assinatura por faixa mais taxa só sobre economia realizada em renegociação, sem receita de fornecedor; ambição de negócio próprio e rentável no nicho.
 
@@ -43,6 +43,7 @@ O perfil do comprador também pesa menos do que o prompt supõe: a idade média 
 | Descritiva | **ContaCerta** | Promessa literal | Genérico; soa a contabilidade ou banco |
 | Descritiva | **Conselho** | Põe a marca ao lado de quem fiscaliza | Confunde com o órgão do condomínio |
 | Evocativa | **Prumo** | O fio de prumo: instrumento de obra que mostra se a parede está reta. Prédio, retidão e medida numa palavra de duas sílabas | Existe uma grande empresa de logística com o nome; conferir classes |
+| Evocativa | **Ciente** (proposto pelo Marcio em 11/11/2026) | Quem está ciente sabe o que se passa. No condomínio, "ciente" é o que se escreve ao assinar um comunicado: a palavra já pertence ao setor. Curto, fácil de falar e de escrever | Palavra comum (distintividade a conferir no INPI). Lê-se como estado passivo ("saber"), não como ação ("conferir"): a tagline precisa trazer o verbo |
 | Evocativa | **Lastro** | O que dá sustentação a um valor: toda afirmação com lastro em documento | Uso frequente no mercado financeiro |
 | Evocativa | **Crivo** | Passar pelo crivo: nada é pago sem exame | Pode soar severo |
 | Evocativa | **Alçada** | Termo do próprio domínio: quem pode aprovar o quê. Reforça "a pessoa decide" | Cedilha e til complicam domínio e digitação |
@@ -56,7 +57,7 @@ O perfil do comprador também pesa menos do que o prompt supõe: a idade média 
 ### 2.2 Finalistas que eu levaria ao teste
 
 1. **Confere**: o mais claro e o mais fácil de falar; o risco é jurídico (distintividade).
-2. **Prumo**: a melhor metáfora (obra, retidão, medida); o risco é a colisão com marca grande.
+2. **Ciente**: já é vocabulário do condomínio e descreve o estado que o síndico quer ter; o risco é soar passivo. (Substitui Prumo por decisão do Marcio, D90.)
 3. **Lastro**: o que melhor traduz "com evidência"; o risco é soar a finanças.
 
 Contra eles, **CondoOS** como controle.
@@ -221,6 +222,24 @@ Ponto de partida: o Design System v1.0 já existe e está aplicado (tema escuro,
 
 **Divergência a decidir (R11): tema escuro com verde-lima.** No aplicativo funciona e está pronto. Minha dúvida é fora dele: escuro com lima lê-se como fintech ou ferramenta de desenvolvedor, e a marca vai circular sobretudo em **coisas que saem do app**: relatório para a assembleia, parecer para o conselho, cartão encaminhado por WhatsApp, e-mail. Proposta de custo baixo: manter o Design System no aplicativo e definir um **modo documento claro** (fundo claro, mesma tipografia, mesmo acento usado com parcimônia) para tudo que é impresso, encaminhado ou visto por condômino. Os relatórios em PDF já seguem um registro mais sóbrio; seria formalizar isso como parte da marca.
 
+### 7.1 Referências escolhidas pelo Marcio (D90)
+
+Duas imagens servem de modelo, guardadas em `docs/reconcepcao/referencias/`. São telas de terceiros: valem como referência de linguagem visual, não como material a reproduzir.
+
+| Referência | O que tomar como modelo | O que não tomar |
+|------------|-------------------------|-----------------|
+| `ref-01-painel-economia.jpg` (painel de economia) | Fundo quase preto de tom azulado; acento verde-esmeralda; cartões de indicador com borda fina e número grande; gráfico de área com degradê discreto; lista de resultados recentes com data relativa | **A estrutura de painel como tela inicial.** O ponto de entrada continua sendo o briefing (Fase 4). Esta linguagem serve à visão de carteira e às análises abertas sob demanda. Também não tomar as três cores de barra (verde, azul, roxo): um acento só |
+| `ref-02-revisao-documento.jpg` (revisão de documento) | **É o modelo da tela de evidência.** Documento original em claro dentro da moldura escura; campos extraídos ao lado, cada um com confiança e marca de conferido; verificações com contagem (8 de 9); anomalia com frase explicativa e botão "Revisar"; linha do tempo da atividade; barra de decisão fixa embaixo | O número grande de "confiança da IA" como destaque: no produto a confiança é por campo e o destaque é o valor em reais. O botão "Aprovar e exportar" como ação única: aqui a decisão tem mais saídas (pedir correção, aceitar, pedir evidência) |
+
+O que isso muda na direção desta seção:
+
+- **Tema escuro confirmado**, mais profundo e azulado que o atual (`--color-bg: #22262c`).
+- **Acento passa de verde-lima (`#d9fc00`) para verde-esmeralda.** Ponto de atenção: o esmeralda fica muito perto do verde de "sucesso" já usado (`--color-success: #69c8a3`). Nas imagens o mesmo verde significa "marca" e "aprovado". Para manter a regra "acento só em ação primária e item ativo", o status de sucesso precisa se distinguir por ícone e texto (já é regra) e por um tom próprio.
+- **O "modo documento claro" fica resolvido pela própria referência**: o documento aparece claro dentro da interface escura, e os relatórios em PDF continuam claros. Não há tema claro para o aplicativo.
+- A segunda referência coincide com telas que já existem (correção de extração lado a lado, lista de evidências, barra de decisão, linha do tempo). A mudança é de acabamento, não de estrutura.
+
+Nada disso foi aplicado ao código. Trocar os tokens em `web/app/globals.css` e conferir contraste é uma tarefa de implementação à parte, a agendar na Fase 6.
+
 Sem logo nesta fase. Para quando houver nome: marca tipográfica simples, com um sinal derivado do visto de conferência ou da linha de prumo.
 
 ---
@@ -230,21 +249,21 @@ Sem logo nesta fase. Para quando houver nome: marca tipográfica simples, com um
 ### Resumo
 
 - **"CondoOS" é um nome mediano**: diz o setor, mas se confunde com meia dúzia de "Condo-algo", tem pronúncia incerta e o "OS" lê-se "sistema" ou "ordem de serviço". Trocar agora é barato; decidir por teste, não por opinião.
-- **Finalistas para o teste: Confere, Prumo e Lastro**, contra CondoOS, em dois minutos ao fim de cada entrevista. Nenhuma disponibilidade foi verificada.
+- **Finalistas para o teste: Confere, Ciente e Lastro**, contra CondoOS, em dois minutos ao fim de cada entrevista. Nenhuma disponibilidade foi verificada.
 - **A marca é o Guardião com método**: "todo pagamento conferido", do lado do condomínio, sem acusar ninguém, mostrando a conta.
 - **O agente não tem nome de pessoa.** Fala como a marca, em primeira pessoa, e muda vocabulário, detalhe e momento conforme quem lê.
 - **Confiança se prova com nove compromissos verificáveis**; o principal é "recebemos apenas do condomínio". O visual mantém o Design System no app e ganha um modo documento claro para o que sai dele.
 
 ### Três decisões que preciso de você
 
-1. **Nome:** aceita levar o teste de dois minutos às entrevistas com Confere, Prumo e Lastro contra CondoOS? Se preferir encerrar o assunto e ficar com CondoOS, as fases seguintes não mudam.
+1. **Nome:** aceita levar o teste de dois minutos às entrevistas com Confere, Ciente e Lastro contra CondoOS? Se preferir encerrar o assunto e ficar com CondoOS, as fases seguintes não mudam.
 2. **Agente sem nome próprio:** confirma que o agente fala como a marca, sem persona humana?
 3. **Visual (R11):** mantém o Design System v1.0 no aplicativo e formaliza um modo documento claro para relatórios, pareceres e cartões compartilhados?
 
 ### Principais riscos
 
 - **Trocar de nome consome semanas** (INPI, domínio, código, documentos) num momento em que o que falta é cliente. Por isso o critério de troca é exigente.
-- **Nomes de palavra comum** (Confere, Prumo, Lastro) podem ser fracos ou indisponíveis como marca registrada. Só o INPI e um advogado dizem.
+- **Nomes de palavra comum** (Confere, Ciente, Lastro) podem ser fracos ou indisponíveis como marca registrada. Só o INPI e um advogado dizem.
 - **Tom sóbrio demais não vende.** "Calmo e preciso" pode soar morno numa venda; o caso real com valor em reais é o que dá energia à mensagem.
 - **Prometer imparcialidade e depois abrir exceção** (um patrocínio, uma indicação paga) destrói a marca. A regra precisa valer sem exceção.
 - **Marca testada só em São Paulo e com síndico profissional.** Outros públicos podem ler diferente.
@@ -255,7 +274,7 @@ Sem logo nesta fase. Para quando houver nome: marca tipográfica simples, com um
 
 | # | Divergência | Estado atual | Esta análise |
 |---|-------------|--------------|--------------|
-| R11 | Tema visual fora do aplicativo | Design System v1.0: tema escuro em tudo | Manter no app; modo documento claro para o que é impresso ou encaminhado |
+| R11 | Tema visual | Design System v1.0: tema escuro com acento verde-lima | **Decidido em D90:** tema escuro mais profundo com acento verde-esmeralda, pelas referências da seção 7.1; documentos e relatórios em claro. Tokens ainda não alterados |
 | R12 | Nome do botão e do agente | "Pergunte ao CondoOS" na interface | Coerente com "sem persona"; muda só se o nome mudar |
 | R13 | Nome do produto | CondoOS em código, documentos e domínio de ingestão | Testar três alternativas; trocar só com vitória clara |
 
