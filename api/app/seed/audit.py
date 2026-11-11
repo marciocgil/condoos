@@ -155,3 +155,80 @@ def _title(
         paid_amount=amount if paid else None,
         import_key=key,
     )
+
+
+async def seed_governance(session: AsyncSession) -> None:
+    """Cycle 3 (D124) demo for Jardim das Acácias: the reserve fund growing 1% of the month's
+    expenses, with no backing account named yet (BAN-08 shows that a positive balance is not
+    segregated backing), and a budget per year from the seed's own averages, approved
+    without the minutes linked (GOV-01 shows the reservation). Fictitious values."""
+    from collections import defaultdict
+
+    from app.db.models import Budget, BudgetLine, Expense, Fund, FundBalance
+
+    condo = await session.scalar(
+        select(Condominium).where(Condominium.slug == "jardim-das-acacias")
+    )
+    if condo is None:
+        return
+    if await session.scalar(select(Fund.id).where(Fund.condominium_id == condo.id)):
+        return
+    expenses = list(
+        await session.scalars(select(Expense).where(Expense.condominium_id == condo.id))
+    )
+    if not expenses:
+        return
+    by_month: dict[date, Decimal] = defaultdict(lambda: Decimal("0"))
+    by_year_cat: dict[tuple[int, str], list[Decimal]] = defaultdict(list)
+    months_of_year: dict[int, set[date]] = defaultdict(set)
+    for e in expenses:
+        by_month[e.competence] += e.amount
+        by_year_cat[(e.competence.year, e.category)].append(e.amount)
+        months_of_year[e.competence.year].add(e.competence)
+    fund = Fund(id=uuid.uuid4(), condominium_id=condo.id, name="Fundo de reserva", kind="reserva")
+    session.add(fund)
+    await session.flush()
+    balance = Decimal("20000.00")
+    for month in sorted(by_month):
+        inflow = (by_month[month] / 100).quantize(Decimal("0.01"))
+        session.add(
+            FundBalance(
+                id=uuid.uuid4(),
+                condominium_id=condo.id,
+                fund_id=fund.id,
+                competence=month,
+                opening=balance,
+                inflows=inflow,
+                outflows=Decimal("0.00"),
+                yield_amount=Decimal("0.00"),
+                closing=balance + inflow,
+            )
+        )
+        balance += inflow
+    for year, months in months_of_year.items():
+        budget = Budget(
+            id=uuid.uuid4(),
+            condominium_id=condo.id,
+            year=year,
+            version=1,
+            approved_on=date(year - 1, 12, 10),
+            file_sha256=hashlib.sha256(f"seed-{year}".encode()).hexdigest(),
+        )
+        session.add(budget)
+        await session.flush()
+        for (y, category), values in by_year_cat.items():
+            if y != year:
+                continue
+            monthly = (sum(values, Decimal("0")) / len(months)).quantize(Decimal("1"))
+            for m in range(1, 13):
+                session.add(
+                    BudgetLine(
+                        id=uuid.uuid4(),
+                        condominium_id=condo.id,
+                        budget_id=budget.id,
+                        category=category,
+                        month=date(year, m, 1),
+                        amount=monthly,
+                    )
+                )
+    await session.flush()

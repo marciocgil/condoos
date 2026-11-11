@@ -486,6 +486,7 @@ async def review_result(
             input_fingerprint=r.input_fingerprint,
             agents=r.agents,
             source="revisao",
+            calculation=r.calculation,
         )
         db.add(target)
         await db.flush()

@@ -24,7 +24,7 @@ APROVACOES = "aprovacoes"
 
 
 # Controls of cycles up to this one are evaluated; later ones are "Não avaliado".
-CURRENT_CYCLE = 2
+CURRENT_CYCLE = 3
 
 
 @dataclass(frozen=True)
@@ -90,11 +90,16 @@ CONTROLS: list[ControlDef] = [
         "DOC",
         "Aprovação formal das contas",
         ("A7", "A9"),
-        ("termo, ata ou decisão de aprovação",),
-        ("Aprovação com signatários, data, abrangência e poderes.",),
+        ("termo, ata ou parecer de aprovação das contas que cubra a competência",),
+        (
+            "Aprovação registrada com o documento, cobrindo a competência.",
+            "Signatários no mandato (conselho) ou presidente e secretário (assembleia).",
+            "O síndico não aprova as próprias contas.",
+            "Aprovada depois do fim da competência e sem ressalvas.",
+        ),
         (DOCUMENTOS, APROVACOES),
         3,
-        "—",
+        "1.0",
     ),
     ControlDef(
         "BAN-01",
@@ -210,11 +215,17 @@ CONTROLS: list[ControlDef] = [
         "BAN",
         "Lastro dos fundos",
         ("A8",),
-        ("saldos por fundo e contas de suporte",),
-        ("Cada fundo com lastro próprio demonstrado, não pela soma do consolidado.",),
+        ("saldos por fundo do demonstrativo", "extrato das contas de lastro"),
+        (
+            "Cada fundo com saldo do mês e conta que fecha (inicial + entradas − saídas + "
+            "rendimentos = final), contínua com o mês anterior.",
+            "Lastro próprio: saldo das contas do fundo ≥ saldo dos fundos que elas guardam, "
+            "em conta separada do caixa (saldo positivo do consolidado não é lastro).",
+        ),
         (FUNDOS, SALDOS),
         3,
-        "—",
+        "1.0",
+        {"tolerancia": "R$ 0,00"},
     ),
     ControlDef(
         "BAN-09",
@@ -222,10 +233,15 @@ CONTROLS: list[ControlDef] = [
         "Aplicações e rendimentos",
         ("A4", "A8"),
         ("extrato próprio da aplicação",),
-        ("Aportes, resgates, IR/IOF, rendimentos e saldos conciliados.",),
+        (
+            "Extrato próprio de cada aplicação, com saldo que fecha ao centavo.",
+            "Cada aplicação e resgate da conta corrente com a contrapartida na aplicação.",
+            "Rendimentos e IR/IOF identificados.",
+        ),
         (EXTRATO, FUNDOS),
         3,
-        "—",
+        "1.0",
+        {"janela_dias": "3"},
     ),
     ControlDef(
         "REC-01",
@@ -362,11 +378,17 @@ CONTROLS: list[ControlDef] = [
         "CON",
         "Contrato vigente e preço",
         ("A7",),
-        ("contrato aplicável à competência",),
-        ("Valor bruto, escopo e reajuste conferidos com a nota.",),
+        ("contrato aplicável à competência", "notas do mês"),
+        (
+            "Nota dentro da vigência do contrato (com aditivos).",
+            "Valor bruto igual ao contratado em vigor, com aditivo e reajuste do índice.",
+            "Escopo declarado no contrato (a comparação com a nota é a regra R04).",
+            "Faturamento esperado do mês apresentado.",
+        ),
         (CONTRATOS, DESPESAS),
         3,
-        "—",
+        "1.0",
+        {"tolerancia": "R$ 0,00"},
     ),
     ControlDef(
         "CON-02",
@@ -374,43 +396,60 @@ CONTROLS: list[ControlDef] = [
         "Serviço extraordinário e aceite",
         ("A7",),
         ("proposta, autorização, ordem de serviço e aceite",),
-        ("Autorização dentro da alçada e serviço fora do escopo recorrente.",),
+        (
+            "Serviço sem contrato e fora das categorias isentas é extraordinário.",
+            "Acima da alçada vigente: autorização antes da nota, com documento.",
+            "Aceite do serviço registrado.",
+        ),
         (CONTRATOS, APROVACOES),
         3,
-        "—",
+        "1.0",
     ),
     ControlDef(
         "CON-03",
         "CON",
         "Parcelas contratuais",
         ("A7",),
-        ("cronograma e pagamentos",),
-        ("Sequência, total e saldo futuro coerentes.",),
+        ("cronograma do contrato pontual e notas cobradas",),
+        (
+            "Parcelas em sequência, sem repetição.",
+            "Total cobrado e número de parcelas dentro do contratado.",
+            "Valor de cada parcela pelo cronograma; saldo futuro calculado.",
+        ),
         (CONTRATOS, PAGAMENTOS),
         3,
-        "—",
+        "1.0",
     ),
     ControlDef(
         "GOV-01",
         "GOV",
         "Orçado × realizado e caixa",
         ("A8",),
-        ("orçamento aprovado",),
-        ("Desvios explicados e projeção com premissas declaradas.",),
+        ("orçamento aprovado do ano",),
+        (
+            "Orçamento aprovado com o documento da aprovação.",
+            "Desvio por categoria acima da tolerância com explicação registrada.",
+            "Projeção do ano com premissas declaradas.",
+        ),
         (ORCAMENTO, DESPESAS),
         3,
-        "—",
+        "1.0",
+        {"tolerancia_desvio": "10%"},
     ),
     ControlDef(
         "GOV-02",
         "GOV",
         "Seguros e obrigações técnicas",
         ("A7", "A8"),
-        ("apólice, AVCB, laudos",),
-        ("Vigência na competência e plano de renovação.",),
+        ("apólice, AVCB, laudos (Conformidade)",),
+        (
+            "Obrigações validadas por uma pessoa; seguro da edificação cadastrado.",
+            "Documento vigente no fim da competência, com data confirmada.",
+            "O que vence em breve tem responsável pela renovação.",
+        ),
         (OBRIGACOES,),
         3,
-        "—",
+        "1.0",
     ),
 ]
 

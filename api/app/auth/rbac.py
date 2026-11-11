@@ -49,6 +49,8 @@ class Permission(StrEnum):
     VIEW_AUDIT = "view_audit"
     RUN_AUDIT = "run_audit"
     REVIEW_AUDIT = "review_audit"  # internal human review of a control result
+    # D124: the síndico approves (or returns) the month's farol sent by the CondoOS team.
+    APPROVE_AUDIT_PUBLICATION = "approve_audit_publication"
 
 
 P = Permission
@@ -91,6 +93,7 @@ ROLE_PERMISSIONS: dict[Role, frozenset[Permission]] = {
             P.MANAGE_COMPLIANCE,
             P.VALIDATE_COMPLIANCE,
             P.CONFIGURE_COMPLIANCE_EMAIL,
+            P.APPROVE_AUDIT_PUBLICATION,
         }
     ),
     Role.SUBSINDICO: frozenset({P.VIEW, P.COMMENT_FINDING, P.EXPORT}),

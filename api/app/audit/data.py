@@ -17,6 +17,7 @@ from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import defer
 
+from app.audit.data3 import Cycle3, load_cycle3
 from app.core.time import add_months
 from app.db.models import (
     AuditControlResult,
@@ -76,11 +77,17 @@ LABELS = {
     "resgate": "Resgate de aplicação",
     "emprestimo": "Empréstimo",
     "arrecadacao": "Arrecadação (cotas e boletos)",
+    # Lines of an investment account (D124): its own statement, read by BAN-09.
+    "aporte": "Aporte na aplicação",
+    "saida_aplicacao": "Saída da aplicação (resgate)",
     "nao_identificado": "Não identificado",
 }
 # "parcela 02/04", "parcelamento", "2/4": an installment of a tax agreement.
 INSTALLMENT = re.compile(r"parcel|\b\d{1,3}\s*/\s*\d{1,3}\b")
-NON_REVENUE = {"transferencia", "estorno", "resgate", "emprestimo"}
+NON_REVENUE = {"transferencia", "estorno", "resgate", "emprestimo", "aporte"}
+INVESTMENT_KINDS = ("aplicacao", "poupanca")
+YIELD = r"rendimento|rend\.? pago|remunera[cç][aã]o|juros cred"
+INVESTMENT_TAX = r"\biof\b|\birrf?\b|imposto de renda|\bir s/"
 
 
 def _fold(text: str) -> str:
@@ -103,10 +110,21 @@ class Line:
 
 
 def classify(
-    trn: BankTransaction, intermediary_docs: set[str], allocated: set[uuid.UUID] | None = None
+    trn: BankTransaction,
+    intermediary_docs: set[str],
+    allocated: set[uuid.UUID] | None = None,
+    investment: bool = False,
 ) -> Line:
-    """``allocated``: lines with a verified allocation to one or more expenses (D123)."""
+    """``allocated``: lines with a verified allocation to one or more expenses (D123).
+    ``investment``: the line is in an investment account (D124), where a credit is a
+    contribution or yield and a debit is a withdrawal or tax, never an expense."""
     text = _fold(f"{trn.description} {trn.payee_name or ''}")
+    if investment:
+        if trn.amount > 0:
+            return Line(trn, "rendimento" if re.search(YIELD, text) else "aporte", "regra")
+        if re.search(INVESTMENT_TAX, text):
+            return Line(trn, "tributo_bancario", "regra")
+        return Line(trn, "saida_aplicacao", "regra")
     if trn.amount < 0:
         if trn.expense_id is not None or (allocated is not None and trn.id in allocated):
             indirect = bool(
@@ -274,6 +292,7 @@ class AuditData:
     utility_expenses: list[Expense] = field(default_factory=list)  # bills of the last 3 months
     installment_slips: list[tuple[Expense, Document | None]] = field(default_factory=list)
     previous_rec04: dict[str, str] = field(default_factory=dict)  # unit -> closing open balance
+    c3: Cycle3 = field(default_factory=Cycle3)  # contracts, funds, budget, approvals (D124)
 
     @property
     def month_end(self) -> date:
@@ -390,7 +409,6 @@ async def load(
         found = by_id.get(a.bank_transaction_id)
         if found is not None and found not in paid.get(a.expense_id, []):
             paid.setdefault(a.expense_id, []).append(found)
-    lines = [classify(t, intermediary, allocated_ids) for t in in_month]
     accounts = list(
         await session.scalars(
             select(BankAccount)
@@ -398,6 +416,10 @@ async def load(
             .order_by(BankAccount.label)
         )
     )
+    investment = {a.id for a in accounts if a.kind in INVESTMENT_KINDS}
+    lines = [
+        classify(t, intermediary, allocated_ids, t.bank_account_id in investment) for t in in_month
+    ]
     statements = list(
         await session.scalars(
             select(BankStatement)
@@ -465,6 +487,7 @@ async def load(
     for a in verified:
         alloc_by_expense.setdefault(a.expense_id, {})[a.bank_transaction_id] = a.amount
     extra = await _cycle2(session, condo, first, last, expenses, roles)
+    c3 = await load_cycle3(session, condo, first, last, today, [e.id for e in expenses])
     views_exp = [
         ExpenseView(
             e,
@@ -489,6 +512,7 @@ async def load(
         copies=copies,
         superseded=len(superseded_ids),
         intermediary_docs=intermediary,
+        c3=c3,
     )
 
 

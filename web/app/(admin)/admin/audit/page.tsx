@@ -3,13 +3,14 @@ import Link from "next/link";
 
 import { AuditToolbar } from "@/components/audit/AuditToolbar";
 import { ControlStatusBadge } from "@/components/audit/ControlStatusBadge";
+import { PublicationPanel } from "@/components/audit/PublicationPanel";
 import { RunAuditButton } from "@/components/audit/RunAuditButton";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card, CardTitle } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { KpiCard } from "@/components/ui/KpiCard";
 import { apiGet } from "@/lib/api";
-import { auditCondos, lastMonth, pct, REVIEW_LABEL } from "@/lib/audit";
+import { auditCondos, lastMonth, pct, type Publication, REVIEW_LABEL } from "@/lib/audit";
 import { formatBRL, formatDateTime } from "@/lib/format";
 import type { ControlStatusCode, Farol, Me } from "@/lib/types";
 
@@ -46,9 +47,14 @@ export default async function AuditHomePage({
     );
   const selected = condos.some((c) => c.id === sp.condominio) ? sp.condominio! : condos[0]!.id;
   const competencia = /^\d{4}-\d{2}$/.test(sp.competencia ?? "") ? sp.competencia! : lastMonth();
-  const farol = await apiGet<Farol>(
-    `/condominiums/${selected}/audit/farol?competencia=${competencia}`,
-  );
+  const [farol, publications] = await Promise.all([
+    apiGet<Farol>(`/condominiums/${selected}/audit/farol?competencia=${competencia}`),
+    apiGet<{ publications: Publication[]; can_submit: boolean }>(
+      `/condominiums/${selected}/audit/publications`,
+    ),
+  ]);
+  const latestPublication =
+    publications.publications.find((p) => p.competencia === competencia) ?? null;
   const q = `condominio=${selected}&competencia=${competencia}`;
   const pillars = [...new Set(farol.controls.map((c) => c.pillar_label))];
   const run = farol.runs[0];
@@ -110,6 +116,17 @@ export default async function AuditHomePage({
               context="soma das diferenças em centavos dos controles"
             />
           </section>
+          <Card className="mb-6">
+            <CardTitle>Apreciação pelo síndico</CardTitle>
+            <PublicationPanel
+              condominiumId={selected}
+              competencia={competencia}
+              latest={latestPublication}
+              canSubmit={publications.can_submit}
+              canRun={farol.can_run}
+              waitingReview={farol.indicators.aguardando_revisao}
+            />
+          </Card>
           <Card className="mb-6">
             <CardTitle>Contas bancárias (conciliação por conta, nunca “todas as contas”)</CardTitle>
             {farol.indicators.contas.length === 0 ? (

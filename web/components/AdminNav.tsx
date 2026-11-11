@@ -123,6 +123,12 @@ const GROUPS: Group[] = [
         show: can("view_audit"),
       },
       {
+        href: "/admin/audit/governanca",
+        label: "Fundos e orçamento",
+        icon: PiggyBank,
+        show: can("view_audit"),
+      },
+      {
         href: "/admin/audit/pendencias",
         label: "Pendências da auditoria",
         icon: ListTodo,

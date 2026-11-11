@@ -615,3 +615,45 @@ class Utility(StrEnum):
 class AuditIssueStatus(StrEnum):
     ABERTA = "aberta"
     RESOLVIDA = "resolvida"
+
+
+# ----------------------------------------------------------------- CondoOS Audit, cycle 3 (D124)
+
+
+class FundKind(StrEnum):
+    RESERVA = "reserva"
+    OBRAS = "obras"
+    OUTRO = "outro"
+
+
+class AccountKind(StrEnum):
+    """What a bank account is for: the checking account, or an investment kept apart."""
+
+    CORRENTE = "corrente"
+    APLICACAO = "aplicacao"
+    POUPANCA = "poupanca"
+
+
+class ApprovalKind(StrEnum):
+    """An expense approval (R12) authorises the spending; an acceptance records that the
+    extraordinary service was delivered (CON-02)."""
+
+    AUTORIZACAO = "autorizacao"
+    ACEITE = "aceite"
+
+
+class AccountsApprovalBody(StrEnum):
+    """Who approved the accounts of a period (DOC-03)."""
+
+    CONSELHO_FISCAL = "conselho_fiscal"
+    CONSELHO_CONSULTIVO = "conselho_consultivo"
+    ASSEMBLEIA = "assembleia"
+
+
+class PublicationStatus(StrEnum):
+    """The monthly farol sent to the síndico (D124): the síndico approves the version seen."""
+
+    AGUARDANDO = "aguardando_sindico"
+    APROVADA = "aprovada"
+    DEVOLVIDA = "devolvida"
+    SUPERADA = "superada"

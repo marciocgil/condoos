@@ -28,6 +28,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.time import add_months
+from app.db.enums import ApprovalKind
 from app.db.models import (
     Approval,
     Condominium,
@@ -283,6 +284,7 @@ async def month_pending(
             .where(
                 Approval.condominium_id == condominium_id,
                 Approval.expense_id.in_([e.id for e in loose]),
+                Approval.kind == ApprovalKind.AUTORIZACAO.value,
             )
         )
         for ap, filename in rows:

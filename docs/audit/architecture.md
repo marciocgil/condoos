@@ -14,7 +14,7 @@ POST /condominiums/{id}/audit/runs {competencia}
   ├─ Etapa 4  A4 conciliação ........... por conta: equação do saldo, continuidade, classificação,
   │                                      estornos; IA só sugere classificação (nunca muda estado)
   ├─ Etapa 5  regras dos controles ..... app/audit/controls.py (determinístico)
-  ├─ Etapa 6  A8 ....................... pulada no ciclo 1 (fundos e orçamento, ciclo 3)
+  ├─ Etapa 6  A8 ....................... fundos, aplicações e orçamento (BAN-08, BAN-09, GOV-01; ciclo 3)
   ├─ Etapa 7  A9 ....................... política dos seis estados (código) + questionamento (IA)
   └─ Etapa 8  A0 publica ............... resultado novo só se a impressão digital das entradas mudou;
                                          o anterior fica como substituído; rascunho ou revisão humana

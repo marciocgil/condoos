@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncEngine
 
 from app.db.models import ManagementCompany
 from app.db.session import get_admin_engine, sessionmaker_for
-from app.seed.audit import seed_audit, seed_units
+from app.seed.audit import seed_audit, seed_governance, seed_units
 from app.seed.compliance import seed_compliance
 from app.seed.data import build_seed
 from app.seed.documents import seed_documents
@@ -32,6 +32,7 @@ async def load_seed(engine: AsyncEngine) -> bool:
         await seed_compliance(session)
         await seed_audit(session)
         await seed_units(session)
+        await seed_governance(session)
     return True
 
 

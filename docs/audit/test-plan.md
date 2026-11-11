@@ -21,7 +21,7 @@ Testes automatizados em `api/tests/test_audit.py` (18), com dados sintéticos (c
 | Versão usada pela execução | `test_active_version_is_the_one_runs_use` | execução grava a versão ativa |
 | Conta e saldos do OFX | `test_statement_import_keeps_account_and_balances` | conta criada, saldo final guardado, saldo inicial vazio |
 
-Ainda não automatizados (ciclos seguintes): regressão de quatro meses com acervo real (não disponível), duplicata de PDF no inventário, duas contas com transferência (BAN-06), repasse sem comprovante (BAN-07), leitura de água ausente (REC-03), contrato vencido e apólice renovada (ciclo 3).
+Ainda não automatizados (ciclos seguintes): regressão de quatro meses com acervo real (não disponível), duplicata de PDF no inventário, duas contas com transferência (BAN-06), repasse sem comprovante (BAN-07), leitura de água ausente (REC-03), cenários do ciclo 4 (reprocessamento por evento, desempenho e custo).
 
 ## Ciclo 2 (`api/tests/test_audit_cycle2.py`, 16)
 
@@ -42,3 +42,19 @@ Ainda não automatizados (ciclos seguintes): regressão de quatro meses com acer
 | Pagamento agrupado | `test_grouped_payment_is_allocated_only_when_unique` | combinação única verificada; ambígua só sugerida |
 | Pendência persistente | `test_issues_persist_resolve_and_reopen_with_the_same_id` | aberta → resolvida → reaberta com o mesmo id |
 | Acesso e API | `test_unit_data_is_internal_and_imports_drop_names` | síndica 403; nada de nome nas respostas |
+
+## Ciclo 3 (D124) — `tests/test_audit_cycle3.py` (16)
+
+| Controle / regra | Positivo | Negativo |
+|---|---|---|
+| CON-01 | nota igual ao contratado → Validado; sem contrato → Não aplicável | nota R$ 100 acima → Divergente e revisão humana; faturamento não apresentado e nota em contrato vencido → ressalva |
+| CON-02 | dentro da alçada; autorização antes da nota + documento + aceite → Validado | sem autorização ou sem aceite → Pendente; autorização depois da nota → ressalva; aceite nunca responde à R12 |
+| CON-03 | parcelas 1/3 e 2/3 → Validado, saldo futuro R$ 1.000 | parcela 2 cobrada duas vezes → Divergente |
+| BAN-08 | fundo com conta de aplicação que cobre o saldo → Validado | sem fundo → Pendente; sem conta indicada → ressalva; lastro R$ 1.000 menor → Divergente |
+| BAN-09 | aplicação com contrapartida, rendimento e IR, saldo fecha → Validado; sem aplicação → Não aplicável | aplicação sem o extrato próprio → Pendente; R$ 500 que saíram e não chegaram → Divergente |
+| GOV-01 | desvios explicados e orçamento com ata → Validado | sem orçamento → Pendente; desvio de 50% sem explicação → ressalva |
+| GOV-02 | seguro vigente com data confirmada → Validado | sem obrigações → Pendente; apólice vencida antes do fim do mês → Pendente |
+| DOC-03 | conselheiro no mandato, depois do mês → Validado | sem aprovação → Pendente; síndico entre os signatários → ressalva; data no futuro recusada |
+| Publicação | envio depois da revisão; o síndico aprova a versão vista; resultados ficam `APPROVED_FOR_PUBLICATION`; revalidação que muda marca "mudou depois" | envio com revisão pendente recusado; quem enviou não aprova; hash diferente recusado; execução nova substitui o envio |
+| Acesso | só o síndico aprova; nenhum papel revisa e aprova; síndico sem `view_audit` | gerente não aprova (403); síndico não envia (403); conselho vê só aprovados e não aprova; outro condomínio → 404 |
+

@@ -23,10 +23,12 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.audit import agents as ag
+from app.audit import publication
 from app.audit.allocate import allocate
 from app.audit.catalog import CONTROLS, CONTROLS_BY_ID
 from app.audit.controls import EVALUATORS, Outcome, not_implemented
 from app.audit.controls2 import EVALUATORS_2  # noqa: F401  (registers the cycle-2 controls)
+from app.audit.controls3 import EVALUATORS_3  # noqa: F401  (registers the cycle-3 controls)
 from app.audit.data import CLASSIFICATION_VERSION, LABELS, AuditData, load
 from app.audit.issues import sync_issues
 from app.core.audit import record_audit
@@ -644,9 +646,15 @@ async def run_audit(
     outcomes: dict[str, Outcome] = {}
     for c in CONTROLS:
         outcomes[c.id] = EVALUATORS[c.id](data) if c.implemented else not_implemented(c.id)
-    for agent_id, prefix in (("A5", "REC"), ("A6", "DES")):
-        w = work(agent_id, 5)
-        mine = {cid: o for cid, o in outcomes.items() if cid.startswith(prefix)}
+    groups = {
+        "A5": ("REC-",),
+        "A6": ("DES-",),
+        "A7": ("CON-", "GOV-02", "DOC-03"),
+        "A8": ("BAN-08", "BAN-09", "GOV-01"),
+    }
+    for agent_id, prefixes in groups.items():
+        w = work(agent_id, 5 if agent_id != "A8" else 6)
+        mine = {cid: o for cid, o in outcomes.items() if cid.startswith(prefixes)}
         w.output = {cid: o.status.value for cid, o in mine.items()}
         w.unresolved = [m for o in mine.values() for m in o.missing][:200]
     await _stage(
@@ -655,11 +663,12 @@ async def run_audit(
         5,
         AuditStageStatus.CONCLUIDA,
         {
-            "regras": "A5 (arrecadação) e A6 (despesas e tributos) por regras determinísticas; A7 (contratos) entra no ciclo 3.",
+            "regras": "A5 (arrecadação), A6 (despesas e tributos) e A7 (contratos, seguros e "
+            "laudos) por regras determinísticas.",
             "controles": {
                 cid: o.status.value
                 for cid, o in outcomes.items()
-                if cid.startswith(("REC", "DES", "CON"))
+                if cid.startswith(("REC", "DES", *groups["A7"]))
             },
         },
     )
@@ -667,8 +676,14 @@ async def run_audit(
         session,
         run,
         6,
-        AuditStageStatus.PULADA,
-        {"motivo": "A8 (fundos e orçamento) entra no ciclo 3."},
+        AuditStageStatus.CONCLUIDA,
+        {
+            "regras": "A8: lastro dos fundos, aplicações e orçado × realizado, por regras "
+            "determinísticas (saldo positivo de fundo não é lastro segregado).",
+            "controles": {
+                cid: o.status.value for cid, o in outcomes.items() if cid.startswith(groups["A8"])
+            },
+        },
     )
 
     a9 = work("A9", 7)
@@ -738,6 +753,8 @@ async def run_audit(
                 changed.append(f"{c.id}: {current.status} → {row.status}")
         created += 1
     issues = await sync_issues(session, condo.id, competence, run.id, outcomes)
+    # A farol sent to the síndico whose content changed is superseded (D124).
+    await publication.supersede_if_changed(session, period)
     counts: dict[str, int] = {}
     for cid in outcomes:
         st = decided[cid][0].value

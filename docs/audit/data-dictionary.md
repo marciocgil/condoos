@@ -31,4 +31,14 @@ Todas as tabelas de condomínio têm `condominium_id`, RLS por condomínio e con
 | `audit_issue_event` | Histórico da pendência (só inclusão) | aberta, reaberta, resolvida; competência; execução | N por pendência |
 | `audit_control_result.calculation` | Memória de cálculo | linhas (rótulo, valor, fórmula) e linhas por item | — |
 
-O que o documento-mestre lista e fica para os ciclos seguintes: fundos, orçamento e plano de contas, obrigações e alocações de pagamento N:N com valor, parcelamentos, tributos agrupados, aprovações formais das contas.
+| `fund` | Fundo (reserva, obras, outro) | nome, tipo, finalidade | 1 por nome |
+| `fund_account` | Conta que guarda o fundo | fundo, conta | N:N |
+| `fund_balance` | Movimento do fundo no mês (demonstrativo) | inicial, entradas, saídas, rendimentos (vazios se não declarados), final, documento | 1 por (fundo, mês) |
+| `bank_account.kind` | Tipo da conta | `corrente`, `aplicacao`, `poupanca` | — |
+| `budget` / `budget_line` | Orçamento aprovado do ano, versionado | ano, versão, aprovado em, documento, hash do arquivo; linhas por categoria e mês | versão nova a cada importação |
+| `budget_note` | Explicação de desvio (só inclusão) | competência, categoria, texto, autor | N por mês |
+| `accounts_approval` | Aprovação das contas (só inclusão) | órgão, período, data, documento, signatários (id do corpo diretivo ou nome e papel na mesa), com ressalvas | N; vale a mais recente que cobre o mês |
+| `approval.kind` | Tipo da aprovação de despesa | `autorizacao` (R12) ou `aceite` (CON-02) | — |
+| `audit_publication` | Farol enviado ao síndico | situação (aguardando, aprovada, devolvida, superada), conteúdo congelado e SHA-256, quem enviou, quem decidiu, motivo | no máximo 1 aguardando por mês |
+
+Fica para o ciclo 4: plano de contas, histórico e tendência do farol, reprocessamento por evento.

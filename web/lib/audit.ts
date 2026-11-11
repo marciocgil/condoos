@@ -32,3 +32,36 @@ export const REVIEW_LABEL: Record<string, string> = {
   REVIEWED: "Revisado",
   APPROVED_FOR_PUBLICATION: "Aprovado para publicação",
 };
+
+/** The month's farol sent to the síndico (D124). */
+export type Publication = {
+  id: string;
+  competencia: string;
+  status: "aguardando_sindico" | "aprovada" | "devolvida" | "superada";
+  sha256: string;
+  submitted_at: string;
+  submitted_by: string | null;
+  decided_at: string | null;
+  decided_by: string | null;
+  reason: string | null;
+  changed_since: boolean | null;
+  snapshot: {
+    competencia: string;
+    contagem: Record<string, number>;
+    controles: {
+      id: string;
+      nome: string;
+      pilar: string;
+      status: string;
+      motivo: string;
+      pendencias: string[];
+    }[];
+  };
+};
+
+export const PUBLICATION_LABEL: Record<Publication["status"], string> = {
+  aguardando_sindico: "Aguardando o síndico",
+  aprovada: "Aprovado pelo síndico",
+  devolvida: "Devolvido pelo síndico",
+  superada: "Substituído (o farol mudou)",
+};

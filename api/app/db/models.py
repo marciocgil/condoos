@@ -37,9 +37,12 @@ from app.core.time import DEFAULT_TIMEZONE
 from app.db.base import Base, IdTimestampMixin
 from app.db.enums import (
     MEMBERSHIP_ROLES,
+    AccountKind,
+    AccountsApprovalBody,
     ActionDecisionKind,
     ActionStatus,
     AdjustmentIndex,
+    ApprovalKind,
     AuditIssueStatus,
     AuditRunStatus,
     AuditStageStatus,
@@ -72,6 +75,7 @@ from app.db.enums import (
     EvidenceSource,
     ExtractionStatus,
     FindingStatus,
+    FundKind,
     InboundMessageStatus,
     JobStatus,
     OpportunityReviewAction,
@@ -81,6 +85,7 @@ from app.db.enums import (
     PlatformRole,
     PolicyDecision,
     PromptStatus,
+    PublicationStatus,
     ReminderStatus,
     ReviewRequirement,
     SavingsStage,
@@ -552,6 +557,7 @@ class Approval(IdTimestampMixin, Base):
     """Recorded approval of an expense (rule R12). Typed by the manager or taken from minutes."""
 
     __tablename__ = "approval"
+    __table_args__ = (_enum_check("kind", ApprovalKind),)
 
     condominium_id: Mapped[uuid.UUID] = _uuid_fk("condominium.id")
     expense_id: Mapped[uuid.UUID] = _uuid_fk("expense.id", ondelete="CASCADE")
@@ -563,6 +569,10 @@ class Approval(IdTimestampMixin, Base):
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     recorded_by_user_id: Mapped[uuid.UUID | None] = _uuid_fk(
         "app_user.id", nullable=True, ondelete="SET NULL"
+    )
+    # D124: "autorizacao" (R12, before the spending) or "aceite" (the service was delivered).
+    kind: Mapped[str] = mapped_column(
+        String(12), default=ApprovalKind.AUTORIZACAO.value, server_default="autorizacao"
     )
 
 
@@ -1366,6 +1376,7 @@ class BankAccount(IdTimestampMixin, Base):
         UniqueConstraint(
             "condominium_id", "bank_code", "branch", "number", name="uq_bank_account_number"
         ),
+        _enum_check("kind", AccountKind),
     )
 
     condominium_id: Mapped[uuid.UUID] = _uuid_fk("condominium.id")
@@ -1373,6 +1384,7 @@ class BankAccount(IdTimestampMixin, Base):
     branch: Mapped[str] = mapped_column(String(20))
     number: Mapped[str] = mapped_column(String(30))
     label: Mapped[str] = mapped_column(String(120))
+    # D124: an investment account has its own statement (BAN-09).
     kind: Mapped[str] = mapped_column(String(15), default="corrente", server_default="corrente")
 
 
@@ -1779,6 +1791,147 @@ class AuditIssueEvent(IdTimestampMixin, Base):
     detail: Mapped[dict[str, Any]] = mapped_column(Json, default=dict)
 
 
+# ----------------------------------------------------------------- CondoOS Audit, cycle 3 (D124)
+
+
+class Fund(IdTimestampMixin, Base):
+    """A fund of the condominium (reserve, works). Its balance must be backed by its own
+    accounts: a positive balance in the consolidated account is not segregated backing."""
+
+    __tablename__ = "fund"
+    __table_args__ = (
+        _enum_check("kind", FundKind),
+        UniqueConstraint("condominium_id", "name", name="uq_fund_name"),
+    )
+
+    condominium_id: Mapped[uuid.UUID] = _uuid_fk("condominium.id")
+    name: Mapped[str] = mapped_column(String(120))
+    kind: Mapped[str] = mapped_column(String(10))
+    purpose: Mapped[str | None] = mapped_column(String(300), nullable=True)
+
+
+class FundAccount(IdTimestampMixin, Base):
+    """A bank account that backs a fund (several funds may share one account)."""
+
+    __tablename__ = "fund_account"
+    __table_args__ = (UniqueConstraint("fund_id", "bank_account_id", name="uq_fund_account"),)
+
+    condominium_id: Mapped[uuid.UUID] = _uuid_fk("condominium.id")
+    fund_id: Mapped[uuid.UUID] = _uuid_fk("fund.id", ondelete="CASCADE")
+    bank_account_id: Mapped[uuid.UUID] = _uuid_fk("bank_account.id", ondelete="CASCADE")
+
+
+class FundBalance(IdTimestampMixin, Base):
+    """A fund's movement in a month as the statement of accounts declares it. A value the
+    statement does not show stays empty (never zero)."""
+
+    __tablename__ = "fund_balance"
+    __table_args__ = (UniqueConstraint("fund_id", "competence", name="uq_fund_balance_month"),)
+
+    condominium_id: Mapped[uuid.UUID] = _uuid_fk("condominium.id")
+    fund_id: Mapped[uuid.UUID] = _uuid_fk("fund.id", ondelete="CASCADE")
+    competence: Mapped[date] = mapped_column(Date)
+    opening: Mapped[Decimal | None] = mapped_column(Money, nullable=True)
+    inflows: Mapped[Decimal | None] = mapped_column(Money, nullable=True)
+    outflows: Mapped[Decimal | None] = mapped_column(Money, nullable=True)
+    yield_amount: Mapped[Decimal | None] = mapped_column(Money, nullable=True)
+    closing: Mapped[Decimal] = mapped_column(Money)
+    source_document_id: Mapped[uuid.UUID | None] = _uuid_fk(
+        "document.id", nullable=True, ondelete="SET NULL"
+    )
+
+
+class Budget(IdTimestampMixin, Base):
+    """The approved budget of a year. A new import is a new version; the latest is used."""
+
+    __tablename__ = "budget"
+    __table_args__ = (
+        UniqueConstraint("condominium_id", "year", "version", name="uq_budget_version"),
+    )
+
+    condominium_id: Mapped[uuid.UUID] = _uuid_fk("condominium.id")
+    year: Mapped[int] = mapped_column(Integer)
+    version: Mapped[int] = mapped_column(Integer)
+    approved_on: Mapped[date | None] = mapped_column(Date, nullable=True)
+    source_document_id: Mapped[uuid.UUID | None] = _uuid_fk(
+        "document.id", nullable=True, ondelete="SET NULL"
+    )
+    file_sha256: Mapped[str] = mapped_column(String(64))
+    created_by: Mapped[uuid.UUID | None] = _uuid_fk(
+        "app_user.id", nullable=True, ondelete="SET NULL"
+    )
+
+
+class BudgetLine(IdTimestampMixin, Base):
+    __tablename__ = "budget_line"
+    __table_args__ = (UniqueConstraint("budget_id", "category", "month", name="uq_budget_line"),)
+
+    condominium_id: Mapped[uuid.UUID] = _uuid_fk("condominium.id")
+    budget_id: Mapped[uuid.UUID] = _uuid_fk("budget.id", ondelete="CASCADE")
+    category: Mapped[str] = mapped_column(String(60))
+    month: Mapped[date] = mapped_column(Date)  # day 1
+    amount: Mapped[Decimal] = mapped_column(Money)
+
+
+class BudgetNote(IdTimestampMixin, Base):
+    """A person's explanation of a budget variance in a month (append only)."""
+
+    __tablename__ = "budget_note"
+
+    condominium_id: Mapped[uuid.UUID] = _uuid_fk("condominium.id")
+    competence: Mapped[date] = mapped_column(Date)
+    category: Mapped[str] = mapped_column(String(60))
+    text: Mapped[str] = mapped_column(Text)
+    user_id: Mapped[uuid.UUID | None] = _uuid_fk("app_user.id", nullable=True, ondelete="SET NULL")
+
+
+class AccountsApproval(IdTimestampMixin, Base):
+    """The formal approval of the accounts of a period (DOC-03), always with its document:
+    who signed (board members, never residents), when, what it covers (append only)."""
+
+    __tablename__ = "accounts_approval"
+    __table_args__ = (
+        _enum_check("body", AccountsApprovalBody),
+        CheckConstraint("period_start <= period_end", name="period_order"),
+    )
+
+    condominium_id: Mapped[uuid.UUID] = _uuid_fk("condominium.id")
+    body: Mapped[str] = mapped_column(String(20))
+    period_start: Mapped[date] = mapped_column(Date)
+    period_end: Mapped[date] = mapped_column(Date)
+    approved_on: Mapped[date] = mapped_column(Date)
+    document_id: Mapped[uuid.UUID] = _uuid_fk("document.id")
+    signatories: Mapped[list[dict[str, Any]]] = mapped_column(Json, default=list)
+    with_reservations: Mapped[bool] = mapped_column(Boolean, default=False)
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    recorded_by: Mapped[uuid.UUID | None] = _uuid_fk(
+        "app_user.id", nullable=True, ondelete="SET NULL"
+    )
+
+
+class AuditPublication(IdTimestampMixin, Base):
+    """The month's farol sent to the síndico (D124). The snapshot is frozen with its hash;
+    the síndico approves the version seen, and a new result after sending supersedes it."""
+
+    __tablename__ = "audit_publication"
+    __table_args__ = (_enum_check("status", PublicationStatus),)
+
+    condominium_id: Mapped[uuid.UUID] = _uuid_fk("condominium.id")
+    period_id: Mapped[uuid.UUID] = _uuid_fk("audit_period.id")
+    status: Mapped[str] = mapped_column(String(20))
+    snapshot: Mapped[dict[str, Any]] = mapped_column(Json, default=dict)
+    snapshot_sha256: Mapped[str] = mapped_column(String(64))
+    submitted_by: Mapped[uuid.UUID | None] = _uuid_fk(
+        "app_user.id", nullable=True, ondelete="SET NULL"
+    )
+    submitted_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    decided_by: Mapped[uuid.UUID | None] = _uuid_fk(
+        "app_user.id", nullable=True, ondelete="SET NULL"
+    )
+    decided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+
 RLS_TABLES: dict[str, str] = {
     "condominium": "id",
     "board_member": "condominium_id",
@@ -1840,6 +1993,14 @@ RLS_TABLES: dict[str, str] = {
     "payment_allocation": "condominium_id",
     "audit_issue": "condominium_id",
     "audit_issue_event": "condominium_id",
+    "fund": "condominium_id",
+    "fund_account": "condominium_id",
+    "fund_balance": "condominium_id",
+    "budget": "condominium_id",
+    "budget_line": "condominium_id",
+    "budget_note": "condominium_id",
+    "accounts_approval": "condominium_id",
+    "audit_publication": "condominium_id",
 }
 
 # Tables the application role may only read and insert into (never update or delete).
@@ -1863,4 +2024,6 @@ APPEND_ONLY_TABLES: tuple[str, ...] = (
     "agent_prompt_event",
     "prompt_test_run",
     "audit_issue_event",
+    "budget_note",
+    "accounts_approval",
 )

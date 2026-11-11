@@ -3,7 +3,7 @@
 An agent is a role, not necessarily a model: A0 and A3 are deterministic code, A1 and A2 call
 the model to classify and read documents, A4 asks it only to suggest how to classify a bank
 line nobody could identify, A9 asks it to question the results (never to change a status).
-A5–A8 are registered and inactive until their cycle.
+A5–A8 run deterministic rules (A5/A6 since cycle 2, A7/A8 since cycle 3).
 
 The runtime prompt has three parts with clear boundaries: the agent's prompt (versioned,
 managed in "Agentes & Prompts"), the application's fixed safety rule (not editable) and the
@@ -191,8 +191,8 @@ AGENTS: dict[str, AgentDef] = {
             "Conformidade contratual e compromissos.",
             'Contrato ausente é "não apresentado", nunca "inexistente".',
             "Equipe CondoOS",
-            False,
-            "inativo",
+            True,
+            "deterministico",
             cycle=3,
         ),
         AgentDef(
@@ -206,8 +206,8 @@ AGENTS: dict[str, AgentDef] = {
             "Fechamento explicado e ressalvas.",
             "Saldo positivo de fundo não é lastro segregado.",
             "Equipe CondoOS",
-            False,
-            "inativo",
+            True,
+            "deterministico",
             cycle=3,
         ),
         AgentDef(

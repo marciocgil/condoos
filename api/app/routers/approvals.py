@@ -17,6 +17,7 @@ from app.auth.deps import require
 from app.auth.rbac import CondoAccess, Permission
 from app.core.audit import record_audit
 from app.core.jobs import enqueue
+from app.db.enums import ApprovalKind
 from app.db.models import Approval, Document, Expense, Supplier
 from app.db.session import DbSession
 
@@ -31,6 +32,8 @@ class ApprovalIn(BaseModel):
     approved_at: date
     notes: str | None = Field(default=None, max_length=2000)
     source_document_id: uuid.UUID | None = None  # the minutes, when uploaded
+    # D124: "autorizacao" (before the spending, R12) or "aceite" (service delivered, CON-02).
+    kind: ApprovalKind = ApprovalKind.AUTORIZACAO
 
     @field_validator("approved_at")
     @classmethod
@@ -49,6 +52,7 @@ class ApprovalOut(BaseModel):
     approved_by: str
     approved_at: date
     notes: str | None
+    kind: str = ApprovalKind.AUTORIZACAO.value
 
 
 @router.get("/approvals")
@@ -72,6 +76,7 @@ async def list_approvals(
             approved_by=a.approved_by,
             approved_at=a.approved_at,
             notes=a.notes,
+            kind=a.kind,
         )
         for a, e, name in rows
     ]
@@ -110,6 +115,7 @@ async def record_approval(
         source_document_id=body.source_document_id,
         notes=(body.notes or "").strip() or None,
         recorded_by_user_id=access.user_id,
+        kind=body.kind.value,
     )
     db.add(approval)
     await record_audit(
@@ -119,7 +125,11 @@ async def record_approval(
         object_id=expense.id,
         actor_user_id=access.user_id,
         condominium_id=access.condominium_id,
-        details={"approval_id": str(approval.id), "approved_at": body.approved_at.isoformat()},
+        details={
+            "approval_id": str(approval.id),
+            "approved_at": body.approved_at.isoformat(),
+            "kind": body.kind.value,
+        },
     )
     await enqueue(
         db,
@@ -139,4 +149,5 @@ async def record_approval(
         approved_by=approval.approved_by,
         approved_at=approval.approved_at,
         notes=approval.notes,
+        kind=approval.kind,
     )

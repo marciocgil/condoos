@@ -1,6 +1,6 @@
 # Catálogo dos 25 controles (CondoOS Audit)
 
-Gerado de `api/app/audit/catalog.py` (fonte única). IDs estáveis em todas as competências. Ciclo atual: 2. Controle sem teste implementado fica **Não avaliado** com o ciclo previsto; nunca vira verde por ausência.
+Gerado de `api/app/audit/catalog.py` (fonte única). IDs estáveis em todas as competências. Ciclo atual: 3 (todos os 25 avaliados). Controle sem teste implementado fica **Não avaliado** com o ciclo previsto; nunca vira verde por ausência.
 
 ## Seis estados
 
@@ -39,11 +39,14 @@ A política da A9 (código) barra "Validado" sem todos os testes passados e sem 
 
 ### DOC-03 — Aprovação formal das contas
 
-- Ciclo: 3 · versão da regra: — · agentes: A7, A9
-- Fontes obrigatórias: termo, ata ou decisão de aprovação
+- Ciclo: 3 · versão da regra: 1.0 · agentes: A7, A9
+- Fontes obrigatórias: termo, ata ou parecer de aprovação das contas que cubra a competência
 - Depende de (grafo de reprocessamento): documentos, aprovacoes
 - Critérios de Validado:
-  - Aprovação com signatários, data, abrangência e poderes.
+  - Aprovação registrada com o documento, cobrindo a competência.
+  - Signatários no mandato (conselho) ou presidente e secretário (assembleia).
+  - O síndico não aprova as próprias contas.
+  - Aprovada depois do fim da competência e sem ressalvas.
 
 ## Bancário
 
@@ -117,19 +120,24 @@ A política da A9 (código) barra "Validado" sem todos os testes passados e sem 
 
 ### BAN-08 — Lastro dos fundos
 
-- Ciclo: 3 · versão da regra: — · agentes: A8
-- Fontes obrigatórias: saldos por fundo e contas de suporte
+- Ciclo: 3 · versão da regra: 1.0 · agentes: A8
+- Fontes obrigatórias: saldos por fundo do demonstrativo; extrato das contas de lastro
 - Depende de (grafo de reprocessamento): fundos, saldos
+- Parâmetros: tolerancia: R$ 0,00
 - Critérios de Validado:
-  - Cada fundo com lastro próprio demonstrado, não pela soma do consolidado.
+  - Cada fundo com saldo do mês e conta que fecha (inicial + entradas − saídas + rendimentos = final), contínua com o mês anterior.
+  - Lastro próprio: saldo das contas do fundo ≥ saldo dos fundos que elas guardam, em conta separada do caixa (saldo positivo do consolidado não é lastro).
 
 ### BAN-09 — Aplicações e rendimentos
 
-- Ciclo: 3 · versão da regra: — · agentes: A4, A8
+- Ciclo: 3 · versão da regra: 1.0 · agentes: A4, A8
 - Fontes obrigatórias: extrato próprio da aplicação
 - Depende de (grafo de reprocessamento): extrato, fundos
+- Parâmetros: janela_dias: 3
 - Critérios de Validado:
-  - Aportes, resgates, IR/IOF, rendimentos e saldos conciliados.
+  - Extrato próprio de cada aplicação, com saldo que fecha ao centavo.
+  - Cada aplicação e resgate da conta corrente com a contrapartida na aplicação.
+  - Rendimentos e IR/IOF identificados.
 
 ## Arrecadação
 
@@ -222,45 +230,58 @@ A política da A9 (código) barra "Validado" sem todos os testes passados e sem 
 
 ### CON-01 — Contrato vigente e preço
 
-- Ciclo: 3 · versão da regra: — · agentes: A7
-- Fontes obrigatórias: contrato aplicável à competência
+- Ciclo: 3 · versão da regra: 1.0 · agentes: A7
+- Fontes obrigatórias: contrato aplicável à competência; notas do mês
 - Depende de (grafo de reprocessamento): contratos, despesas
+- Parâmetros: tolerancia: R$ 0,00
 - Critérios de Validado:
-  - Valor bruto, escopo e reajuste conferidos com a nota.
+  - Nota dentro da vigência do contrato (com aditivos).
+  - Valor bruto igual ao contratado em vigor, com aditivo e reajuste do índice.
+  - Escopo declarado no contrato (a comparação com a nota é a regra R04).
+  - Faturamento esperado do mês apresentado.
 
 ### CON-02 — Serviço extraordinário e aceite
 
-- Ciclo: 3 · versão da regra: — · agentes: A7
+- Ciclo: 3 · versão da regra: 1.0 · agentes: A7
 - Fontes obrigatórias: proposta, autorização, ordem de serviço e aceite
 - Depende de (grafo de reprocessamento): contratos, aprovacoes
 - Critérios de Validado:
-  - Autorização dentro da alçada e serviço fora do escopo recorrente.
+  - Serviço sem contrato e fora das categorias isentas é extraordinário.
+  - Acima da alçada vigente: autorização antes da nota, com documento.
+  - Aceite do serviço registrado.
 
 ### CON-03 — Parcelas contratuais
 
-- Ciclo: 3 · versão da regra: — · agentes: A7
-- Fontes obrigatórias: cronograma e pagamentos
+- Ciclo: 3 · versão da regra: 1.0 · agentes: A7
+- Fontes obrigatórias: cronograma do contrato pontual e notas cobradas
 - Depende de (grafo de reprocessamento): contratos, pagamentos
 - Critérios de Validado:
-  - Sequência, total e saldo futuro coerentes.
+  - Parcelas em sequência, sem repetição.
+  - Total cobrado e número de parcelas dentro do contratado.
+  - Valor de cada parcela pelo cronograma; saldo futuro calculado.
 
 ## Governança
 
 ### GOV-01 — Orçado × realizado e caixa
 
-- Ciclo: 3 · versão da regra: — · agentes: A8
-- Fontes obrigatórias: orçamento aprovado
+- Ciclo: 3 · versão da regra: 1.0 · agentes: A8
+- Fontes obrigatórias: orçamento aprovado do ano
 - Depende de (grafo de reprocessamento): orcamento, despesas
+- Parâmetros: tolerancia_desvio: 10%
 - Critérios de Validado:
-  - Desvios explicados e projeção com premissas declaradas.
+  - Orçamento aprovado com o documento da aprovação.
+  - Desvio por categoria acima da tolerância com explicação registrada.
+  - Projeção do ano com premissas declaradas.
 
 ### GOV-02 — Seguros e obrigações técnicas
 
-- Ciclo: 3 · versão da regra: — · agentes: A7, A8
-- Fontes obrigatórias: apólice, AVCB, laudos
+- Ciclo: 3 · versão da regra: 1.0 · agentes: A7, A8
+- Fontes obrigatórias: apólice, AVCB, laudos (Conformidade)
 - Depende de (grafo de reprocessamento): obrigacoes
 - Critérios de Validado:
-  - Vigência na competência e plano de renovação.
+  - Obrigações validadas por uma pessoa; seguro da edificação cadastrado.
+  - Documento vigente no fim da competência, com data confirmada.
+  - O que vence em breve tem responsável pela renovação.
 
 ## Classificação de lançamentos (classificacao_v1)
 
@@ -280,3 +301,5 @@ Primeira regra que casa vale. Débito ligado a uma despesa (direto ou por aloca�
 | crédito | Empréstimo | `empr[eé]stimo|m[uú]tuo` |
 | crédito | Transferência entre contas | `mesma titularidade|entre contas|transf|ted receb|doc receb` |
 | crédito | Arrecadação (cotas e boletos) | `cobran|liquida[cç][aã]o|boleto|taxas? condom|cotas? condom|arrecada` |
+
+Linhas de conta marcada como aplicação ou poupança (D124) não passam por estas regras: crédito é rendimento (`rendimento|rend.? pago|remuneração|juros cred`) ou aporte; débito é IR/IOF ou saída (resgate). Nunca viram despesa nem receita.

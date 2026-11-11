@@ -12,6 +12,7 @@ export const SINDICO_TABS: Tab[] = [
       { slug: "achados", label: "Achados" },
       { slug: "aprovacoes", label: "Aprovações" },
       { slug: "oportunidades", label: "Oportunidades" },
+      { slug: "auditoria", label: "Auditoria" },
       { slug: "historico", label: "Relatórios" },
     ],
   },

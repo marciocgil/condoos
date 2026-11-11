@@ -20,7 +20,7 @@ from app.condo_settings import settings_at
 from app.core.audit import record_audit
 from app.core.jobs import enqueue
 from app.data_issues import contracts_of, open_issues
-from app.db.enums import FindingStatus
+from app.db.enums import ApprovalKind, FindingStatus
 from app.db.models import (
     Approval,
     BankTransaction,
@@ -129,7 +129,11 @@ async def build_context(
     )
     approvals: dict[uuid.UUID, list[Approval]] = defaultdict(list)
     for a in await session.scalars(
-        select(Approval).where(Approval.condominium_id == condominium_id)
+        select(Approval).where(
+            Approval.condominium_id == condominium_id,
+            # An acceptance (D124) records delivery; only an authorisation answers R12.
+            Approval.kind == ApprovalKind.AUTORIZACAO.value,
+        )
     ):
         approvals[a.expense_id].append(a)
     amendments: dict[uuid.UUID, list[ContractAmendment]] = defaultdict(list)
