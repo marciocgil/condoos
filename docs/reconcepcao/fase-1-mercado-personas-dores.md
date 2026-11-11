@@ -1,6 +1,6 @@
 # Reconcepção do CondoOS — Fase 1: mercado, personas e dores
 
-Data: 11/11/2026 · Origem: "Prompt Mestre — Reconcepção do CondoOS" · Estado: **aguardando validação do Marcio** (as fases 2 a 7 não foram iniciadas).
+Data: 11/11/2026 · Origem: "Prompt Mestre — Reconcepção do CondoOS" · Estado: **respondida pelo Marcio em 11/11/2026 (D88)**; as três decisões da seção 7 foram: sim, sim, e seguir para a Fase 2 validando em paralelo.
 
 Este documento é análise, não decisão. Nada aqui altera `docs/decisions.md`, o roadmap ou o código. Onde a análise contraria uma decisão já tomada, a divergência está registrada na seção 8.
 
