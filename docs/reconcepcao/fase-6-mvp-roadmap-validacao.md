@@ -1,6 +1,6 @@
 # Reconcepção do CondoOS — Fase 6: MVP, roadmap e validação
 
-Data: 11/11/2026 · Estado: **aguardando validação do Marcio** (Fase 7 não iniciada).
+Data: 11/11/2026 · Estado: **aprovada pelo Marcio em 11/11/2026 (D93)**: as três decisões foram aceitas.
 
 Parte das respostas à Fase 5 (D92): mapa de módulos confirmado; próxima capacidade depois da carteira do síndico profissional é a **comparação de propostas**; cláusula de uso anônimo de preços desde os primeiros contratos; e **a dor central é o controle da despesa**, não a coordenação.
 

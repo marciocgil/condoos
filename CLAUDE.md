@@ -22,6 +22,17 @@ Como usar:
 6. **Registrar entre sessões.** Ao fim de cada fatia: `docs/roadmap-status.md` (estado por requisito: `nao_iniciado` … `validado`, só com evidência) e `docs/traceability.md` (FR ↔ código ↔ teste), além de `docs/decisions.md`. O prompt 01 foi rodado em 07/11/2026 (D72): diagnóstico em `docs/01-repo-audit.md`, FR × produto em `docs/02-gap-matrix.md`, propostas e divergências em `docs/03-decisions-register.md`, além de `docs/product-roadmap.md`, `docs/backlog.md` (histórias CB-xxx) e `docs/pilot-protocol.md`. DV-01..DV-05 respondidas pelo Marcio (D73–D77): condomínio é o cliente e a administradora é colaboradora opcional; revisão humana proporcional ao risco (economia sempre revisada); Assunto independente e N:N com achados; Oportunidade e estágios de economia separados de achado; papéis síndico, CondoOS Admin, CondoOS Reviewer e administradora no piloto. Modelo proposto em `docs/data-model.md`, permissões em `docs/authorization-matrix.md`, fluxos em `docs/flows.md`; as migrações 0011–0014 só são escritas depois de aprovadas.
 7. **Limites do produto continuam:** nenhuma ação externa, pagamento, contratação, multa ou envio sem política e aprovação humana; recomendação do Optimize só sai após revisão interna; dados de piloto reais só com autorização.
 
+## Reconcepção do produto (`docs/reconcepcao/`, 11/11/2026, D88–D93)
+
+Análise em sete fases (mercado, posicionamento, marca, experiência, módulos, roadmap, ataque e síntese), com decisões do Marcio em `docs/decisions.md`. O que vale a partir dela:
+
+- **Dor central: controle da despesa** (D92). Operação (M4 Operate, WP-16 a WP-21), cobrança, concierge do condômino, assembleia e atas, manutenção de ativos e marketplace de compras **saíram do caminho**.
+- **Comprador a validar:** síndico profissional em São Paulo capital, com carteira e condomínios acima de R$ 1 milhão de despesa por ano (D88). O condomínio continua sendo o cliente (D73). Posicionamento de entrada: "controladoria independente do condomínio" (D89). Nunca receita de fornecedor ou de administradora.
+- **Funcionalidades congeladas até 11/02/2027** (D93): só entra código que destrave o piloto (carteira do síndico profissional, resumo de entrada, linha "não conferido" no relatório, política de erro, correções exigidas por documentos reais). Sequência vigente: `docs/product-roadmap.md` §7. Antes de propor funcionalidade nova, conferir se ela cabe na etapa atual.
+- **Direções aceitas, ainda não executadas:** navegação do síndico em quatro destinos e WhatsApp só para resumo e captura (D91); tema escuro com acento verde-esmeralda pelas referências de `docs/reconcepcao/referencias/` (D90; os tokens atuais continuam valendo até a troca); comparação de propostas como próxima capacidade (D92). Agente sem nome próprio (D90).
+- **Métrica norte:** retorno confirmado do condomínio, com divergências corrigidas e economia realizada mostradas separadas (D93). Não relaxa a regra de não somar estágios de economia.
+- Nomes em teste nas entrevistas: Confere, Ciente e Lastro contra CondoOS; o nome não mudou.
+
 ## Regras de trabalho
 
 - Trabalhar marco a marco. Ao fim de cada marco: testes passando, `docker compose up` funcionando, commit, resumo e atualização deste arquivo.

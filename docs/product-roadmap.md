@@ -2,7 +2,7 @@
 
 Data: 07/11/2026. Base: Plano Diretor v1.0 §1.2, §4, §9 e o estado real (`docs/01-repo-audit.md`, `docs/02-gap-matrix.md`). Sequência lógica, **não** prazo. Nenhuma data de entrega é prometida.
 
-> **Aviso (11/11/2026, D92):** o Marcio definiu que a dor central é o controle da despesa. Os marcos de operação (M4 e boa parte de M5) deixaram de ser o caminho previsto, e a sequência a partir do ciclo C7 tem uma proposta de substituição em `docs/reconcepcao/fase-6-mvp-roadmap-validacao.md`, ainda não aprovada. Até a aprovação, este arquivo fica como estava.
+> **Aviso (11/11/2026, D92):** o Marcio definiu que a dor central é o controle da despesa. Os marcos de operação (M4 e boa parte de M5) deixaram de ser o caminho previsto, e a sequência a partir do ciclo C7 foi substituída pela seção 7 deste arquivo (D93). As seções 1 a 6 ficam como registro do que foi feito até C6.
 
 "Marco 1–6" são os marcos do MVP auditor (concluídos). Os marcos deste roadmap são **M0–M5**.
 
@@ -71,8 +71,8 @@ WP-12 ──► WP-22 Financeiro ampliado ○     WP-07/10 ──► WP-23 Gover
 | C4 | Proveniência por campo + tela Hoje | WP-05, WP-08 | G2 |
 | C5 | **VS-04** briefing + **VS-05** aprovação (sem envio externo) | WP-09, WP-10 | Briefing sem afirmação inventada; escopo congelado |
 | C6 | **VS-03** Oportunidade, estágios de economia e revisão interna (migração 0014) | WP-11, WP-13, WP-14 | G3 + critérios 0014 |
-| C7 | Piloto Core/Optimize (shadow mode) | WP-15, qualidade | Go/No-go por módulo |
-| C8+ | Operate (OS, fornecedor, notificações), WhatsApp, compras | WP-16..22 | G4 antes de qualquer envio |
+| C7 | ~~Piloto Core/Optimize (shadow mode)~~ substituído pela seção 7 (D93) | — | — |
+| C8+ | ~~Operate, WhatsApp, compras~~ fora do caminho (D92, D93); ver seção 7 | — | — |
 
 C6 pode subir para logo após C2 se o Marcio decidir que o Optimize vem antes do Assunto (decisão de produto, ver `docs/roadmap-status.md`).
 
@@ -87,3 +87,15 @@ C6 pode subir para logo após C2 se o Marcio decidir que o Optimize vem antes do
 | T5 Optimize | Comparação forte; sem oportunidade/revisão | EP-09 e depois VS-03 |
 | T6 Operate/Procurement | Inexistente | Após G4 |
 | T7 Validação | Aceite fictício; sem baseline real | `docs/pilot-protocol.md` |
+
+## 7. Sequência a partir de 11/11/2026 (D92, D93)
+
+Origem: `docs/reconcepcao/fase-6-mvp-roadmap-validacao.md`. A dor central é o controle da despesa; o comprador a validar é o síndico profissional em São Paulo capital (D88). **Funcionalidades congeladas por três meses:** só entra código que destrave o piloto. Sequência lógica, não promessa de data.
+
+| Etapa | Pergunta | Campo | Código permitido | Critério de passagem |
+|---|---|---|---|---|
+| E1 (0–3 meses) | Há o que achar? | 24 entrevistas; 5 pastas reais de 12 meses em modo sombra; pré-condições do G0 | Carteira do síndico profissional; resumo de entrada; linha "não conferido" no relatório; política de erro; correções exigidas por documentos reais | Achados confirmados ≥ 1,5 % da despesa em 3 de 5 pastas; precisão ≥ 70 %; ≥ 60 % dos documentos reais sem revisão; ≥ 3 síndicos pedem para continuar; zero falha de isolamento |
+| E2 (3–6 meses) | Pagam? | 5 a 10 condomínios em conferência mensal; teste de preço; renegociações com comparação de propostas feita à mão | Comparação de propostas (após 5 casos manuais); navegação em quatro destinos, com teste de uso (D91); tokens visuais (D90) | ≥ 5 condomínios pagantes de ≥ 2 síndicos; ≥ 60 % dos itens do briefing viram decisão; revisão ≤ 2 h por condomínio por mês; um caso documentado |
+| E3 (6–12 meses) | Repete? | Até 40 condomínios; revisor em meio período; caso publicado | WhatsApp para resumo e captura, como teste (exige rever D82); referência de preços em três categorias com ≥ 30 condomínios; decisão sobre mão de obra | Margem bruta ≥ 70 %; retorno confirmado mediano ≥ 3×; custo de aquisição pago em ≤ 6 meses |
+
+Fora do caminho: M4 Operate (WP-16 a WP-21), cobrança, concierge do condômino, assembleia e atas, manutenção de ativos, marketplace de compras. Critérios de parada K1 a K9 e métrica norte: Fase 6, seções 4 e 6.

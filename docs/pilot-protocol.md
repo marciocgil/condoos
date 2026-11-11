@@ -13,6 +13,8 @@ Data: 07/11/2026. Base: Especificação §17 e §19; Plano Diretor §10. **Hipó
 
 ## 2. Amostra (hipótese)
 
+> **Atualizado em 11/11/2026 (D88, D93).** A amostra passa a ser de **5 a 10 condomínios de 2 a 4 síndicos profissionais** em São Paulo capital: residenciais, com despesa acima de R$ 1 milhão por ano e administradora que entrega pasta digital; preferência por condomínio assumido nos últimos 6 meses ou com contrato grande a renovar. Oferta: diagnóstico de entrada (12 meses) e três meses de conferência mensal gratuitos, com termo assinado pelo condomínio (itens na Fase 6, seção 5, de `docs/reconcepcao/`), incluindo a cláusula de uso anônimo de preços (D92). O modo sombra (V2) cobre 12 meses. Os critérios de parada K1 a K9 da Fase 6 somam-se ao Go/No-go da seção 6. O texto abaixo fica como registro da hipótese anterior.
+
 Até 3 condomínios individuais: um pequeno (síndico morador), um médio (60–200 unidades, com administradora e zelador), um maior ou condomínio-clube. Não tratar três pilotos como prova estatística. Primeiro piloto sugerido: o médio com documentação minimamente organizada e síndico acessível (Espec. §19.1).
 
 Participantes por condomínio: síndico, um conselheiro, quem processa as despesas hoje (administradora ou o próprio síndico) e, quando houver, o revisor interno CondoOS.
