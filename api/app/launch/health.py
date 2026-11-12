@@ -126,8 +126,13 @@ async def health_job(session: AsyncSession, payload: dict[str, Any]) -> None:
                 # An access that expired since yesterday leaves no approval behind (LB-061).
                 await revalidate_approvals(session, condo_id, user_id=None)
                 await record_capability_changes(session, condo_id, reason=reason)
-                # LF6-b (D110): internal health alerts, reconciled every day.
                 condo = await session.get(Condominium, condo_id)
+                # D129: a later exit of the síndico whose day has passed.
+                if condo is not None:
+                    from app.exit import apply_due_exits
+
+                    await apply_due_exits(session, condo)
+                # LF6-b (D110): internal health alerts, reconciled every day.
                 await run_monitors(
                     session, condo_id, local_today(condo.timezone if condo else None)
                 )

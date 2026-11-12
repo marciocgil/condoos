@@ -5,15 +5,18 @@ import { UploadForm } from "@/components/UploadForm";
 import { Badge } from "@/components/ui/Badge";
 import { apiGet } from "@/lib/api";
 import { type DayToDay, monthTitle, sindicoCondos } from "@/lib/daytoday";
+import type { ExitInfo } from "@/lib/exit";
+import { formatDate } from "@/lib/format";
 import type { Me } from "@/lib/types";
 
 /** Day to day of one condominium (D127): send the month, see what arrived, the farol and the
  * points of attention. Everything else stays one tap away ("Ver tudo deste condomínio"). */
 export default async function DiaADiaPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const [me, day] = await Promise.all([
+  const [me, day, exit] = await Promise.all([
     apiGet<Me>("/me"),
     apiGet<DayToDay>(`/condominiums/${id}/day`),
+    apiGet<ExitInfo>(`/condominiums/${id}/exit`),
   ]);
   const many = sindicoCondos(me).length > 1;
   const f = day.farol;
@@ -30,6 +33,15 @@ export default async function DiaADiaPage({ params }: { params: Promise<{ id: st
           {day.condominium.name} · {day.month_label}
         </h1>
       </div>
+      {exit.pending && (
+        <Link
+          href={`/encerrar/${id}`}
+          className="rounded-[var(--radius-card)] border border-line p-3 text-[13px] text-fg-2"
+          data-testid="day-exit-pending"
+        >
+          Sua saída está marcada para {formatDate(exit.pending.on)}. Ver ou desfazer ›
+        </Link>
+      )}
 
       {day.can_upload && (
         <section aria-labelledby="send" className="grid gap-2" data-testid="day-upload">

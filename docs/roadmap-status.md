@@ -74,6 +74,7 @@ Política mínima e kill switch entregues com a VS-05 (D83); o produto continua 
 
 ## 6. Histórico desta página
 
+- 12/11/2026 — Síndico guiado, fatia 3 (D129, sem migração): o síndico encerra a própria saída de um condomínio (hoje, até 90 dias ou no fim do mandato, com desfazer até a data); acesso termina, aprovações voltam, automações pausam sem síndico ativo, nada é apagado; dossiê do período em PDF. As três fatias do síndico guiado estão entregues.
 - 12/11/2026 — Síndico guiado, fatia 2 (D128, migração 0033): o síndico implanta um condomínio por conversa (CNPJ na Receita, dados, mandato, termo de adesão), acompanha o percentual dos 8 itens até "apto a operar" e resolve mandato, termo e alçada no lugar. Próxima: encerrar (fatia 3).
 - 12/11/2026 — Síndico guiado, fatia 1 (D127, sem migração): entrada "O que vamos fazer hoje?" para quem tem vários condomínios, entrada direta no dia a dia para quem tem um, tela do dia a dia com envio único, o que já chegou, farol e pontos de atenção. Próximas: implantar e continuar (fatia 2, com migração a aprovar) e encerrar (fatia 3).
 - 12/11/2026 — P0 parciais fechados (D126, migração 0032): convite que vence em 14 dias (FR-002), antes/depois, motivo e versão nas mudanças críticas (FR-005), relações de documento, contrato e fornecedor (FR-014), alertas de prazo dentro do app com estado (FR-026) e próxima ação do achado com estado de autorização (FR-033). Todos os 29 P0 cobertos no código. Verificação: 496 testes do backend, lint, e2e (47 passaram; o de correção da fila segue falhando só neste ambiente).

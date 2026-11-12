@@ -42,3 +42,34 @@ test("síndica com condomínio em implantação vê o percentual e o próximo pa
   await page.goto("/implantar");
   await expect(page.getByTestId("implant-conversation")).toContainText("Qual é o CNPJ");
 });
+
+// D129: leaving is a short conversation; a later date shows on the day to day and is undone.
+test("síndica marca a saída para outra data, vê o aviso e desfaz", async ({ page }, info) => {
+  test.skip(info.project.name !== "sindico-mobile", "tela do celular");
+  await loginAs(page, "ana.sindica@acacias.example.com");
+  const id = page.url().split("/")[4];
+  await page.goto("/inicio");
+  await expect(page.getByTestId("choice-encerrar")).toBeVisible();
+  await page.goto(`/encerrar/${id}`);
+  const talk = page.getByTestId("exit-conversation");
+  await expect(talk).toContainText("Por quê?");
+  await page.getByRole("radio", { name: "Fim do mandato" }).click();
+  await page.getByRole("button", { name: "Continuar" }).click();
+  await page.getByRole("radio", { name: "Outra data" }).click();
+  const later = new Date(Date.now() + 20 * 86400000);
+  const iso = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo" }).format(later);
+  await page.getByLabel("Até 90 dias").fill(iso);
+  await expect(talk).toContainText("nada é apagado");
+  await expect(page.getByTestId("exit-dossier")).toBeVisible();
+  await page.getByTestId("exit-confirm").click();
+  await expect(talk).toContainText("Saída marcada para");
+
+  await page.goto(`/dia-a-dia/${id}`);
+  await expect(page.getByTestId("day-exit-pending")).toBeVisible();
+  await page.getByTestId("day-exit-pending").click();
+  await expect(page.getByTestId("exit-pending")).toBeVisible();
+  await page.getByRole("button", { name: "Desfazer a saída" }).click();
+  await expect(page.getByTestId("exit-conversation")).toBeVisible();
+  const scroll = await page.evaluate(() => document.documentElement.scrollWidth);
+  expect(scroll).toBeLessThanOrEqual(390);
+});

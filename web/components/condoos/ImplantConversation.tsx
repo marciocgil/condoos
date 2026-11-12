@@ -20,7 +20,7 @@ type Lookup = {
 const field =
   "h-11 w-full rounded-[var(--radius-control)] border border-control bg-transparent px-3 text-[15px]";
 
-function Bubble({ children, me = false }: { children: React.ReactNode; me?: boolean }) {
+export function Bubble({ children, me = false }: { children: React.ReactNode; me?: boolean }) {
   return (
     <p
       className={
@@ -34,11 +34,19 @@ function Bubble({ children, me = false }: { children: React.ReactNode; me?: bool
   );
 }
 
-function Progress({ step, total }: { step: number; total: number }) {
+export function Progress({
+  step,
+  total,
+  label = "Implantar",
+}: {
+  step: number;
+  total: number;
+  label?: string;
+}) {
   return (
     <div className="grid gap-1.5" aria-label={`Passo ${step} de ${total}`}>
       <span className="text-[12px] text-fg-2">
-        Implantar · passo {step} de {total}
+        {label} · passo {step} de {total}
       </span>
       <span className="h-1.5 overflow-hidden rounded-full bg-elevated">
         <span

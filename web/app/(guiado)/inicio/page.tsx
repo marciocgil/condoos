@@ -1,4 +1,4 @@
-import { Flag, Plus, Sun } from "lucide-react";
+import { DoorOpen, Flag, Plus, Sun } from "lucide-react";
 import { redirect } from "next/navigation";
 
 import { GuidedChoice } from "@/components/condoos/GuidedChoice";
@@ -15,8 +15,8 @@ function greeting(): string {
   return h < 12 ? "Bom dia" : h < 18 ? "Boa tarde" : "Boa noite";
 }
 
-/** The síndico's start (D127, D128): "O que vamos fazer hoje?" with only the paths that
- * apply. Closing a condominium comes in the next slice. */
+/** The síndico's start (D127–D129): "O que vamos fazer hoje?" with only the paths that
+ * apply, at most four. */
 export default async function InicioPage() {
   const me = await apiGet<Me>("/me");
   const condos = sindicoCondos(me);
@@ -70,6 +70,16 @@ export default async function InicioPage() {
           icon={Plus}
           title="Implantar um condomínio"
           detail="Cerca de 10 minutos. Dá para parar e continuar depois."
+        />
+      )}
+      {condos.length > 0 && (
+        <GuidedChoice
+          testId="choice-encerrar"
+          href={condos.length === 1 ? `/encerrar/${condos[0]!.id}` : "/encerrar"}
+          icon={DoorOpen}
+          title="Encerrar um condomínio"
+          detail="Quando você deixa de ser síndico de um prédio"
+          quiet
         />
       )}
     </>

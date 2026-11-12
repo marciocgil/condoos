@@ -348,3 +348,84 @@ def compliance_dossier_pdf(d: dict[str, Any], generated_at: datetime) -> bytes:
     footer = _footer(title, DOSSIER_FOOTER)
     doc.build(story, onFirstPage=footer, onLaterPages=footer)
     return buffer.getvalue()
+
+
+EXIT_FOOTER = "Montado pelo CondoOS só a partir dos registros do condomínio. Nada foi apagado."
+
+
+def exit_dossier_pdf(d: dict[str, Any], generated_at: datetime) -> bytes:
+    """The síndico's period (D129): faróis approved, decisions, documents received and what
+    stays open for the next síndico. Built from records only."""
+    buffer = io.BytesIO()
+    title = f"Dossiê do período — {d['condominium']}"
+    doc = _doc(buffer, title)
+    period = f"{d['start']:%d/%m/%Y} a {d['end']:%d/%m/%Y}"
+    story: list[Any] = [
+        Paragraph(_esc(title), H1),
+        Paragraph(
+            f"Síndico(a): {_esc(d['sindico'])} · período de {period} · "
+            f"gerado em {_local(generated_at)}",
+            SMALL,
+        ),
+        Spacer(1, 8),
+        Paragraph(
+            "Nada é apagado na saída: documentos e histórico ficam guardados pelo prazo de "
+            f"retenção do condomínio ({d['retention_years']} anos), à espera do próximo síndico.",
+            BODY,
+        ),
+        Paragraph("Faróis da auditoria aprovados por você", H2),
+    ]
+    if d["farois"]:
+        rows: list[list[Any]] = [
+            ["Competência", "Aprovado em", "Validados", "Com ressalva", "Pendentes", "Divergentes"]
+        ]
+        for f in d["farois"]:
+            rows.append(
+                [
+                    f["competencia"] or "—",
+                    _local(f["decided_at"]) if f["decided_at"] else "—",
+                    str(f.get("validado", 0)),
+                    str(f.get("com_ressalva", 0)),
+                    str(f.get("pendente", 0)),
+                    str(f.get("divergente", 0)),
+                ]
+            )
+        story.append(_table(rows, [26 * mm, 36 * mm, 26 * mm, 30 * mm, 26 * mm, 30 * mm]))
+    else:
+        story.append(Paragraph("Nenhum farol aprovado por você.", BODY))
+    story.append(Paragraph("Suas decisões nos pontos de atenção", H2))
+    if d["decisions"]:
+        story.append(
+            _table(
+                [["Decisão", "Quantas"], *[[a, n] for a, n in d["decisions"]]], [90 * mm, 30 * mm]
+            )
+        )
+    else:
+        story.append(Paragraph("Nenhuma decisão registrada por você.", BODY))
+    story.append(Paragraph("Documentos recebidos no período", H2))
+    if d["documents"]:
+        story.append(
+            _table(
+                [["Tipo", "Quantos"], *[[t, str(n)] for t, n in d["documents"]]], [90 * mm, 30 * mm]
+            )
+        )
+    else:
+        story.append(Paragraph("Nenhum documento recebido no período.", BODY))
+    story.append(Paragraph("O que fica em aberto para o próximo síndico", H2))
+    pending: list[list[Any]] = [
+        ["Pontos de atenção publicados sem decisão", str(len(d["open_findings"]))],
+        ["Assuntos abertos", str(len(d["open_cases"]))],
+        ["Farol aguardando aprovação do síndico", str(d["waiting_farol"])],
+        ["Ações aguardando aprovação ou na fila", str(d["open_actions"])],
+    ]
+    story.append(_table(pending, [120 * mm, 30 * mm], header=False))
+    for label, items in (("Pontos de atenção", d["open_findings"]), ("Assuntos", d["open_cases"])):
+        if items:
+            story.append(Paragraph(f"<b>{label}:</b>", BODY))
+            for item in items[:15]:
+                story.append(Paragraph(f"• {_esc(item)}", BODY))
+            if len(items) > 15:
+                story.append(Paragraph(f"… e mais {len(items) - 15}.", SMALL))
+    footer = _footer(title, EXIT_FOOTER)
+    doc.build(story, onFirstPage=footer, onLaterPages=footer)
+    return buffer.getvalue()
