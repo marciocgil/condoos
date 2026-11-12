@@ -354,5 +354,10 @@ async def evaluate(
 
 async def evaluate_job(session: AsyncSession, payload: dict[str, Any]) -> None:
     """Job ``rules.evaluate``: {"condominium_id", "competence": "AAAA-MM"}."""
+    from app.audit.events import request_reprocess
+
     competence = date.fromisoformat(payload["competence"] + "-01")
-    await evaluate(session, uuid.UUID(payload["condominium_id"]), competence, date.today())
+    condominium_id = uuid.UUID(payload["condominium_id"])
+    await evaluate(session, condominium_id, competence, date.today())
+    # D125: an audited month follows the same events (document, bank, contract, approval).
+    await request_reprocess(session, condominium_id, competence, "regras")

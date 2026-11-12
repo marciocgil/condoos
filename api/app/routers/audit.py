@@ -14,6 +14,7 @@ from app.audit import agents as ag
 from app.audit.catalog import CONTROLS, CONTROLS_BY_ID, PILLARS
 from app.audit.controls2 import remaining_balance
 from app.audit.data import CLASSIFICATION_VERSION, CREDIT_RULES, DEBIT_RULES, LABELS, load
+from app.audit.events import SLA_LABEL, request_reprocess_audited, sla_level
 from app.audit.imports import (
     PROFILE_FIELDS,
     ImportFileError,
@@ -41,6 +42,7 @@ from app.db.models import (
     AuditPeriod,
     AuditRun,
     AuditStageRun,
+    CaseRecord,
     Condominium,
     Expense,
     ExpenseDocument,
@@ -1085,6 +1087,7 @@ async def import_file(
         result = await importers[kind](db, condo, data, access.user_id)
     except ImportFileError as exc:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, str(exc)) from exc
+    await request_reprocess_audited(db, condo.id, f"importacao {kind}")
     return result.as_dict()
 
 
@@ -1112,6 +1115,7 @@ async def put_profile(
             status.HTTP_422_UNPROCESSABLE_CONTENT, "Escreva o motivo (mínimo de 10 caracteres)."
         )
     condo = await _condo(db, access)
+    await request_reprocess_audited(db, condo.id, "perfil")
     return {
         "profile": await set_profile(db, condo, body.values, access.user_id, body.reason.strip())
     }
@@ -1200,6 +1204,16 @@ async def issues(
         events.setdefault(e.issue_id, []).append(
             {"kind": e.kind, "competencia": e.competence.strftime("%Y-%m"), "at": e.created_at}
         )
+    condo = await _condo(db, access)
+    current = add_months(month_start(local_today(condo.timezone)), -1)
+    cases = {
+        c.id: {"id": str(c.id), "title": c.title, "status": c.status}
+        for c in await db.scalars(
+            select(CaseRecord).where(
+                CaseRecord.id.in_([i.case_id for i in rows if i.case_id] or [uuid.uuid4()])
+            )
+        )
+    }
     return [
         {
             "id": str(i.id),
@@ -1218,6 +1232,10 @@ async def issues(
             - i.first_competence.month
             + 1,
             "events": events.get(i.id, []),
+            # D125: SLA computed on read; the escalation is in the events once recorded.
+            "sla": sla_level(i, current),
+            "sla_label": SLA_LABEL[sla_level(i, current)],
+            "case": cases.get(i.case_id) if i.case_id else None,
         }
         for i in rows
     ]

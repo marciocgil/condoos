@@ -9,6 +9,7 @@ from typing import Any
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.actions import DISPATCH_JOB, dispatch_job
+from app.audit.events import REPROCESS_JOB, SLA_JOB, reprocess_job, sla_job
 from app.chat.search import INDEX_JOB, index_job
 from app.compliance import READ_JOB as COMPLIANCE_READ_JOB
 from app.compliance import read_validity_job
@@ -54,6 +55,8 @@ HANDLERS: dict[str, Handler] = {
     COMPLIANCE_READ_JOB: read_validity_job,
     REMINDER_JOB: reminders_job,
     HEALTH_JOB: health_job,
+    REPROCESS_JOB: reprocess_job,
+    SLA_JOB: sla_job,
 }
 
 
@@ -85,6 +88,8 @@ async def _schedule_daily(maker: Any) -> None:
             {},
             dedupe_key=f"health:{date.today().isoformat()}",
         )
+        # D125: SLA of the audit's pending items and of the farol waiting for the síndico.
+        await enqueue(session, SLA_JOB, {}, dedupe_key=f"{SLA_JOB}:{date.today().isoformat()}")
         # Hourly: the weekly compliance e-mail goes out on Monday from 8h in each
         # condominium's time zone (D113); the handler decides, at most once a week.
         await enqueue(

@@ -46,8 +46,8 @@ Data: 11/11/2026. Base: "CondoOS Audit — Prompt Mestre de Implementação v1.0
 ### Ciclo 2 — arrecadação, despesas e fiscal
 REC-02/03/04 (depende de C2), BAN-06/07, DES-02/03/04; alocação N:N entre lançamentos e obrigações, tributos agrupados, parcelamentos, títulos; pendências persistentes; memória de cálculo por item; A5 e A6 ativos.
 
-### Ciclo 3 — contratos, fundos e governança
+### Ciclo 3 — contratos, fundos e governança (executado, D124)
 Fundos, orçamento e plano de contas; BAN-08/09, CON-01/02/03, GOV-01/02, DOC-03; A7 e A8 ativos; apreciação formal pelo síndico; revalidação histórica.
 
-### Ciclo 4 — operação contínua
+### Ciclo 4 — operação contínua (executado, D125)
 Reprocessamento por evento (upload, extrato, contrato), histórico e tendência do farol, SLA e escalonamento, relatório exportável, integração com Optimize e Operate, testes de custo, desempenho e rollback de prompt em produção.

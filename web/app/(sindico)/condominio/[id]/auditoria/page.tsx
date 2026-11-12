@@ -101,6 +101,12 @@ export default async function AuditoriaPage({ params }: { params: Promise<{ id: 
                 ? " Depois da aprovação, uma revalidação mudou algum resultado deste mês: a equipe CondoOS vai reenviar."
                 : ""}
             </p>
+            <a
+              href={`/api/condominiums/${id}/audit/publications/${p.id}/export.pdf`}
+              className="mt-2 inline-block text-sm text-fg-2 underline-offset-2 hover:underline"
+            >
+              Baixar em PDF
+            </a>
             <Farol p={p} />
           </Card>
         ))

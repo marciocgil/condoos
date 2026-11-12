@@ -36,6 +36,8 @@ PAUSABLE_JOBS: dict[str, str] = {
     "pedido_documento.enviar_email": "Envio por e-mail dos pedidos de documentos",
     # Not a job of one condominium: the weekly sender skips a paused condominium (D113).
     "conformidade.lembrete_email": "Resumo semanal por e-mail dos vencimentos",
+    # D125: no external effect, but the team may want the farol frozen while it reviews.
+    "audit.reprocess": "Reprocessamento automático da auditoria",
 }
 
 

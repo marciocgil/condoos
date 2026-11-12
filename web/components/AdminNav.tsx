@@ -5,6 +5,7 @@ import {
   Bot,
   ClipboardCheck,
   Gauge,
+  History,
   Landmark,
   ListTodo,
   BookOpenCheck,
@@ -120,6 +121,12 @@ const GROUPS: Group[] = [
         href: "/admin/audit/unidades",
         label: "Unidades e receitas",
         icon: Users,
+        show: can("view_audit"),
+      },
+      {
+        href: "/admin/audit/historico",
+        label: "Histórico e operação",
+        icon: History,
         show: can("view_audit"),
       },
       {

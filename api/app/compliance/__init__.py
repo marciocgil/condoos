@@ -233,6 +233,13 @@ async def update_obligation(
         session.add(_event(ob, ComplianceEventKind.ALTERADA, user_id, campos=changed))
 
 
+async def _audit_reprocess(session: AsyncSession, condominium_id: uuid.UUID) -> None:
+    """GOV-02 reads compliance: audited months follow its changes (D125)."""
+    from app.audit.events import request_reprocess_audited
+
+    await request_reprocess_audited(session, condominium_id, "conformidade")
+
+
 async def validate(
     session: AsyncSession,
     ob: ComplianceObligation,
@@ -243,6 +250,7 @@ async def validate(
     periodicity_months: int | None = None,
 ) -> None:
     """A person decides whether the obligation applies and how often it renews."""
+    await _audit_reprocess(session, ob.condominium_id)
     reason = " ".join(reason.split())
     if len(reason) < 3:
         raise ComplianceError("Diga o motivo (por exemplo, quem orientou ou onde consta).")
@@ -280,6 +288,7 @@ async def add_evidence(
 ) -> ComplianceEvidence:
     """Dates typed by a person are confirmed. A document without dates is read by the model
     (``read_validity_job``) and its dates wait for a person to confirm them."""
+    await _audit_reprocess(session, ob.condominium_id)
     if ob.archived_at is not None:
         raise ComplianceError("A obrigação está arquivada.")
     if document_id is None and issued_on is None and valid_until is None:
@@ -327,6 +336,7 @@ async def confirm_evidence(
     valid_until: date | None,
 ) -> ComplianceEvidence:
     """A person confirms (or corrects) the dates read from a document: a new row."""
+    await _audit_reprocess(session, ob.condominium_id)
     base = await session.get(ComplianceEvidence, evidence_id)
     if base is None or base.obligation_id != ob.id:
         raise ComplianceError("Registro não encontrado.")

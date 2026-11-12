@@ -18,6 +18,7 @@ from sqlalchemy.orm import defer
 
 from app.audit import governance as gov
 from app.audit import publication as pubs
+from app.audit.events import request_reprocess, request_reprocess_audited
 from app.audit.imports import ImportFileError
 from app.audit.run import RunError, month_start, run_audit
 from app.auth.deps import require
@@ -299,6 +300,7 @@ async def put_account(
         a = await gov.set_account_kind(db, condo, account_id, body.kind, body.label, access.user_id)
     except LookupError as exc:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Conta não encontrada.") from exc
+    await request_reprocess_audited(db, condo.id, "conta")
     return {"id": str(a.id), "kind": a.kind, "label": a.label}
 
 
@@ -331,6 +333,7 @@ async def create_fund(
         raise _422(str(exc)) from exc
     except LookupError as exc:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Conta não encontrada.") from exc
+    await request_reprocess_audited(db, condo.id, "fundo")
     return {"id": str(fund.id), "name": fund.name, "kind": fund.kind}
 
 
@@ -357,6 +360,7 @@ async def put_fund(
         )
     except LookupError as exc:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Fundo ou conta não encontrado.") from exc
+    await request_reprocess_audited(db, condo.id, "fundo")
     return {"id": str(fund.id), "kind": fund.kind}
 
 
@@ -381,6 +385,7 @@ async def import_funds(
         result = await gov.import_fund_balances(db, condo, await _read(file), access.user_id)
     except (ImportFileError, gov.GovernanceError) as exc:
         raise _422(str(exc)) from exc
+    await request_reprocess_audited(db, condo.id, "saldos dos fundos")
     return result.as_dict()
 
 
@@ -412,6 +417,9 @@ async def import_budget(
         raise _422(str(exc)) from exc
     except LookupError as exc:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Documento não encontrado.") from exc
+    await request_reprocess_audited(
+        db, condo.id, "orcamento", since=date(year, 1, 1), until=date(year, 12, 1)
+    )
     return result.as_dict()
 
 
@@ -433,6 +441,7 @@ async def add_note(
         note = await gov.add_budget_note(db, condo, month, body.category, body.text, access.user_id)
     except gov.GovernanceError as exc:
         raise _422(str(exc)) from exc
+    await request_reprocess(db, condo.id, month, "explicacao do desvio")
     return {"id": str(note.id)}
 
 
@@ -479,6 +488,9 @@ async def add_accounts_approval(
         raise _422(str(exc)) from exc
     except LookupError as exc:
         raise HTTPException(status.HTTP_404_NOT_FOUND, str(exc).capitalize() + ".") from exc
+    await request_reprocess_audited(
+        db, condo.id, "aprovacao das contas", since=row.period_start, until=row.period_end
+    )
     return {"id": str(row.id)}
 
 

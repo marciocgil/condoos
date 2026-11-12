@@ -74,6 +74,7 @@ Política mínima e kill switch entregues com a VS-05 (D83); o produto continua 
 
 ## 6. Histórico desta página
 
+- 12/11/2026 — CondoOS Audit, ciclo 4 (D125, sem migração): reprocessamento por evento só de meses já auditados (pausável), SLA e escalonamento das pendências e do envio ao síndico, histórico e tendência do farol, PDF e planilha (interno e aprovado), ligações com Assuntos e Oportunidades, testes de custo, desempenho e rollback de prompt. Verificação: 490 testes do backend, lint e tipos, tela na stack local. Os quatro ciclos do Prompt Mestre estão concluídos.
 - 11/11/2026 — CondoOS Audit, ciclo 3 (D124, migração 0031): os 25 controles avaliados; contratos (preço com aditivo e reajuste, serviço extraordinário com autorização e aceite, parcelas), fundos e lastro, aplicações, orçado × realizado com projeção, seguros e laudos pela Conformidade, aprovação formal das contas, revalidação histórica e o farol aprovado pelo síndico (aba Auditoria). Verificação: 480 testes do backend, lint e tipos, migração ida e volta. Próximo: ciclo 4 (operação contínua).
 - 11/11/2026 — CondoOS Audit, ciclo 2 (D123, migração 0030): 17 dos 25 controles avaliados; unidades, títulos e leituras sem nomes (só equipe interna), perfil de auditoria, alocação N:N de pagamentos, tributos retidos e periódicos, parcelamento, pendências persistentes e memória de cálculo. Verificação: 464 testes do backend, lint, migração ida e volta, telas na stack local. Próximo: ciclo 3 (contratos, fundos, orçamento, aprovação formal).
 

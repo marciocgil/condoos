@@ -141,3 +141,6 @@ async def match_bank_job(session: AsyncSession, payload: dict[str, Any]) -> None
     linked = await match_bank(session, condominium_id)
     for month in {e.competence for e in linked}:
         await enqueue_rules(session, condominium_id, month)
+    from app.audit.events import reprocess_recent_lines
+
+    await reprocess_recent_lines(session, condominium_id)  # D125: statements of audited months

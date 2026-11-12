@@ -58,3 +58,16 @@ Ainda não automatizados (ciclos seguintes): regressão de quatro meses com acer
 | Publicação | envio depois da revisão; o síndico aprova a versão vista; resultados ficam `APPROVED_FOR_PUBLICATION`; revalidação que muda marca "mudou depois" | envio com revisão pendente recusado; quem enviou não aprova; hash diferente recusado; execução nova substitui o envio |
 | Acesso | só o síndico aprova; nenhum papel revisa e aprova; síndico sem `view_audit` | gerente não aprova (403); síndico não envia (403); conselho vê só aprovados e não aprova; outro condomínio → 404 |
 
+## Ciclo 4 (D125) — `tests/test_audit_cycle4.py` (10)
+
+| Tema | Positivo | Negativo |
+|---|---|---|
+| Reprocessamento | mês auditado entra na fila (e o seguinte); job roda como `evento` e substitui só o que mudou | mês nunca auditado não entra; eventos em 5 min viram um job; pausa segura o job |
+| Regras → auditoria | `rules.evaluate` enfileira o reprocessamento | — |
+| SLA | atenção no 2º mês, escalada do 3º com 30 dias; reabertura escala de novo | escalada gravada uma vez; criada hoje não escala |
+| Envio ao síndico | atrasado depois de 7 dias | em dia antes disso |
+| Custo e desempenho | 1 chamada A4 (≤ 40 linhas) + 1 A9, < 20 s, repetição reaproveita 25 | — |
+| Rollback | execução seguinte usa a versão restaurada | — |
+| Optimize | equipe vê a oportunidade ligada ao contrato apontado | gerente não vê rascunho; contrato sem oportunidade vira só indício |
+| API | histórico, PDF, planilha, ligações, operação, SLA nas pendências | síndico não exporta o farol interno nem vê o histórico (403); mês não auditado → 404; farol não aprovado → 404 |
+

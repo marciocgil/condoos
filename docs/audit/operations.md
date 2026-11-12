@@ -9,7 +9,7 @@
 5. **Audit › Revisão da auditoria**: a equipe CondoOS (ou o gerente, se o condomínio permitir) confirma ou reclassifica com motivo.
 6. Novo documento ou extrato: rodar de novo; só os controles afetados mudam e o histórico fica.
 
-Não há execução automática por evento (ciclo 4).
+Depois que uma pessoa audita um mês, ele é reprocessado sozinho a cada evento (documento, extrato, contrato, aprovação, fundos, orçamento, Conformidade), e o mês seguinte também (D125). Para congelar durante uma revisão, pause "Reprocessamento automático da auditoria" no kill switch do condomínio.
 
 ## Fundos, orçamento e aprovação das contas (ciclo 3, D124)
 
@@ -26,3 +26,10 @@ Em **Audit → Fundos e orçamento**: marque o tipo de cada conta (a de aplicaç
 ## Revalidação histórica
 
 No Farol, **Revalidar os últimos 6 meses** (ou `POST /condominiums/{id}/audit/revalidate` com `months` até 12): roda do mês mais antigo ao mais novo, reaproveita o que não mudou e substitui (sem apagar) o que mudou. Use depois de chegar a ata de aprovação das contas (DOC-03) ou um documento atrasado.
+
+## Histórico, prazos e exportação (ciclo 4, D125)
+
+- **Audit → Histórico e operação:** matriz controle × mês, tendência, execuções por gatilho (pessoa, evento, revalidação), prazos e ligações com Assuntos e Oportunidades; botões "PDF do mês" e "Planilha do mês" (auditados).
+- **Prazos:** pendência em atenção no 2º mês e escalada do 3º em diante (com 30 dias na lista); farol aguardando o síndico há mais de 7 dias fica atrasado. O job diário `audit.sla` grava a escalada no histórico da pendência.
+- **Síndico e conselho:** "Baixar em PDF" do farol aprovado na aba Auditoria.
+

@@ -17,6 +17,9 @@ type Issue = {
   first_competence: string;
   last_competence: string;
   months_open: number;
+  sla: "em_dia" | "atencao" | "escalada" | "resolvida";
+  sla_label: string;
+  case: { id: string; title: string; status: string } | null;
   events: { kind: string; competencia: string; at: string }[];
 };
 
@@ -90,7 +93,17 @@ export default async function AuditIssuesPage({
                 <Badge tone={i.status === "aberta" ? "warning" : "success"}>
                   {i.status === "aberta" ? "Aberta" : "Resolvida"}
                 </Badge>
-                {i.months_open > 1 && <Badge tone="danger">{i.months_open} meses</Badge>}
+                {i.sla !== "resolvida" && (
+                  <Badge
+                    tone={
+                      i.sla === "escalada" ? "danger" : i.sla === "atencao" ? "warning" : "neutral"
+                    }
+                  >
+                    SLA: {i.sla_label}
+                  </Badge>
+                )}
+                {i.months_open > 1 && <Badge tone="neutral">{i.months_open} meses</Badge>}
+                {i.case && <Badge tone="info">Assunto: {i.case.status}</Badge>}
               </div>
               <p className="mt-1 text-sm">{i.title}</p>
               <p className="mt-1 text-xs text-fg-2">
