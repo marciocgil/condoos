@@ -3,7 +3,11 @@ import { expect, test } from "@playwright/test";
 import { loginAs } from "./auth";
 
 function inDays(n: number): string {
-  return new Date(Date.now() + n * 86_400_000).toISOString().slice(0, 10);
+  // The day in Brasília (the condominium's time zone), not in UTC: after 21h the UTC date is
+  // already tomorrow and "vence em N dias" would be off by one.
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo" }).format(
+    new Date(Date.now() + n * 86_400_000),
+  );
 }
 
 test("síndica cadastra uma obrigação, confirma que se aplica e registra a validade", async ({
@@ -56,7 +60,8 @@ test("gerente vê a conformidade de um condomínio no desktop", async ({ page })
     .getByRole("link", { name: /Acácias/ })
     .click();
   await page.getByRole("link", { name: /Seguro obrigatório da edificação/ }).click();
-  await expect(page.getByText(/Vence em \d+ dias/)).toBeVisible();
+  // Other tests may have added obligations to the same condominium: any one is enough.
+  await expect(page.getByText(/Vence em \d+ dias/).first()).toBeVisible();
   await expect(page.getByText(/Decidido por Ana/)).toBeVisible();
   await expect(page.getByRole("button", { name: "Registrar decisão" })).toBeVisible();
   // D113: the dossier of the obligation, as a PDF.

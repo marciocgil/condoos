@@ -1,12 +1,38 @@
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import path from "node:path";
+
 import { expect, type Cookie, type Page } from "@playwright/test";
 
 import { existingMessageIds, latestMagicLink } from "./mailpit";
 
 const BASE = process.env.E2E_BASE_URL ?? "http://localhost:3000";
 
-// Each e-mail may ask for 5 access links per hour (a security limit). Tests run serially in
-// one worker, so a session opened by the magic link is reused for the same user.
-const sessions = new Map<string, Cookie[]>();
+// Each e-mail may ask for 5 access links per hour (a security limit). Tests run serially, so a
+// session opened by the magic link is reused for the same user. The sessions are also kept in
+// a file of this run (test-results is emptied at the start of each run): after a failed test
+// Playwright starts a new worker, and without the file every user would ask a new link and the
+// limit would fail the tests that come after.
+const SESSIONS_FILE = path.join(process.cwd(), "test-results", ".e2e-sessions.json");
+
+function loadSessions(): Map<string, Cookie[]> {
+  try {
+    if (existsSync(SESSIONS_FILE)) {
+      return new Map(
+        Object.entries(JSON.parse(readFileSync(SESSIONS_FILE, "utf8")) as Record<string, Cookie[]>),
+      );
+    }
+  } catch {
+    // A broken file only means new links.
+  }
+  return new Map();
+}
+
+function saveSessions(): void {
+  mkdirSync(path.dirname(SESSIONS_FILE), { recursive: true });
+  writeFileSync(SESSIONS_FILE, JSON.stringify(Object.fromEntries(sessions)));
+}
+
+const sessions = loadSessions();
 
 async function landed(page: Page): Promise<boolean> {
   await page.goto("/");
@@ -21,6 +47,7 @@ export async function loginAs(page: Page, email: string): Promise<void> {
     await page.context().addCookies(cached);
     if (await landed(page)) return;
     sessions.delete(email); // expired or revoked: ask a new link
+    saveSessions();
   }
   const startedAt = new Date(Date.now() - 1000);
   const seen = await existingMessageIds(email);
@@ -34,4 +61,5 @@ export async function loginAs(page: Page, email: string): Promise<void> {
   // The verify page consumes the token with a POST and then redirects; wait for it.
   await page.waitForURL(/\/(resumo|carteira)$/);
   sessions.set(email, await page.context().cookies());
+  saveSessions();
 }

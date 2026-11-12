@@ -45,7 +45,7 @@ test("revisora aprova a oportunidade do reajuste e a síndica decide", async ({ 
 
   await page.getByRole("button", { name: "Aprovar para o condomínio" }).click();
   await expect(page.getByText("Apresentada ao condomínio", { exact: true })).toBeVisible();
-  await expect(page.getByText("Economia estimada validada")).toBeVisible();
+  await expect(page.getByText("Economia estimada validada").first()).toBeVisible();
   expect(page.url()).toBe(url);
 
   // The síndica finds it on the summary, sees the validated estimate only, and decides.
@@ -55,7 +55,7 @@ test("revisora aprova a oportunidade do reajuste e a síndica decide", async ({ 
     .getByRole("link", { name: /Reajuste acima do índice/ })
     .first()
     .click();
-  await expect(sindica.getByText("Economia estimada validada")).toBeVisible();
+  await expect(sindica.getByText("Economia estimada validada").first()).toBeVisible();
   await expect(sindica.getByText("Economia potencial identificada")).toHaveCount(0);
   await sindica.getByRole("button", { name: "Aprovar e seguir" }).click();
   await expect(sindica.getByText("Aprovada pelo condomínio", { exact: true })).toBeVisible();

@@ -11,7 +11,8 @@ test.describe("gerente — pendências", () => {
 
   test("vê o faturamento dos contratos e vincula aprovação a um avulso", async ({ page }) => {
     await loginAs(page, GERENTE);
-    await page.getByRole("link", { name: "Pendências" }).click();
+    // "Pendências da auditoria" (D123) is another menu item: the exact name picks this one.
+    await page.getByRole("link", { name: "Pendências", exact: true }).click();
     await expect(page.getByRole("heading", { name: "Pendências", level: 1 })).toBeVisible();
     await expect(
       page.getByRole("heading", { name: "Faturamento dos contratos" }).first(),

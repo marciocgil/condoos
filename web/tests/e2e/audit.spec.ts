@@ -16,6 +16,9 @@ test("gerente roda a auditoria do mês e vê como um controle foi produzido", as
     .getByRole("link", { name: /Jardim das Acácias/ })
     .first()
     .click();
+  // Wait for the Acácias farol: clicking "Rodar" during the navigation would run the
+  // condominium still on screen.
+  await page.waitForURL(/condominio=/);
   await page.getByRole("button", { name: "Rodar auditoria do mês" }).click();
   await expect(page.getByRole("status")).toContainText("Execução");
   await expect(page.getByTestId("farol-counts")).toBeVisible();
@@ -39,4 +42,17 @@ test("equipe CondoOS lê o prompt integral de A4 e a versão em vigor", async ({
   await expect(page.getByTestId("active-prompt")).toContainText("SHA-256");
   await page.getByRole("link", { name: "Regras, não prompts" }).click();
   await expect(page.getByTestId("rule-BAN-01")).toContainText("ao centavo");
+});
+
+test("gerente vê o histórico do farol, os prazos e os fundos (D124, D125)", async ({ page }) => {
+  await loginAs(page, "diego.gerente@atlantida.example.com");
+  await page.getByRole("link", { name: "Histórico e operação" }).click();
+  await expect(page.getByRole("heading", { name: "Histórico e operação" })).toBeVisible();
+  await expect(page.getByTestId("history-matrix")).toBeVisible();
+  await expect(page.getByRole("link", { name: /PDF do mês/ })).toBeVisible();
+  await page.getByRole("link", { name: "Fundos e orçamento" }).click();
+  await expect(
+    page.getByRole("heading", { name: "Fundos, orçamento e aprovação das contas" }),
+  ).toBeVisible();
+  await expect(page.getByText("Aprovação das contas (DOC-03)")).toBeVisible();
 });
