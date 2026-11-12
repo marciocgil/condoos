@@ -36,8 +36,21 @@ const sessions = loadSessions();
 
 async function landed(page: Page): Promise<boolean> {
   await page.goto("/");
-  await page.waitForURL(/\/(resumo|carteira|login)/);
-  return !page.url().includes("/login");
+  await page.waitForURL(/\/(resumo|carteira|login|inicio|dia-a-dia)/);
+  if (page.url().includes("/login")) return false;
+  await toTabs(page);
+  return true;
+}
+
+/** The síndico now starts guided (D127): "/inicio" or the day to day. Most tests work on the
+ * tabs of one condominium ("Hoje"), so they start there; tests of the guided screens go to
+ * them on purpose. */
+async function toTabs(page: Page): Promise<void> {
+  const day = page.url().match(/\/dia-a-dia\/([^/?#]+)/);
+  if (day) {
+    await page.goto(`/condominio/${day[1]}/resumo`);
+    await page.waitForURL(/\/resumo$/);
+  }
 }
 
 export async function loginAs(page: Page, email: string): Promise<void> {
@@ -59,7 +72,8 @@ export async function loginAs(page: Page, email: string): Promise<void> {
   // The link points to WEB_BASE_URL; keep the path so the test works on any host.
   await page.goto(new URL(link.pathname + link.search, BASE).toString());
   // The verify page consumes the token with a POST and then redirects; wait for it.
-  await page.waitForURL(/\/(resumo|carteira)$/);
+  await page.waitForURL(/\/(resumo|carteira|inicio|dia-a-dia\/[^/]+)$/);
+  await toTabs(page);
   sessions.set(email, await page.context().cookies());
   saveSessions();
 }

@@ -27,7 +27,10 @@ export default async function SindicoLayout({
   return (
     <div className="mx-auto min-h-dvh max-w-md pb-36">
       <header className="flex items-center justify-between px-4 pt-5 pb-2" data-condo={condo.slug}>
-        <Logo />
+        {/* The logo goes back to the guided start (D127). */}
+        <Link href="/" aria-label="Início">
+          <Logo />
+        </Link>
         <span className="flex items-center gap-4">
           <Link
             href={`/condominio/${id}/ajustes`}
