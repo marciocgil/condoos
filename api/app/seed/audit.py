@@ -232,3 +232,48 @@ async def seed_governance(session: AsyncSession) -> None:
                     )
                 )
     await session.flush()
+
+
+async def seed_adhesion(session: AsyncSession) -> None:
+    """D128: Jardim das Acácias has its (fictitious) adhesion term registered, so it is "apto a
+    operar"; Mirante do Vale stays in implantation (no term, no bank statement) as the
+    example of "Continuar uma implantação"."""
+    from datetime import UTC, datetime
+
+    from app.db.models import AdhesionTerm, Document
+    from app.implantation import TERM_VERSION
+
+    condo = await session.scalar(
+        select(Condominium).where(Condominium.slug == "jardim-das-acacias")
+    )
+    if condo is None:
+        return
+    if await session.scalar(select(AdhesionTerm.id).where(AdhesionTerm.condominium_id == condo.id)):
+        return
+    doc = Document(
+        id=uuid.uuid4(),
+        condominium_id=condo.id,
+        doc_type="outro",
+        storage_key=f"cond/{condo.id}/seed/termo-de-adesao-ficticio.pdf",
+        sha256=hashlib.sha256(b"termo-de-adesao-ficticio").hexdigest(),
+        original_filename="termo-de-adesao-ficticio.pdf",
+        mime_type="application/pdf",
+        origin="upload",
+        extraction_status="done",
+        extracted={},
+        field_confidence={},
+        needs_review=False,
+        review_reasons=[],
+    )
+    session.add(doc)
+    await session.flush()
+    session.add(
+        AdhesionTerm(
+            id=uuid.uuid4(),
+            condominium_id=condo.id,
+            version=TERM_VERSION,
+            document_id=doc.id,
+            accepted_at=datetime(2026, 1, 5, 12, 0, tzinfo=UTC),
+        )
+    )
+    await session.flush()

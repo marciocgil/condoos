@@ -6,6 +6,7 @@ export type DayToDay = {
   month: string;
   month_label: string;
   implemented: boolean;
+  implantation: { done: number; total: number; percent: number };
   can_upload: boolean;
   checklist: { key: string; title: string; status: "ok" | "falta"; detail: string }[];
   farol: {

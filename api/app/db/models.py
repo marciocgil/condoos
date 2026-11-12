@@ -1964,6 +1964,21 @@ class DeadlineAlert(IdTimestampMixin, Base):
     resolution: Mapped[str | None] = mapped_column(String(200), nullable=True)
 
 
+class AdhesionTerm(IdTimestampMixin, Base):
+    """The condominium's adhesion term (D128): the signed document that authorises the use of
+    its data, with who registered it and which version (append only)."""
+
+    __tablename__ = "adhesion_term"
+
+    condominium_id: Mapped[uuid.UUID] = _uuid_fk("condominium.id")
+    version: Mapped[str] = mapped_column(String(30))
+    document_id: Mapped[uuid.UUID] = _uuid_fk("document.id")
+    accepted_by: Mapped[uuid.UUID | None] = _uuid_fk(
+        "app_user.id", nullable=True, ondelete="SET NULL"
+    )
+    accepted_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
 RLS_TABLES: dict[str, str] = {
     "condominium": "id",
     "board_member": "condominium_id",
@@ -2034,6 +2049,7 @@ RLS_TABLES: dict[str, str] = {
     "accounts_approval": "condominium_id",
     "audit_publication": "condominium_id",
     "deadline_alert": "condominium_id",
+    "adhesion_term": "condominium_id",
 }
 
 # Tables the application role may only read and insert into (never update or delete).
@@ -2059,4 +2075,5 @@ APPEND_ONLY_TABLES: tuple[str, ...] = (
     "audit_issue_event",
     "budget_note",
     "accounts_approval",
+    "adhesion_term",
 )

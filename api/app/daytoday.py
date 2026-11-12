@@ -26,7 +26,6 @@ from app.db.models import (
     ExpenseDocument,
     Finding,
 )
-from app.launch.journey import milestones
 
 MONTHS = [
     "janeiro",
@@ -218,14 +217,16 @@ async def day_to_day(
 ) -> dict[str, Any]:
     """The month to send is the previous one: bills of a month arrive in the next."""
     month = month or add_months(today.replace(day=1), -1)
-    ms = await milestones(session, condo.id)
-    lm3 = next((m for m in ms if m.key == "LM3"), None)
+    from app.implantation import essentials
+
+    ess = await essentials(session, condo, today)
     return {
         "condominium": {"id": str(condo.id), "name": condo.name},
         "month": f"{month:%Y-%m}",
         "month_label": month_label(month),
-        # Before LM3 the condominium is still being implemented: the guide comes first (D108).
-        "implemented": bool(lm3 and lm3.done),
+        # "Apto a operar" = the eight implantation items done (D127, D128).
+        "implemented": ess["complete"],
+        "implantation": {"done": ess["done"], "total": ess["total"], "percent": ess["percent"]},
         "checklist": await _checklist(session, condo.id, month, today),
         "farol": await _farol(session, condo.id, month),
         "attention": await _attention(session, condo.id),

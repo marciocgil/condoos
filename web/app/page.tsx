@@ -12,12 +12,12 @@ export default async function Home() {
     redirect("/admin/carteira");
   }
   // The síndico starts guided (D127): several condominiums → "O que vamos fazer hoje?"; one
-  // already implemented → its day to day; one still being implemented → the guide on Hoje.
+  // "apto a operar" → its day to day; one still being implemented → its implantation (D128).
   const mine = sindicoCondos(me);
   if (mine.length > 1) redirect("/inicio");
   if (mine.length === 1) {
     const day = await apiGet<DayToDay>(`/condominiums/${mine[0]!.id}/day`);
-    redirect(day.implemented ? `/dia-a-dia/${mine[0]!.id}` : `/condominio/${mine[0]!.id}/resumo`);
+    redirect(day.implemented ? `/dia-a-dia/${mine[0]!.id}` : `/implantacao/${mine[0]!.id}`);
   }
   const first = me.condominiums[0];
   if (first) redirect(`/condominio/${first.id}/resumo`);
