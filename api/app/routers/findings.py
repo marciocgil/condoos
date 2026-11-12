@@ -23,6 +23,7 @@ from app.db.models import (
     Approval,
     AppUser,
     Competence,
+    Condominium,
     Decision,
     Document,
     Expense,
@@ -33,6 +34,7 @@ from app.db.models import (
 )
 from app.db.session import DbSession
 from app.findings.decisions import DecisionError, allowed_actions, decide
+from app.findings.next_action import next_action
 from app.matching.categories import category_label
 from app.storage.base import get_storage
 
@@ -103,6 +105,8 @@ class FindingDetailOut(FindingOut):
     approval_expense_id: uuid.UUID | None = None
     approvals: list[dict[str, Any]] = []
     can_record_approval: bool = False
+    # FR-033 (D126): the next step, its reason, evidence and authorisation state.
+    next_action: dict[str, Any] | None = None
 
 
 class MonthWaitingOut(BaseModel):
@@ -343,6 +347,7 @@ async def _finding(db: DbSession, access: CondoAccess, finding_id: uuid.UUID) ->
 
 async def _detail(db: DbSession, access: CondoAccess, f: Finding) -> FindingDetailOut:
     [base] = await _to_out(db, [f])
+    condo = await db.get(Condominium, f.condominium_id)
     supplier = await db.get(Supplier, f.supplier_id) if f.supplier_id else None
     doc_ids = [uuid.UUID(e["id"]) for e in f.evidence if e.get("kind") == "document"]
     docs = (
@@ -430,6 +435,7 @@ async def _detail(db: DbSession, access: CondoAccess, f: Finding) -> FindingDeta
         validated_by_condoos=bool(validators & staff),
         allowed_actions=[a.value for a in allowed_actions(access, f)],
         can_comment=access.can(Permission.COMMENT_FINDING),
+        next_action=await next_action(db, condo, f) if condo is not None else None,
         **await _approval_info(db, access, f),
     )
 

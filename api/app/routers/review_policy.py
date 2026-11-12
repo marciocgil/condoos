@@ -7,11 +7,11 @@ import uuid
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from app.auth.deps import require
 from app.auth.rbac import CondoAccess, Permission
-from app.core.audit import record_audit
+from app.core.changes import record_change
 from app.db.models import Condominium
 from app.db.session import DbSession
 from app.review import current_policy
@@ -32,6 +32,7 @@ class ReviewPolicyOut(BaseModel):
 
 class ReviewPolicyIn(BaseModel):
     management_company_reviews: bool
+    reason: str | None = Field(default=None, max_length=500)  # FR-005: why it changed
 
 
 async def _out(db: DbSession, access: CondoAccess, condo: Condominium) -> ReviewPolicyOut:
@@ -67,15 +68,19 @@ async def update_review_policy(
             "Este condomínio não tem administradora cadastrada.",
         )
     if condo.management_company_reviews != body.management_company_reviews:
+        before = condo.management_company_reviews
         condo.management_company_reviews = body.management_company_reviews
-        await record_audit(
+        await record_change(
             db,
             action="review_policy.management_company_reviews",
             object_type="condominium",
             object_id=condo.id,
             actor_user_id=access.user_id,
             condominium_id=condo.id,
-            details={"value": body.management_company_reviews},
+            before={"management_company_reviews": before},
+            after={"management_company_reviews": body.management_company_reviews},
+            reason=body.reason,
+            extra={"value": body.management_company_reviews},
         )
     # The caller may have just removed its own review permission: recompute.
     access = CondoAccess(

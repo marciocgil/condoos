@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { ContractClauses } from "@/components/condoos/ContractClauses";
 import { ContractForm } from "@/components/condoos/ContractForm";
 import { DocumentNewVersion } from "@/components/condoos/DocumentNewVersion";
+import { RelationsList, type Relations } from "@/components/condoos/RelationsList";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { apiGet } from "@/lib/api";
 import { contractValue, formatBRL } from "@/lib/format";
@@ -17,6 +18,9 @@ export default async function EditarContratoPage({
   const contracts = await apiGet<Contract[]>(`/condominiums/${condoId}/contracts`);
   const c = contracts.find((x) => x.id === contractId);
   if (!c) notFound();
+  const relations = await apiGet<Relations>(
+    `/condominiums/${condoId}/relations/contract/${contractId}`,
+  );
   return (
     <>
       <PageHeader
@@ -54,6 +58,7 @@ export default async function EditarContratoPage({
         {c.source_document_id && (
           <DocumentNewVersion condominiumId={condoId} documentId={c.source_document_id} />
         )}
+        <RelationsList data={relations} title="Relações do contrato" />
       </div>
     </>
   );

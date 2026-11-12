@@ -10,12 +10,12 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 from sqlalchemy import or_, select
 
-from app.auth.deps import active_membership, require
+from app.auth.deps import active_membership, invite_cutoff, require
 from app.auth.rbac import CondoAccess, Permission
 from app.cases import user_names
 from app.condo_settings import ensure_baseline, history, record_version
-from app.core.audit import record_audit
 from app.core.br import format_cnpj
+from app.core.changes import record_change
 from app.core.time import utcnow
 from app.db.models import AppUser, BoardMember, CondoAssignment, Condominium, Membership
 from app.db.session import DbSession
@@ -38,7 +38,9 @@ class MemberOut(BaseModel):
     email: str
     role: str
     scope: str  # condominio | administradora | condoos
-    status: str = "ativo"  # convidado | ativo (expired and revoked accesses are not listed)
+    # convidado | convite_vencido (FR-002, D126) | ativo; expired and revoked accesses are not
+    # listed.
+    status: str = "ativo"
     expires_at: datetime | None = None
 
 
@@ -103,6 +105,7 @@ def _money(value: Any, label: str) -> str:
 
 
 async def _out(db: DbSession, condo: Condominium) -> SettingsOut:
+    cutoff = invite_cutoff()
     members = (
         await db.execute(
             select(
@@ -121,7 +124,8 @@ async def _out(db: DbSession, condo: Condominium) -> SettingsOut:
                     Membership.condominium_id == condo.id,
                     Membership.management_company_id == condo.management_company_id,
                 ),
-                *active_membership(),
+                # Expired invitations stay listed (as "convite vencido") so they can be resent.
+                *active_membership()[:2],
             )
             .order_by(AppUser.name)
         )
@@ -187,7 +191,11 @@ async def _out(db: DbSession, condo: Condominium) -> SettingsOut:
                 email=e,
                 role=r,
                 scope="condominio" if cid else "administradora",
-                status="convidado" if invited and accepted is None else "ativo",
+                status=(
+                    "ativo"
+                    if accepted is not None or invited is None
+                    else "convite_vencido" if invited <= cutoff else "convidado"
+                ),
                 expires_at=expires,
             )
             for n, e, r, cid, mid, accepted, invited, expires in members
@@ -224,6 +232,7 @@ async def update_settings(
     assert condo is not None
     changed: list[str] = []
     before = (dict(condo.approval_limits or {}), dict(condo.rule_params or {}))
+    categories_before = list(condo.expense_categories or [])
     await ensure_baseline(db, condo)
     if body.approval_limits is not None:
         limits: dict[str, Any] = {}
@@ -285,17 +294,32 @@ async def update_settings(
             )
         condo.expense_categories = cats
         changed.append("expense_categories")
+    version = None
     if (dict(condo.approval_limits or {}), dict(condo.rule_params or {})) != before:
-        await record_version(db, condo, actor_user_id=access.user_id, reason=body.reason)
+        version = (
+            await record_version(db, condo, actor_user_id=access.user_id, reason=body.reason)
+        ).version
     if changed:
-        await record_audit(
+        await record_change(
             db,
             action="settings.updated",
             object_type="condominium",
             object_id=condo.id,
             actor_user_id=access.user_id,
             condominium_id=condo.id,
-            details={"fields": changed},
+            before={
+                "approval_limits": before[0],
+                "rule_params": before[1],
+                "expense_categories": categories_before,
+            },
+            after={
+                "approval_limits": dict(condo.approval_limits or {}),
+                "rule_params": dict(condo.rule_params or {}),
+                "expense_categories": list(condo.expense_categories or []),
+            },
+            reason=body.reason,
+            setting_version=version,
+            extra={"fields": changed},
         )
     await db.flush()
     return await _out(db, condo)

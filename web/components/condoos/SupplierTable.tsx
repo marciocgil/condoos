@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+
 import { Store } from "lucide-react";
 import { useState } from "react";
 
@@ -18,7 +20,14 @@ function StatusBadge({ status }: { status: string | null }) {
 }
 
 /** Consolidated suppliers; a row opens the side panel without leaving the list (DS §5.7). */
-export function SupplierTable({ rows }: { rows: SupplierRow[] }) {
+export function SupplierTable({
+  rows,
+  condominiumId = null,
+}: {
+  rows: SupplierRow[];
+  // With one condominium chosen, each supplier links to its relations there (FR-014).
+  condominiumId?: string | null;
+}) {
   const [selected, setSelected] = useState<SupplierRow | null>(null);
   return (
     <>
@@ -56,6 +65,14 @@ export function SupplierTable({ rows }: { rows: SupplierRow[] }) {
                     {r.name}
                   </button>
                   <p className="tabular text-xs text-muted">{r.cnpj}</p>
+                  {condominiumId && (
+                    <Link
+                      href={`/admin/relacoes/${condominiumId}/supplier/${r.id}`}
+                      className="text-xs text-fg-2 underline-offset-2 hover:underline"
+                    >
+                      Relações neste condomínio
+                    </Link>
+                  )}
                 </td>
                 <td className="px-4 py-3">
                   <StatusBadge status={r.registration_status} />

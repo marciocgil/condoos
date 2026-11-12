@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { RelationsList, type Relations } from "@/components/condoos/RelationsList";
 import { ReviewForm } from "@/components/ReviewForm";
 import { apiGet } from "@/lib/api";
 import type { Review } from "@/lib/types";
@@ -10,7 +11,10 @@ export default async function ReviewPage({
   params: Promise<{ condoId: string; docId: string }>;
 }) {
   const { condoId, docId } = await params;
-  const review = await apiGet<Review>(`/condominiums/${condoId}/documents/${docId}/review`);
+  const [review, relations] = await Promise.all([
+    apiGet<Review>(`/condominiums/${condoId}/documents/${docId}/review`),
+    apiGet<Relations>(`/condominiums/${condoId}/relations/document/${docId}`),
+  ]);
   const isPdf = review.mime_type === "application/pdf";
   const isImage = review.mime_type.startsWith("image/");
 
@@ -56,6 +60,9 @@ export default async function ReviewPage({
         <section aria-label="Campos extraídos" className="h-[78vh] overflow-auto">
           <ReviewForm review={review} />
         </section>
+      </div>
+      <div className="mt-6 max-w-3xl">
+        <RelationsList data={relations} title="Relações do documento" />
       </div>
     </>
   );

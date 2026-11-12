@@ -13,11 +13,12 @@ from pydantic import BaseModel, EmailStr, Field, field_validator
 from sqlalchemy import select
 
 from app.actions import revalidate_approvals
-from app.auth.deps import CurrentPrincipal, active_membership, require
+from app.auth.deps import CurrentPrincipal, active_membership, invite_cutoff, require
 from app.auth.rbac import CondoAccess, Permission
 from app.auth.service import normalize_email
 from app.core.audit import record_audit
 from app.core.br import is_valid_cnpj, only_digits
+from app.core.changes import record_change, snapshot
 from app.core.jobs import enqueue
 from app.core.ratelimit import WindowLimiter
 from app.core.time import is_valid_timezone, utcnow
@@ -71,16 +72,45 @@ async def _audit(
     object_type: str,
     object_id: uuid.UUID,
     details: dict[str, Any] | None = None,
+    *,
+    before: dict[str, Any] | None = None,
+    after: dict[str, Any] | None = None,
+    reason: str | None = None,
 ) -> None:
-    await record_audit(
+    """Every registry change records before and after, the reason and versions (FR-005)."""
+    await record_change(
         db,
         action=action,
         object_type=object_type,
         object_id=object_id,
         actor_user_id=access.user_id,
         condominium_id=access.condominium_id,
-        details=details or {},
+        before=before,
+        after=after,
+        reason=reason,
+        extra=details,
     )
+
+
+BOARD_FIELDS = ("full_name", "position", "term_start", "term_end")
+MEMBER_FIELDS = ("role", "expires_at", "invited_at", "accepted_at", "revoked_at")
+CONTRACT_FIELDS = (
+    "supplier_id",
+    "supplier_name",
+    "nature",
+    "object",
+    "scope_items",
+    "monthly_value",
+    "total_value",
+    "installments",
+    "adjustment_index",
+    "adjustment_index_other",
+    "adjustment_base_month",
+    "billing_frequency_months",
+    "start_date",
+    "end_date",
+    "source_document_id",
+)
 
 
 # --------------------------------------------------------------------------- profile
@@ -125,6 +155,7 @@ class BoardMemberIn(BaseModel):
     position: BoardPosition
     term_start: date
     term_end: date | None = None
+    reason: str | None = Field(default=None, max_length=500)  # FR-005: why it changed
 
     @field_validator("term_end")
     @classmethod
@@ -161,7 +192,13 @@ async def add_board_member(
     db.add(member)
     await db.flush()
     await _audit(
-        db, access, "board.added", "board_member", member.id, {"position": member.position}
+        db,
+        access,
+        "board.added",
+        "board_member",
+        member.id,
+        before=None,
+        after=snapshot(member, BOARD_FIELDS),
     )
     await _recheck_open_months(db, access.condominium_id)  # R08 compares board names
     return {"id": str(member.id)}
@@ -176,22 +213,39 @@ async def update_board_member(
     db: DbSession,
 ) -> dict[str, str]:
     member = await _board_member(db, access, member_id)
+    before = snapshot(member, BOARD_FIELDS)
     member.full_name = body.full_name.strip()
     member.position = body.position.value
     member.term_start = body.term_start
     member.term_end = body.term_end
-    await _audit(db, access, "board.updated", "board_member", member.id)
+    await _audit(
+        db,
+        access,
+        "board.updated",
+        "board_member",
+        member.id,
+        before=before,
+        after=snapshot(member, BOARD_FIELDS),
+        reason=body.reason,
+    )
     await _recheck_open_months(db, access.condominium_id)
     return {"id": str(member.id)}
 
 
 @router.delete("/condominiums/{condominium_id}/board/{member_id}")
 async def remove_board_member(
-    condominium_id: uuid.UUID, member_id: uuid.UUID, access: CanConfigure, db: DbSession
+    condominium_id: uuid.UUID,
+    member_id: uuid.UUID,
+    access: CanConfigure,
+    db: DbSession,
+    motivo: str | None = None,
 ) -> dict[str, str]:
     member = await _board_member(db, access, member_id)
+    before = snapshot(member, BOARD_FIELDS)
     await db.delete(member)
-    await _audit(db, access, "board.removed", "board_member", member_id)
+    await _audit(
+        db, access, "board.removed", "board_member", member_id, before=before, reason=motivo
+    )
     await _recheck_open_months(db, access.condominium_id)
     return {"message": "Removido do corpo diretivo."}
 
@@ -232,13 +286,23 @@ async def add_member(
         )
     )
     now = utcnow()
+    invite_expired = (
+        existing is not None
+        and existing.accepted_at is None
+        and existing.invited_at is not None
+        and existing.invited_at <= invite_cutoff()
+    )
     if (
         existing is not None
         and existing.revoked_at is None
         and (existing.expires_at is None or existing.expires_at > now)
+        and not invite_expired
     ):
         raise HTTPException(status.HTTP_409_CONFLICT, "Essa pessoa já tem esse acesso.")
     details: dict[str, Any] = {"role": body.role, "temporary": body.expires_at is not None}
+    if invite_expired:
+        details["invite_renewed"] = True  # FR-002 (D126): a new invitation, valid again
+    member_before = snapshot(existing, MEMBER_FIELDS) if existing is not None else None
     if existing is not None:  # revoked or expired: granted again, history kept in the audit
         membership = existing
         membership.revoked_at = None
@@ -257,7 +321,16 @@ async def add_member(
         )
         db.add(membership)
     await db.flush()
-    await _audit(db, access, "member.added", "membership", membership.id, details)
+    await _audit(
+        db,
+        access,
+        "member.added",
+        "membership",
+        membership.id,
+        details,
+        before=member_before,
+        after=snapshot(membership, MEMBER_FIELDS),
+    )
     await record_capability_changes(
         db, access.condominium_id, reason="acesso", actor_user_id=access.user_id
     )
@@ -266,7 +339,11 @@ async def add_member(
 
 @router.delete("/condominiums/{condominium_id}/members/{membership_id}")
 async def remove_member(
-    condominium_id: uuid.UUID, membership_id: uuid.UUID, access: CanConfigure, db: DbSession
+    condominium_id: uuid.UUID,
+    membership_id: uuid.UUID,
+    access: CanConfigure,
+    db: DbSession,
+    motivo: str | None = None,
 ) -> dict[str, str]:
     membership = await db.scalar(
         select(Membership).where(
@@ -280,8 +357,18 @@ async def remove_member(
     if membership.user_id == access.user_id:
         raise _unprocessable("Você não pode remover o próprio acesso.")
     # Revoked, not deleted (D77): the row keeps who had which access and until when.
+    before = snapshot(membership, MEMBER_FIELDS)
     membership.revoked_at = utcnow()
-    await _audit(db, access, "member.removed", "membership", membership_id)
+    await _audit(
+        db,
+        access,
+        "member.removed",
+        "membership",
+        membership_id,
+        before=before,
+        after=snapshot(membership, MEMBER_FIELDS),
+        reason=motivo,
+    )
     await db.flush()
     message = "Acesso removido. As sessões abertas perdem o acesso na próxima ação."
     if membership.role == Role.SINDICO.value:
@@ -314,6 +401,7 @@ class ContractIn(BaseModel):
     billing_frequency_months: Literal[0, 1, 2, 3, 6, 12] = 1  # 0 = on demand (D70)
     start_date: date
     end_date: date | None = None
+    reason: str | None = Field(default=None, max_length=500)  # FR-005: why it changed
 
     @field_validator("supplier_cnpj")
     @classmethod
@@ -384,7 +472,14 @@ async def create_contract(
     await _apply(db, contract, body)
     db.add(contract)
     await db.flush()
-    await _audit(db, access, "contract.created", "contract", contract.id)
+    await _audit(
+        db,
+        access,
+        "contract.created",
+        "contract",
+        contract.id,
+        after=snapshot(contract, CONTRACT_FIELDS),
+    )
     await detect_data_issues(db, access.condominium_id)
     await _recheck_open_months(db, access.condominium_id)
     out = ContractOut.model_validate(contract)
@@ -407,9 +502,19 @@ async def update_contract(
     )
     if contract is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Contrato não encontrado.")
+    before = snapshot(contract, CONTRACT_FIELDS)
     await _apply(db, contract, body)
     await db.flush()
-    await _audit(db, access, "contract.updated", "contract", contract.id)
+    await _audit(
+        db,
+        access,
+        "contract.updated",
+        "contract",
+        contract.id,
+        before=before,
+        after=snapshot(contract, CONTRACT_FIELDS),
+        reason=body.reason,
+    )
     await detect_data_issues(db, access.condominium_id)
     await _recheck_open_months(db, access.condominium_id)
     out = ContractOut.model_validate(contract)

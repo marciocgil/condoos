@@ -25,6 +25,8 @@ class Settings(BaseSettings):
     magic_link_ttl_minutes: int = 15
     magic_link_max_per_hour: int = 5
     session_ttl_days: int = 14
+    # FR-002 (D126): an invitation not accepted within this many days stops counting.
+    invite_valid_days: int = 14
     session_cookie_name: str = "condoos_session"
     session_cookie_secure: bool = False
 

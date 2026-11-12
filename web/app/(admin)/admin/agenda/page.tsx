@@ -3,6 +3,7 @@ import Link from "next/link";
 
 import { AgendaItem, agendaStatus, isLate, KIND_LABEL } from "@/components/condoos/AgendaItem";
 import { CondoFilter } from "@/components/condoos/CondoFilter";
+import { DeadlineAlerts, type DeadlineAlert } from "@/components/condoos/DeadlineAlerts";
 import { MonthCoverageCard } from "@/components/condoos/MonthCoverageCard";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { buttonClass } from "@/components/ui/Button";
@@ -58,6 +59,10 @@ export default async function AgendaPage({
   const agenda = await apiGet<Agenda>(`/portfolio/agenda?${q.toString()}`);
   // LB-055: the month's expected invoices, per condominium (one chosen, or the only one).
   const coverageCondo = selected ?? (condos.length === 1 ? (condos[0]?.id ?? null) : null);
+  // FR-026 (D126): deadline alerts of the chosen condominium.
+  const alerts = coverageCondo
+    ? (await apiGet<{ alerts: DeadlineAlert[] }>(`/condominiums/${coverageCondo}/alerts`)).alerts
+    : [];
   const coverage = coverageCondo
     ? await apiGet<MonthCoverage>(`/condominiums/${coverageCondo}/coverage?month=${month}`)
     : null;
@@ -182,6 +187,12 @@ export default async function AgendaPage({
           })}
         </div>
       </div>
+
+      {coverageCondo && alerts.length > 0 && (
+        <div className="mb-6 max-w-3xl">
+          <DeadlineAlerts condominiumId={coverageCondo} alerts={alerts} />
+        </div>
+      )}
 
       <div className="mb-6">
         {coverage ? (

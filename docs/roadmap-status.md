@@ -25,16 +25,16 @@ Pré-condições do gate G0 (`docs/pilot-protocol.md` §1):
 
 Antes do primeiro documento real: teste de fumaça em produção (leitura com Docling e IA, chat, e-mail de entrada) com dados fictícios e restauração do backup depois; monitor externo de `/health`; Marcio fora da leitura da entrada de e-mail do docker local (um só leitor por bucket). O piloto começa em **shadow mode (V2)**: competências passadas, sem contato externo.
 
-Planejado e não construído, nenhum item bloqueia o V2: LF6 (saúde contínua, LB-060..065), LF7 (instrumentos do piloto, LB-070..073), VS-06 (Operate controlado; depende de G4 e de dados reais), P0 parciais (FR-002, 005, 014, 026, 033) e P1 sem início (FR-009, 010, 029, 030, 035–038, 047, 049, 051–056; FR-057 entregue em primeiro corte, D112). P2/P3 adiados.
+Planejado e não construído, nenhum item bloqueia o V2: LF6 (saúde contínua, LB-060..065), LF7 (instrumentos do piloto, LB-070..073), VS-06 (Operate controlado; depende de G4 e de dados reais), P0 parciais fechados em 12/11/2026 (D126) e P1 sem início (FR-009, 010, 029, 030, 035–038, 047, 049, 051–056; FR-057 entregue em primeiro corte, D112). P2/P3 adiados.
 
 ## 2. Estado por requisito (resumo)
 
 | Estado | FRs |
 |---|---|
 | validado | — |
-| pronto_para_validar | 057 (D112, primeiro corte), 016 (D93, D94), 001, 003, 004, 006, 007, 011, 012, 013, 015, 020, 021, 022, 023, 024, 025, 027, 032, 034, 041, 042, 043, 044, 045, 046, 048, 050 |
+| pronto_para_validar | 002, 005, 014, 026, 033 (D126), 057 (D112, primeiro corte), 016 (D93, D94), 001, 003, 004, 006, 007, 011, 012, 013, 015, 020, 021, 022, 023, 024, 025, 027, 032, 034, 041, 042, 043, 044, 045, 046, 048, 050 |
 | em_desenvolvimento | 058 (aprovação com escopo congelado; a contratação em si segue fora do sistema) |
-| em_analise | 002, 005, 008, 014, 017, 018, 019, 026, 028, 033 |
+| em_analise | 008, 017, 018, 019, 028 |
 | bloqueado | — (031 medido ao vivo em 08/11/2026: 97%, zero vazamento, D98; passa a pronto_para_validar) |
 | nao_iniciado | 009, 010, 029, 030, 035, 036, 037, 038, 047, 049, 051–056 |
 | adiado (P2/P3) | 039, 040, 059–065 |
@@ -74,6 +74,7 @@ Política mínima e kill switch entregues com a VS-05 (D83); o produto continua 
 
 ## 6. Histórico desta página
 
+- 12/11/2026 — P0 parciais fechados (D126, migração 0032): convite que vence em 14 dias (FR-002), antes/depois, motivo e versão nas mudanças críticas (FR-005), relações de documento, contrato e fornecedor (FR-014), alertas de prazo dentro do app com estado (FR-026) e próxima ação do achado com estado de autorização (FR-033). Todos os 29 P0 cobertos no código. Verificação: 496 testes do backend, lint, e2e (47 passaram; o de correção da fila segue falhando só neste ambiente).
 - 12/11/2026 — CondoOS Audit, ciclo 4 (D125, sem migração): reprocessamento por evento só de meses já auditados (pausável), SLA e escalonamento das pendências e do envio ao síndico, histórico e tendência do farol, PDF e planilha (interno e aprovado), ligações com Assuntos e Oportunidades, testes de custo, desempenho e rollback de prompt. Verificação: 490 testes do backend, lint e tipos, tela na stack local. Os quatro ciclos do Prompt Mestre estão concluídos.
 - 11/11/2026 — CondoOS Audit, ciclo 3 (D124, migração 0031): os 25 controles avaliados; contratos (preço com aditivo e reajuste, serviço extraordinário com autorização e aceite, parcelas), fundos e lastro, aplicações, orçado × realizado com projeção, seguros e laudos pela Conformidade, aprovação formal das contas, revalidação histórica e o farol aprovado pelo síndico (aba Auditoria). Verificação: 480 testes do backend, lint e tipos, migração ida e volta. Próximo: ciclo 4 (operação contínua).
 - 11/11/2026 — CondoOS Audit, ciclo 2 (D123, migração 0030): 17 dos 25 controles avaliados; unidades, títulos e leituras sem nomes (só equipe interna), perfil de auditoria, alocação N:N de pagamentos, tributos retidos e periódicos, parcelamento, pendências persistentes e memória de cálculo. Verificação: 464 testes do backend, lint, migração ida e volta, telas na stack local. Próximo: ciclo 3 (contratos, fundos, orçamento, aprovação formal).

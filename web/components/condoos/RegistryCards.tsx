@@ -354,13 +354,32 @@ export function MembersCard({
     router.refresh();
   }
 
+  // FR-002 (D126): an invitation not accepted in 14 days expires; sending it again renews it.
+  async function resend(m: Settings["members"][number]) {
+    setError(null);
+    setOk(null);
+    const r = await send("POST", `/condominiums/${condominiumId}/members`, {
+      name: m.name,
+      email: m.email,
+      role: m.role,
+    });
+    if (!r.ok) return setError(r.error);
+    setOk(`Convite renovado: ${m.name} pode entrar com ${m.email} nos próximos 14 dias.`);
+    router.refresh();
+  }
+
   async function remove(m: Settings["members"][number]) {
     if (
       !m.id ||
       !window.confirm(`Remover o acesso de ${m.name} (${ROLE_LABEL[m.role] ?? m.role})?`)
     )
       return;
-    const r = await send("DELETE", `/condominiums/${condominiumId}/members/${m.id}`);
+    // FR-005 (D126): the reason goes to the change record with before and after.
+    const reason = window.prompt("Motivo da remoção (fica no registro de mudanças):") ?? "";
+    const r = await send(
+      "DELETE",
+      `/condominiums/${condominiumId}/members/${m.id}?${new URLSearchParams({ motivo: reason })}`,
+    );
     if (!r.ok) return setError(r.error);
     router.refresh();
   }
@@ -391,9 +410,17 @@ export function MembersCard({
               <span className="text-xs text-muted">
                 {ROLE_LABEL[m.role] ?? m.role} · {SCOPE_LABEL[m.scope] ?? m.scope}
                 {m.status === "convidado" && " · convite pendente"}
+                {m.status === "convite_vencido" && (
+                  <span className="text-warning"> · convite vencido (não aceito em 14 dias)</span>
+                )}
                 {m.expires_at && ` · até ${formatDate(m.expires_at.slice(0, 10))}`}
               </span>
             </span>
+            {m.id && m.status === "convite_vencido" && (
+              <Button variant="secondary" size="sm" onClick={() => void resend(m)}>
+                Renovar convite
+              </Button>
+            )}
             {m.id && (
               <Button
                 variant="ghost"

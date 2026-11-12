@@ -657,3 +657,24 @@ class PublicationStatus(StrEnum):
     APROVADA = "aprovada"
     DEVOLVIDA = "devolvida"
     SUPERADA = "superada"
+
+
+# ------------------------------------------------------------------ deadline alerts (D126)
+
+
+class AlertKind(StrEnum):
+    """FR-026: what a deadline alert is about."""
+
+    ASSUNTO_PRAZO = "assunto_prazo"
+    TAREFA_PRAZO = "tarefa_prazo"
+    CONFORMIDADE = "conformidade"
+    CONTRATO_FIM = "contrato_fim"
+    FAROL_AGUARDANDO = "farol_aguardando"
+
+
+class AlertStatus(StrEnum):
+    """Created by the policy, seen by a person, resolved when the condition is gone."""
+
+    CRIADO = "criado"
+    VISTO = "visto"
+    RESOLVIDO = "resolvido"

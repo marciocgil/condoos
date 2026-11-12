@@ -23,6 +23,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.condo_settings import record_version
 from app.core.audit import record_audit
+from app.core.changes import record_change
 from app.core.money import parse_brl, parse_ddmmyyyy
 from app.db.enums import DocumentOrigin, DocumentType, TitleKind, TitleStatus, Utility
 from app.db.models import Condominium, Document, ReceivableTitle, Unit, UtilityReading
@@ -498,9 +499,22 @@ async def set_profile(
         if k in PROFILE_FIELDS and (v is None or isinstance(v, bool))
     }
     params = dict(condo.rule_params or {})
+    before = profile_of(params)
     params["AUDIT"] = {**(params.get("AUDIT") or {}), **clean}
     condo.rule_params = params
-    await record_version(
+    version = await record_version(
         session, condo, actor_user_id=user_id, reason=f"Perfil de auditoria: {reason}"
+    )
+    await record_change(
+        session,
+        action="audit.profile.updated",
+        object_type="condominium",
+        object_id=condo.id,
+        actor_user_id=user_id,
+        condominium_id=condo.id,
+        before=before,
+        after=profile_of(params),
+        reason=reason,
+        setting_version=version.version,
     )
     return profile_of(params)

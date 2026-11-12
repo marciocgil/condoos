@@ -59,7 +59,8 @@ test("troca de síndico: acesso removido, capacidade rebaixada e histórico", as
 
   // The admin removes her access from Configurações.
   await page.goto(`/admin/configuracoes?condominio=${id}`);
-  page.once("dialog", (d) => void d.accept());
+  // Two dialogs: the confirmation and the reason (FR-005, D126).
+  page.on("dialog", (d) => void d.accept(d.type() === "prompt" ? "Troca de síndica" : undefined));
   await page.getByRole("button", { name: `Remover acesso de ${name}` }).click();
   await expect(page.getByRole("button", { name: `Remover acesso de ${name}` })).toHaveCount(0);
   await page.reload();

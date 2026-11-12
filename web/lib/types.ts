@@ -136,6 +136,22 @@ export interface FindingDetail extends Finding {
   approval_expense_id?: string | null;
   approvals?: { id: string; approved_by: string; approved_at: string; notes: string | null }[];
   can_record_approval?: boolean;
+  next_action?: NextAction | null;
+}
+
+/** The next step proposed for a finding (FR-033, D126): chosen by code, with its reason,
+ * evidence and authorisation state from the policy. */
+export interface NextAction {
+  title: string;
+  why: string;
+  evidence: { label: string }[];
+  action_type: string | null;
+  action_label?: string;
+  internal?: string | null;
+  authorization: "require_approval" | "require_review" | "deny" | "pause" | "allow" | "interna";
+  authorization_text: string;
+  policy_version: number;
+  version: string;
 }
 
 export interface Summary {

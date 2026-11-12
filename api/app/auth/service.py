@@ -4,7 +4,7 @@ import uuid
 from dataclasses import dataclass
 from datetime import timedelta
 
-from sqlalchemy import func, select, update
+from sqlalchemy import func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.mailer import Mailer, OutgoingEmail
@@ -118,6 +118,11 @@ async def consume_magic_link(session: AsyncSession, raw_token: str) -> NewSessio
                 Membership.user_id == user_id,
                 Membership.accepted_at.is_(None),
                 Membership.revoked_at.is_(None),
+                # FR-002 (D126): an expired invitation is not accepted; it must be sent again.
+                or_(
+                    Membership.invited_at.is_(None),
+                    Membership.invited_at > now - timedelta(days=get_settings().invite_valid_days),
+                ),
             )
             .values(accepted_at=now)
             .returning(Membership.id, Membership.condominium_id, Membership.role)

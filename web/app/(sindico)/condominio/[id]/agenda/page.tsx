@@ -1,6 +1,7 @@
 import { CalendarDays } from "lucide-react";
 
 import { AgendaItem, isLate } from "@/components/condoos/AgendaItem";
+import { DeadlineAlerts, type DeadlineAlert } from "@/components/condoos/DeadlineAlerts";
 import { MonthCoverageCard } from "@/components/condoos/MonthCoverageCard";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { apiGet } from "@/lib/api";
@@ -24,9 +25,10 @@ export default async function AgendaSindicoPage({ params }: { params: Promise<{ 
   const today = iso(new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate())));
   const from = iso(new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate() - 60)));
   const to = iso(new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate() + 30)));
-  const [agenda, coverage] = await Promise.all([
+  const [agenda, coverage, alerts] = await Promise.all([
     apiGet<Agenda>(`/condominiums/${id}/agenda?start=${from}&end=${to}`),
     apiGet<MonthCoverage>(`/condominiums/${id}/coverage`),
+    apiGet<{ alerts: DeadlineAlert[] }>(`/condominiums/${id}/alerts`),
   ]);
   const late = agenda.events.filter(isLate);
   const upcoming = agenda.events.filter((e) => e.date >= today && !isLate(e));
@@ -48,6 +50,8 @@ export default async function AgendaSindicoPage({ params }: { params: Promise<{ 
           acompanhar.
         </p>
       </div>
+
+      <DeadlineAlerts condominiumId={id} alerts={alerts.alerts} />
 
       <MonthCoverageCard coverage={coverage} />
 

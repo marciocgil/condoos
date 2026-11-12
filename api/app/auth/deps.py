@@ -3,6 +3,7 @@
 import uuid
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
+from datetime import datetime, timedelta
 from typing import Annotated
 
 from fastapi import Depends, HTTPException, Request, status
@@ -41,12 +42,23 @@ async def get_principal(request: Request, session: DbSession) -> Principal:
 CurrentPrincipal = Annotated[Principal, Depends(get_principal)]
 
 
+def invite_cutoff() -> datetime:
+    """Invitations sent before this moment and never accepted have expired (FR-002, D126)."""
+    return utcnow() - timedelta(days=get_settings().invite_valid_days)
+
+
 def active_membership() -> list[ColumnElement[bool]]:
-    """A membership counts while not revoked and not expired (D77)."""
+    """A membership counts while not revoked, not expired and, when it is an invitation not
+    accepted yet, while the invitation is valid (D77, D126)."""
     now = utcnow()
     return [
         Membership.revoked_at.is_(None),
         or_(Membership.expires_at.is_(None), Membership.expires_at > now),
+        or_(
+            Membership.accepted_at.is_not(None),
+            Membership.invited_at.is_(None),
+            Membership.invited_at > invite_cutoff(),
+        ),
     ]
 
 

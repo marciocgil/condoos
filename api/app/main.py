@@ -10,6 +10,7 @@ from app.config import get_settings
 from app.routers import (
     actions,
     agenda,
+    alerts,
     approvals,
     audit,
     audit3,
@@ -33,6 +34,7 @@ from app.routers import (
     portfolio,
     queue,
     registry,
+    relations,
     reports,
     review_policy,
     settings,
@@ -85,6 +87,8 @@ def create_app() -> FastAPI:
     app.include_router(audit.router)
     app.include_router(audit3.router)
     app.include_router(audit4.router)
+    app.include_router(relations.router)
+    app.include_router(alerts.router)
 
     @app.get("/health", tags=["health"])
     async def health() -> dict[str, str]:

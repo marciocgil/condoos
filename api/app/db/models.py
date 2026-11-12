@@ -42,6 +42,8 @@ from app.db.enums import (
     ActionDecisionKind,
     ActionStatus,
     AdjustmentIndex,
+    AlertKind,
+    AlertStatus,
     ApprovalKind,
     AuditIssueStatus,
     AuditRunStatus,
@@ -1932,6 +1934,36 @@ class AuditPublication(IdTimestampMixin, Base):
     reason: Mapped[str | None] = mapped_column(Text, nullable=True)
 
 
+class DeadlineAlert(IdTimestampMixin, Base):
+    """A deadline alert (FR-026, D126): created by the versioned alert policy, shown inside
+    the app (channel "app"; nothing is sent out), seen by a person and resolved when its
+    condition is gone. One per target, due date and level (``dedupe_key``)."""
+
+    __tablename__ = "deadline_alert"
+    __table_args__ = (
+        _enum_check("kind", AlertKind),
+        _enum_check("status", AlertStatus),
+        UniqueConstraint("condominium_id", "dedupe_key", name="uq_deadline_alert_key"),
+    )
+
+    condominium_id: Mapped[uuid.UUID] = _uuid_fk("condominium.id")
+    kind: Mapped[str] = mapped_column(String(20))
+    target_type: Mapped[str] = mapped_column(String(30))
+    target_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True))
+    title: Mapped[str] = mapped_column(String(300))
+    due_date: Mapped[date] = mapped_column(Date)
+    level: Mapped[str] = mapped_column(String(10))  # "antes" (approaching) | "vencido"
+    audience: Mapped[str] = mapped_column(String(10))  # "todos" | "equipe"
+    channel: Mapped[str] = mapped_column(String(10), default="app", server_default="app")
+    status: Mapped[str] = mapped_column(String(10))
+    policy_version: Mapped[int] = mapped_column(Integer)
+    dedupe_key: Mapped[str] = mapped_column(String(200))
+    seen_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    seen_by: Mapped[uuid.UUID | None] = _uuid_fk("app_user.id", nullable=True, ondelete="SET NULL")
+    resolved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    resolution: Mapped[str | None] = mapped_column(String(200), nullable=True)
+
+
 RLS_TABLES: dict[str, str] = {
     "condominium": "id",
     "board_member": "condominium_id",
@@ -2001,6 +2033,7 @@ RLS_TABLES: dict[str, str] = {
     "budget_note": "condominium_id",
     "accounts_approval": "condominium_id",
     "audit_publication": "condominium_id",
+    "deadline_alert": "condominium_id",
 }
 
 # Tables the application role may only read and insert into (never update or delete).

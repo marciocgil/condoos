@@ -14,6 +14,7 @@ import { OpportunityStatusBadge } from "./OpportunityStatusBadge";
 import { CommentForm } from "./CommentForm";
 import { DecisionBar } from "./DecisionBar";
 import { EvidenceList } from "./EvidenceList";
+import { NextActionCard } from "./NextActionCard";
 import { FindingStatusBadge } from "./FindingStatusBadge";
 import { SeverityBadge } from "./SeverityBadge";
 
@@ -122,6 +123,8 @@ export function FindingDetailView({
         </h2>
         <EvidenceList items={f.evidence} />
       </section>
+
+      {f.next_action && <NextActionCard action={f.next_action} />}
 
       {f.approval_expense_id && (
         <ApprovalPanel

@@ -21,6 +21,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.audit.imports import ImportFileError, _money, _month
 from app.core.audit import record_audit
+from app.core.changes import record_change
 from app.db.enums import AccountKind, AccountsApprovalBody, FundKind
 from app.db.models import (
     AccountsApproval,
@@ -173,6 +174,16 @@ async def update_fund(
     fund = await session.get(Fund, fund_id)
     if fund is None or fund.condominium_id != condo.id:
         raise LookupError("fundo não encontrado")
+    before = {
+        "kind": fund.kind,
+        "purpose": fund.purpose,
+        "accounts": sorted(
+            str(a)
+            for a in await session.scalars(
+                select(FundAccount.bank_account_id).where(FundAccount.fund_id == fund.id)
+            )
+        ),
+    }
     if kind is not None:
         fund.kind = kind.value
     if purpose is not None:
@@ -204,14 +215,25 @@ async def update_fund(
                 )
             )
     await session.flush()
-    await _audit(
+    after = {
+        "kind": fund.kind,
+        "purpose": fund.purpose,
+        "accounts": sorted(
+            str(a)
+            for a in await session.scalars(
+                select(FundAccount.bank_account_id).where(FundAccount.fund_id == fund.id)
+            )
+        ),
+    }
+    await record_change(
         session,
-        condo.id,
-        user_id,
-        "audit.fund.updated",
-        fund_id=str(fund.id),
-        kind=fund.kind,
-        accounts=len(account_ids) if account_ids is not None else None,
+        action="audit.fund.updated",
+        object_type="fund",
+        object_id=fund.id,
+        actor_user_id=user_id,
+        condominium_id=condo.id,
+        before=before,
+        after=after,
     )
     return fund
 
@@ -227,17 +249,20 @@ async def set_account_kind(
     account = await session.get(BankAccount, account_id)
     if account is None or account.condominium_id != condo.id:
         raise LookupError("conta não encontrada")
+    before = {"kind": account.kind, "label": account.label}
     account.kind = kind.value
     if label and label.strip():
         account.label = label.strip()[:120]
     await session.flush()
-    await _audit(
+    await record_change(
         session,
-        condo.id,
-        user_id,
-        "audit.account.updated",
-        account_id=str(account.id),
-        kind=kind.value,
+        action="audit.account.updated",
+        object_type="bank_account",
+        object_id=account.id,
+        actor_user_id=user_id,
+        condominium_id=condo.id,
+        before=before,
+        after={"kind": account.kind, "label": account.label},
     )
     return account
 

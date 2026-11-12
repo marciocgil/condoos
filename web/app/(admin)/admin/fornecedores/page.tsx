@@ -36,7 +36,7 @@ export default async function FornecedoresPage({
           Os fornecedores aparecem quando as primeiras despesas são processadas.
         </EmptyState>
       ) : (
-        <SupplierTable rows={rows} />
+        <SupplierTable rows={rows} condominiumId={selected} />
       )}
     </>
   );
