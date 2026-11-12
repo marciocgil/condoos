@@ -75,6 +75,10 @@ class Analysis:
         return "+".join(self.sources) or "nenhuma"
 
 
+# Types a person may declare when sending a file (D130): text-only governing documents.
+TYPE_HINTS = frozenset({DocumentType.ATA.value, DocumentType.CONVENCAO.value})
+
+
 async def analyze(
     session: AsyncSession | None,
     *,
@@ -85,6 +89,7 @@ async def analyze(
     condominium_cnpj: str,
     today: date,
     other_own_cnpjs: frozenset[str] = frozenset(),
+    hint: DocumentType | None = None,
 ) -> Analysis:
     """Classify and extract a non-bank document. No database writes except ``llm_calls``
     and the supplier registry cache. ``other_own_cnpjs``: CNPJs that are never the
@@ -150,6 +155,10 @@ async def analyze(
                 logger.info("classification without model reason=%s", type(exc).__name__)
 
     text = converted.text if converted is not None and converted.text else None
+    # The person said what the file is (an ata or the convention sent from the implantation,
+    # D130): it only fills in when the reading found no type; a type found by the reading wins.
+    if hint is not None and doc_type in (None, DocumentType.OUTRO):
+        doc_type, classification_source = hint, "pessoa"
     if doc_type is None:
         reason = (
             "Documento sem texto legível (foto ou digitalização): é preciso ler e preencher."
@@ -350,8 +359,14 @@ async def process_document(session: AsyncSession, payload: dict[str, Any]) -> No
         await _import_bank_file(session, doc, condo, data)
         return
 
+    hint = (
+        DocumentType(doc.doc_type)
+        if doc.classification_source == "pessoa" and doc.doc_type in TYPE_HINTS
+        else None
+    )
     analysis = await analyze(
         session,
+        hint=hint,
         data=data,
         mime=doc.mime_type,
         filename=doc.original_filename,

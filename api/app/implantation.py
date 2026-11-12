@@ -20,6 +20,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.changes import record_change
+from app.core.money import brl
 from app.core.time import utcnow
 from app.db.enums import BoardPosition, ComplianceApplicability, ContractNature
 from app.db.models import (
@@ -51,7 +52,9 @@ class Item:
     why: str
     done: bool
     detail: str
-    action: str  # where to do it: "mandato", "termo", "alcada" (in place) or "enviar"
+    # What to do, in place (D130): "mandato", "ata", "termo", "convencao", "extrato",
+    # "contratos", "contas", "alcada"; "dados" is fixed in Configurações.
+    action: str
 
     def as_dict(self) -> dict[str, Any]:
         return {
@@ -91,7 +94,7 @@ async def essentials(session: AsyncSession, condo: Condominium, today: date) -> 
                 if condo.units
                 else "Falta o número de unidades."
             ),
-            "enviar",
+            "dados",
         )
     )
     sindico = await session.scalar(
@@ -114,7 +117,7 @@ async def essentials(session: AsyncSession, condo: Condominium, today: date) -> 
                 if sindico is not None and atas > 0
                 else "Falta o mandato." if sindico is None else "Falta a ata da eleição."
             ),
-            "mandato",
+            "mandato" if sindico is None else "ata",
         )
     )
     term = await session.scalar(
@@ -145,7 +148,7 @@ async def essentials(session: AsyncSession, condo: Condominium, today: date) -> 
             "Com ela eu respondo sobre regras, quóruns e alçadas.",
             conv > 0,
             "Recebida." if conv else "Envie a convenção.",
-            "enviar",
+            "convencao",
         )
     )
     accounts = await _count(
@@ -169,7 +172,7 @@ async def essentials(session: AsyncSession, condo: Condominium, today: date) -> 
                 if accounts and recent
                 else "Envie o extrato do último mês (OFX) de cada conta."
             ),
-            "enviar",
+            "extrato",
         )
     )
     contracts = await _count(
@@ -189,7 +192,7 @@ async def essentials(session: AsyncSession, condo: Condominium, today: date) -> 
                 if contracts
                 else "Envie os contratos de serviços contínuos."
             ),
-            "enviar",
+            "contratos",
         )
     )
     # The first month sent is what matters: from then on the day to day keeps it current.
@@ -207,7 +210,7 @@ async def essentials(session: AsyncSession, condo: Condominium, today: date) -> 
                 if latest
                 else "Envie as notas e boletos do último mês."
             ),
-            "enviar",
+            "contas",
         )
     )
     limit = (condo.approval_limits or {}).get("default")
@@ -217,7 +220,11 @@ async def essentials(session: AsyncSession, condo: Condominium, today: date) -> 
             "Alçada de aprovação",
             "Até quanto o síndico aprova sozinho, como diz a convenção ou a ata.",
             limit is not None,
-            f"Até R$ {limit}." if limit is not None else "Uma pergunta: até quanto você aprova.",
+            (
+                f"Até {brl(Decimal(str(limit)))}."
+                if limit is not None
+                else "Uma pergunta: até quanto você aprova."
+            ),
             "alcada",
         )
     )

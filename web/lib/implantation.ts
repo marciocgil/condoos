@@ -5,7 +5,16 @@ export type ImplantationItem = {
   why: string;
   done: boolean;
   detail: string;
-  action: "mandato" | "termo" | "alcada" | "enviar";
+  action:
+    | "dados"
+    | "mandato"
+    | "ata"
+    | "termo"
+    | "convencao"
+    | "extrato"
+    | "contratos"
+    | "contas"
+    | "alcada";
 };
 
 export type Implantation = {

@@ -821,3 +821,10 @@ Fora desta fatia: LB-009 (alçadas opcionais), LB-011/012 (prontidão em Ajustes
 - **Telas:** opção "Encerrar um condomínio" no início (a quarta, discreta), `/encerrar` (escolher o condomínio quando há vários) e `/encerrar/{id}` (conversa em 3 passos ou a saída marcada com "Desfazer").
 - **Em aberto:** a volta de uma pessoa depois de aplicada a saída é um convite novo; a escolha do próximo síndico continua com a equipe CondoOS ou a administradora (Configurações → Acessos).
 - Verificação: `test_exit.py` (4), 505 testes do backend, lint e tipos, e2e `guided.spec.ts` (4) e a suíte com 54 passando (o de correção da fila segue falhando só neste ambiente; o de oportunidades pulou por ordem dos testes e passa sozinho); prints no celular e o PDF.
+
+**D130 — Implantação: todo item pendente abre a própria ação** (12/11/2026; retorno do Marcio no piloto: "os itens não são clicáveis" e, depois de salvar o mandato, não havia onde enviar a ata).
+- Na tela `/implantacao/{id}`, cada item que falta abre ali mesmo (toque no item) com o porquê e a ação: mandato, ata da eleição, termo, convenção, extratos (OFX/CSV, com o aviso de que PDF não é importado), contratos, contas do mês, alçada; "dados" leva a Configurações. O "Próximo passo" continua em destaque.
+- "Você como síndico" pede o mandato enquanto ele não existe e, depois, a **ata da eleição** (antes o cartão repetia o formulário do mandato e não havia como completar).
+- **Tipo declarado no envio:** `POST /documents?tipo=ata|convencao` grava o que a pessoa disse (`classification_source = "pessoa"`). A leitura usa a declaração só quando não encontra tipo (nenhum, ou "outro"); tipo encontrado pela leitura vence (um recibo enviado como ata continua recibo), e a recusa de relação de devedores vale antes de tudo. Só ata e convenção aceitam declaração (documentos só de texto, sem extração estruturada). Arquivo repetido já lido sem tipo é completado na hora.
+- Alçada mostrada em reais (R$ 5.000,00).
+- Verificação: `test_implantation.py` (4), 506 testes do backend, e2e `guided.spec.ts` (4), print no celular.

@@ -1,21 +1,11 @@
-import { CheckCircle2, ChevronLeft, Circle } from "lucide-react";
+import { CheckCircle2, ChevronDown, ChevronLeft, Circle } from "lucide-react";
 import Link from "next/link";
 
 import { ImplantationAction } from "@/components/condoos/ImplantationActions";
 import { Badge } from "@/components/ui/Badge";
 import { buttonClass } from "@/components/ui/Button";
 import { apiGet } from "@/lib/api";
-import type { Implantation, ImplantationItem } from "@/lib/implantation";
-
-function Act({ id, item }: { id: string; item: ImplantationItem }) {
-  if (item.action === "enviar")
-    return (
-      <Link href={`/condominio/${id}/enviar`} className={buttonClass("primary")}>
-        Enviar documentos
-      </Link>
-    );
-  return <ImplantationAction condominiumId={id} action={item.action} />;
-}
+import type { Implantation } from "@/lib/implantation";
 
 /** Continuing an implantation (D128): the percentage with its count, the next step first and
  * the eight items. 100% = "apto a operar". */
@@ -64,28 +54,57 @@ export default async function ImplantacaoPage({ params }: { params: Promise<{ id
             <span className="text-[12px] text-fg-2">Próximo passo</span>
             <strong>{imp.next.title}</strong>
             <span className="text-[13px] text-fg-2">{imp.next.why}</span>
-            {imp.can_manage && <Act id={id} item={imp.next} />}
+            {imp.can_manage && <ImplantationAction condominiumId={id} action={imp.next.action} />}
           </section>
         )
       )}
-      <ul className="grid">
-        {imp.items.map((i) => (
-          <li
-            key={i.key}
-            className="grid grid-cols-[20px_1fr_auto] items-start gap-2 border-t border-line py-2.5 first:border-0"
-          >
-            {i.done ? (
-              <CheckCircle2 size={18} aria-hidden className="text-success" />
-            ) : (
-              <Circle size={18} aria-hidden className="text-muted" />
-            )}
-            <span className="min-w-0">
-              <span className="block text-sm font-medium">{i.title}</span>
-              <span className="block text-[12.5px] text-fg-2">{i.detail}</span>
-            </span>
-            {!i.done && <Badge tone="warning">falta</Badge>}
-          </li>
-        ))}
+      <ul className="grid" data-testid="implantation-items">
+        {imp.items.map((i) => {
+          const row = (
+            <>
+              {i.done ? (
+                <CheckCircle2 size={18} aria-hidden className="text-success" />
+              ) : (
+                <Circle size={18} aria-hidden className="text-muted" />
+              )}
+              <span className="min-w-0">
+                <span className="block text-sm font-medium">{i.title}</span>
+                <span className="block text-[12.5px] text-fg-2">{i.detail}</span>
+              </span>
+              {i.done ? (
+                <span />
+              ) : (
+                <span className="inline-flex items-center gap-1">
+                  <Badge tone="warning">falta</Badge>
+                  {imp.can_manage && (
+                    <ChevronDown
+                      size={16}
+                      aria-hidden
+                      className="text-muted transition-transform group-open:rotate-180"
+                    />
+                  )}
+                </span>
+              )}
+            </>
+          );
+          const grid = "grid grid-cols-[20px_1fr_auto] items-start gap-2 py-2.5";
+          return (
+            <li key={i.key} className="border-t border-line first:border-0">
+              {i.done || !imp.can_manage ? (
+                <div className={grid}>{row}</div>
+              ) : (
+                // Every pending item opens its own action (D130), not only the next step.
+                <details className="group" data-testid={`implantation-item-${i.key}`}>
+                  <summary className={`${grid} cursor-pointer list-none`}>{row}</summary>
+                  <div className="grid gap-2 pb-3 pl-7">
+                    <span className="text-[12.5px] text-fg-2">{i.why}</span>
+                    <ImplantationAction condominiumId={id} action={i.action} />
+                  </div>
+                </details>
+              )}
+            </li>
+          );
+        })}
       </ul>
       <p className="text-[12.5px] text-muted">
         Recomendado:{" "}

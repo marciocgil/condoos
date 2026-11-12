@@ -78,6 +78,9 @@ async def test_sindico_implants_a_condominium_step_by_step(
             f"{base}/mandate", json={"term_start": "2026-03-01", "term_end": "2025-01-01"}
         )
         assert bad.status_code == 422
+        # D130: with the mandate saved, the síndico item asks for the minutes of the election.
+        sindico = next(i for i in (await ana.get(base)).json()["items"] if i["key"] == "sindico")
+        assert sindico["action"] == "ata" and not sindico["done"]
         assert (
             await ana.put(f"{base}/limit", json={"value": "3000", "source": "curta"})
         ).status_code == 422
@@ -134,3 +137,51 @@ async def test_sindico_implants_a_condominium_step_by_step(
             .where(Membership.user_id == ana_id, Membership.condominium_id == uuid.UUID(new))
             .values(revoked_at=utcnow())
         )
+
+
+def _plain_pdf(text: str) -> bytes:
+    import io
+
+    from reportlab.pdfgen import canvas
+
+    buffer = io.BytesIO()
+    c = canvas.Canvas(buffer)
+    c.drawString(72, 760, text)
+    c.drawString(72, 740, f"ref {uuid.uuid4()}")
+    c.save()
+    return buffer.getvalue()
+
+
+async def test_declared_type_fills_in_only_when_the_reading_finds_none(
+    mailer: MemoryMailer, admin_engine: AsyncEngine, worker_engine: AsyncEngine
+) -> None:
+    """D130: a file sent as "ata" from the implantation is an ata when the reading cannot tell
+    the type; a type the reading finds wins (a receipt stays a receipt)."""
+    from pathlib import Path
+
+    from app.extraction.pipeline import process_document
+
+    acacias = await condo_id(admin_engine, "jardim-das-acacias")
+    receipt = (
+        Path(__file__).parent / "fixtures" / "corpus" / "18_recibo.pdf"
+    ).read_bytes() + f"\n% {uuid.uuid4()}\n".encode()
+    async with _client() as ana:
+        await login(ana, mailer, SINDICA_ACACIAS)
+        url = f"/condominiums/{acacias}/documents"
+        files = [("files", ("x.pdf", _plain_pdf("Reuniao dos condominos"), "application/pdf"))]
+        assert (await ana.post(f"{url}?tipo=contrato", files=files)).status_code == 422
+        ata = (await ana.post(f"{url}?tipo=ata", files=files)).json()[0]["document_id"]
+        rec = (
+            await ana.post(
+                f"{url}?tipo=ata", files=[("files", ("r.pdf", receipt, "application/pdf"))]
+            )
+        ).json()[0]["document_id"]
+    async with sessionmaker_for(worker_engine)() as s, s.begin():
+        await process_document(s, {"document_id": ata})
+        await process_document(s, {"document_id": rec})
+    async with sessionmaker_for(admin_engine)() as s:
+        a = await s.get(Document, uuid.UUID(ata))
+        r = await s.get(Document, uuid.UUID(rec))
+        assert a is not None and r is not None
+        assert (a.doc_type, a.classification_source, a.needs_review) == ("ata", "pessoa", False)
+        assert r.doc_type == "recibo" and r.classification_source != "pessoa"

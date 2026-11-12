@@ -38,6 +38,9 @@ test("síndica com condomínio em implantação vê o percentual e o próximo pa
   await page.goto(`/implantacao/${id}`);
   await expect(page.getByTestId("implantation-progress")).toContainText(/de 8 itens/);
   await expect(page.getByTestId("implantation-next")).toBeVisible();
+  // D130: every pending item opens its own action, not only the next step.
+  await page.getByTestId("implantation-item-contas").locator("summary").click();
+  await expect(page.getByTestId("implant-upload-extrato")).toContainText("OFX");
   // Implanting starts with the CNPJ (no lookup here: a random valid CNPJ may be a real one).
   await page.goto("/implantar");
   await expect(page.getByTestId("implant-conversation")).toContainText("Qual é o CNPJ");

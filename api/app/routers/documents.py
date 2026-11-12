@@ -14,7 +14,7 @@ from app.auth.deps import require
 from app.auth.rbac import CondoAccess, Permission
 from app.config import get_settings
 from app.core.audit import record_audit
-from app.db.enums import DocumentOrigin, DocumentType
+from app.db.enums import DocumentOrigin, DocumentType, ExtractionStatus
 from app.db.models import Contract, Document, DocumentChunk
 from app.db.session import DbSession
 from app.ingestion.documents import ingest_file
@@ -72,8 +72,18 @@ def _out(doc: Document) -> DocumentOut:
 
 @router.post("", status_code=status.HTTP_201_CREATED)
 async def upload(
-    condominium_id: uuid.UUID, files: list[UploadFile], access: CanUpload, db: DbSession
+    condominium_id: uuid.UUID,
+    files: list[UploadFile],
+    access: CanUpload,
+    db: DbSession,
+    tipo: str | None = None,
 ) -> list[UploadResultOut]:
+    """``tipo`` (ata or convencao, D130): what the person says the file is; used only when
+    the reading does not find a type."""
+    from app.extraction.pipeline import TYPE_HINTS
+
+    if tipo is not None and tipo not in TYPE_HINTS:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "Tipo não aceito.")
     if not files:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "Nenhum arquivo enviado.")
     if len(files) > MAX_FILES_PER_REQUEST:
@@ -93,6 +103,21 @@ async def upload(
             origin=DocumentOrigin.UPLOAD,
             actor_user_id=access.user_id,
         )
+        if tipo is not None and outcome.document_id is not None and outcome.error is None:
+            doc = await db.get(Document, outcome.document_id)
+            if (
+                doc is not None
+                and doc.reviewed_at is None
+                and doc.doc_type == DocumentType.OUTRO.value
+            ):
+                doc.doc_type, doc.classification_source = tipo, "pessoa"
+                if outcome.duplicate and doc.text_content:
+                    # Already read without a type: the declaration completes it now.
+                    doc.needs_review, doc.review_reasons = False, []
+                    doc.extraction_status = ExtractionStatus.DONE.value
+                    from app.extraction.pipeline import enqueue_index
+
+                    await enqueue_index(db, doc)
         results.append(
             UploadResultOut(
                 filename=outcome.filename,
