@@ -828,3 +828,10 @@ Fora desta fatia: LB-009 (alçadas opcionais), LB-011/012 (prontidão em Ajustes
 - **Tipo declarado no envio:** `POST /documents?tipo=ata|convencao` grava o que a pessoa disse (`classification_source = "pessoa"`). A leitura usa a declaração só quando não encontra tipo (nenhum, ou "outro"); tipo encontrado pela leitura vence (um recibo enviado como ata continua recibo), e a recusa de relação de devedores vale antes de tudo. Só ata e convenção aceitam declaração (documentos só de texto, sem extração estruturada). Arquivo repetido já lido sem tipo é completado na hora.
 - Alçada mostrada em reais (R$ 5.000,00).
 - Verificação: `test_implantation.py` (4), 506 testes do backend, e2e `guided.spec.ts` (4), print no celular.
+
+**D131 — Zerar os dados para um novo teste do zero** (13/11/2026; o Marcio escolheu "script no servidor" e "manter as contas das pessoas").
+- **Onde:** só por operador no servidor (`deploy/reset.sh` → `python -m app.platform reset-data <domínio>`), nunca pela API ou pela tela. Confirmação digitando o endereço do site; o comando confere com `WEB_BASE_URL`. Backup cifrado antes; web e worker parados durante.
+- **O que apaga:** `TRUNCATE` de todas as tabelas exceto `KEEP_TABLES` (`app/platform/reset.py`: contas, papéis da equipe CondoOS, sessões, links de acesso, índices do BCB, versões e testes dos prompts dos agentes), numa só instrução (tudo ou nada), e os arquivos sob `cond/` no S3. Tabela nova é apagada por padrão; só entra em `KEEP_TABLES` se não tiver dado de condomínio (`test_reset.py` confere que nenhuma mantida tem `condominium_id` ou `management_company_id`).
+- **Exceção registrada ao "só inclusão":** é a única operação que apaga `decision`, `audit_log` e as demais tabelas só de inclusão; existe para dados de teste e deixa uma linha `platform.data_reset` (contagens, sem dados) na trilha nova. Com dados reais de piloto, não usar sem nova decisão.
+- **S3 versionado:** o reset deixa marcadores de exclusão; as versões antigas saem pela regra de ciclo de vida recomendada para `cond/` (`docs/deploy.md` 9.10).
+- Verificação: `test_reset.py` (3; o reset roda numa transação desfeita no fim, o seed dos outros testes fica).

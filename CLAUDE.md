@@ -133,6 +133,7 @@ make pilot         # aceite do Marco 6 (após reset + up) → docs/pilot/run.md
 - E2E com um Chromium do sistema: `PW_CHROMIUM_PATH=/caminho/do/chrome make e2e`.
 - LLM: sem `ANTHROPIC_API_KEY`, o modo é `replay` (só respostas gravadas; o resto vai para a fila). Para gravar respostas reais: `LLM_MODE=record`. A suíte de testes nunca chama a API.
 - **Produção (D106):** VPS da Hostinger, `https://app.condoos.ia.br`, `docker-compose.prod.yml` com Caddy; documentos e backup diário cifrado no S3 de São Paulo. Passo a passo, atualização, backup e restauração em `docs/deploy.md` seção 9. Primeiro Admin num banco vazio: `python -m app.platform add-person` e depois `grant-role`.
+- **Zerar para novo teste (D131):** no servidor, `deploy/reset.sh` (backup, confirmação pelo domínio, apaga tudo de condomínio e os arquivos `cond/`, mantém contas e equipe CondoOS). Única exceção ao "só inclusão"; tabela nova é apagada por padrão, salvo se entrar em `platform/reset.py::KEEP_TABLES` (sem dado de condomínio).
 - E-mail de entrada local: coloque `.eml` em `data/inbound-email/` (para `<slug>-<parte aleatória>@ingest.condoos.local`, mostrado em Ajustes; fora de produção `<slug>@` também vale); o worker lê a cada 30 s. Produção: Amazon SES em São Paulo → S3 (`docs/deploy.md` seção 7, D101).
 
 ## Convenções importantes

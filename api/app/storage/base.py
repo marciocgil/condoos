@@ -11,6 +11,7 @@ class ObjectStorage(Protocol):
     def delete(self, key: str) -> None: ...
     def get(self, key: str) -> bytes: ...
     def presigned_url(self, key: str) -> str: ...
+    def delete_prefix(self, prefix: str) -> int: ...
 
 
 class S3Storage:
@@ -34,6 +35,11 @@ class S3Storage:
 
         return presigned_get_url(key)
 
+    def delete_prefix(self, prefix: str) -> int:
+        from app.storage.s3 import delete_prefix
+
+        return delete_prefix(prefix)
+
 
 class MemoryStorage:
     def __init__(self) -> None:
@@ -50,6 +56,12 @@ class MemoryStorage:
 
     def presigned_url(self, key: str) -> str:
         return f"memory://{key}"
+
+    def delete_prefix(self, prefix: str) -> int:
+        keys = [k for k in self.objects if k.startswith(prefix)]
+        for k in keys:
+            del self.objects[k]
+        return len(keys)
 
 
 _memory = MemoryStorage()

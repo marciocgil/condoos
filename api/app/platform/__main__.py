@@ -5,6 +5,7 @@
     python -m app.platform revoke-role <email> <condoos_admin|condoos_reviewer>
     python -m app.platform assign      <email> <condoos_admin|condoos_reviewer> <slug> "<motivo>"
     python -m app.platform unassign    <email> <condoos_admin|condoos_reviewer> <slug>
+    python -m app.platform reset-data  <domínio do site>   (zera os dados; D131, deploy/reset.sh)
 
 The first CondoOS admin is created here; afterwards an admin assigns reviewers to the
 condominiums it is assigned to through the API (``/condominiums/{id}/assignments``).
@@ -31,7 +32,28 @@ from app.platform import (
 USAGE = __doc__ or ""
 
 
+async def _reset(domain: str) -> str:
+    from urllib.parse import urlparse
+
+    from app.config import get_settings
+    from app.platform.reset import reset_data
+    from app.storage.base import get_storage
+
+    expected = urlparse(get_settings().web_base_url).hostname or ""
+    if domain != expected:
+        raise PlatformError(f"Confirmação não confere: digite {expected}.")
+    async with sessionmaker_for(get_admin_engine())() as session, session.begin():
+        summary = await reset_data(session, get_storage())
+    return (
+        f"Dados apagados: {summary['condominios']} condomínio(s), "
+        f"{summary['documentos']} documento(s), {summary['arquivos']} arquivo(s). "
+        "Contas das pessoas mantidas, sem acesso até novo convite."
+    )
+
+
 async def run(argv: list[str]) -> str:
+    if len(argv) == 2 and argv[0] == "reset-data":
+        return await _reset(argv[1])
     if len(argv) < 3:
         raise PlatformError(USAGE)
     if argv[0] == "add-person" and len(argv) == 3:

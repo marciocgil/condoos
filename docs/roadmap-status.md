@@ -74,6 +74,7 @@ Política mínima e kill switch entregues com a VS-05 (D83); o produto continua 
 
 ## 6. Histórico desta página
 
+- 13/11/2026 — Zerar dados para novo teste (D131, sem migração): `deploy/reset.sh` com backup e confirmação; apaga tudo de condomínio, mantém contas e equipe CondoOS.
 - 12/11/2026 — Implantação com ação em cada item (D130, sem migração): itens pendentes abrem a própria ação, ata da eleição pedida depois do mandato, tipo declarado (ata, convenção) usado só quando a leitura não acha tipo.
 - 12/11/2026 — Síndico guiado, fatia 3 (D129, sem migração): o síndico encerra a própria saída de um condomínio (hoje, até 90 dias ou no fim do mandato, com desfazer até a data); acesso termina, aprovações voltam, automações pausam sem síndico ativo, nada é apagado; dossiê do período em PDF. As três fatias do síndico guiado estão entregues.
 - 12/11/2026 — Síndico guiado, fatia 2 (D128, migração 0033): o síndico implanta um condomínio por conversa (CNPJ na Receita, dados, mandato, termo de adesão), acompanha o percentual dos 8 itens até "apto a operar" e resolve mandato, termo e alçada no lugar. Próxima: encerrar (fatia 3).

@@ -245,3 +245,15 @@ Feito em 09/11/2026: leitura (Docling e IA) dos 3 tipos, e-mail de entrada e cha
 5. No console do S3, apague a pasta `cond/<id do condomínio de teste>/` do bucket `condoos-documentos` (arquivos sem registro no banco).
 
 Para o percurso completo (cadastro, acesso da síndica, pedido à administradora, envio pelo link, fila de exceções e resultados), siga `docs/pilot/teste-ponta-a-ponta.md`, que usa a mesma preparação e a mesma limpeza.
+
+### 9.10 Zerar os dados para um novo teste do zero (D131)
+
+Apaga condomínios, administradoras, fornecedores, documentos (banco e arquivos em `cond/` no S3), análises, auditoria, assuntos, pedidos e a trilha. **Ficam:** as contas das pessoas (sem acesso a nada até novo convite), os papéis da equipe CondoOS (seu Admin continua), as sessões, os índices do BCB e as versões dos prompts dos agentes. Faz o backup cifrado antes; a trilha nova começa com uma linha `platform.data_reset`.
+
+```bash
+cd ~/condoos && git pull && deploy/reset.sh
+```
+
+O script pede para digitar o endereço do site (`app.condoos.ia.br`); qualquer outra coisa cancela sem mexer em nada. Depois: Carteira → Novo condomínio, ou `/implantar` (quem implanta vira o síndico do condomínio criado).
+
+**Para voltar atrás:** `deploy/restore.sh <nome do backup feito pelo script>` restaura o banco; os arquivos apagados no S3 voltam pelo versionamento do bucket (console: mostrar versões, apagar o marcador de exclusão). **Recomendado** (uma vez, no console do S3): regra de ciclo de vida `apagar-versoes-documentos`, prefixo `cond/`, *Excluir permanentemente versões não atuais* em 30 dias. Sem ela, versões antigas dos documentos apagados (pelo reset ou pela retenção) ficam no bucket indefinidamente.

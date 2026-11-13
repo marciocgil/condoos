@@ -12,6 +12,7 @@ from app.config import get_settings
 
 if TYPE_CHECKING:
     from mypy_boto3_s3 import S3Client
+    from mypy_boto3_s3.type_defs import ObjectIdentifierTypeDef
 
 
 def document_key(condominium_id: uuid.UUID, sha256: str, filename: str) -> str:
@@ -76,3 +77,17 @@ def presigned_get_url(key: str) -> str:
 def delete_object(key: str) -> None:
     """Idempotent: deleting a missing key is not an error in S3."""
     s3_client().delete_object(Bucket=get_settings().s3_bucket, Key=key)
+
+
+def delete_prefix(prefix: str) -> int:
+    """Deletes every current object under ``prefix`` (the data reset, D131). On a versioned
+    bucket this leaves delete markers; old versions go by the bucket's lifecycle rule."""
+    client = s3_client()
+    bucket = get_settings().s3_bucket
+    deleted = 0
+    for page in client.get_paginator("list_objects_v2").paginate(Bucket=bucket, Prefix=prefix):
+        keys: list[ObjectIdentifierTypeDef] = [{"Key": o["Key"]} for o in page.get("Contents", [])]
+        for i in range(0, len(keys), 1000):
+            client.delete_objects(Bucket=bucket, Delete={"Objects": keys[i : i + 1000]})
+            deleted += len(keys[i : i + 1000])
+    return deleted
